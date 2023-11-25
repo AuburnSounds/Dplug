@@ -298,8 +298,14 @@ private:
 nothrow:
 @nogc:
 
-void doBlit_LinearBlit(void* userData, int* delta, DMWord* mask, int x0, int x1, int y)
+void doBlit_LinearBlit_NonZero(void* userData, int* delta, DMWord* mask, int x0, int x1, int y)
 {
     LinearBlit* lb = cast(LinearBlit*)userData;
     return lb.linear_blit!(WindingRule.NonZero)(delta, mask, x0, x1, y);
+}
+
+void doBlit_LinearBlit_EvenOdd(void* userData, int* delta, DMWord* mask, int x0, int x1, int y)
+{
+    LinearBlit* lb = cast(LinearBlit*)userData;
+    return lb.linear_blit!(WindingRule.EvenOdd)(delta, mask, x0, x1, y);
 }

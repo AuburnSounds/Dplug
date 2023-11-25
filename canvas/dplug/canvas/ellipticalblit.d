@@ -310,9 +310,15 @@ private:
     float      xstep1,ystep1; 
 }
 
-void doBlit_EllipticalBlit(void* userData, int* delta, DMWord* mask, int x0, int x1, int y) nothrow @nogc
+void doBlit_EllipticalBlit_NonZero(void* userData, int* delta, DMWord* mask, int x0, int x1, int y) nothrow @nogc
 {
     EllipticalBlit* cb = cast(EllipticalBlit*)userData;
     return cb.color_blit!(WindingRule.NonZero)(delta, mask, x0, x1, y);
+}
+
+void doBlit_EllipticalBlit_EvenOdd(void* userData, int* delta, DMWord* mask, int x0, int x1, int y) nothrow @nogc
+{
+    EllipticalBlit* cb = cast(EllipticalBlit*)userData;
+    return cb.color_blit!(WindingRule.EvenOdd)(delta, mask, x0, x1, y);
 }
 

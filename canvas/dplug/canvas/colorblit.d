@@ -228,8 +228,14 @@ private:
     ubyte[16] _xmAlpha;
 }
 
- void doBlit_ColorBlit(void* userData, int* delta, DMWord* mask, int x0, int x1, int y)
+ void doBlit_ColorBlit_NonZero(void* userData, int* delta, DMWord* mask, int x0, int x1, int y)
  {
      ColorBlit* cb = cast(ColorBlit*)userData;
      return cb.color_blit!(WindingRule.NonZero)(delta, mask, x0, x1, y);
+ }
+
+ void doBlit_ColorBlit_EvenOdd(void* userData, int* delta, DMWord* mask, int x0, int x1, int y)
+ {
+    ColorBlit* cb = cast(ColorBlit*)userData;
+    return cb.color_blit!(WindingRule.EvenOdd)(delta, mask, x0, x1, y);
  }

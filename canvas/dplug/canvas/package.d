@@ -39,7 +39,6 @@ import dplug.canvas.gradient;
 import dplug.canvas.colorblit;
 import dplug.canvas.linearblit;
 import dplug.canvas.ellipticalblit;
-
 import dplug.canvas.rasterizer;
 
 
@@ -50,6 +49,15 @@ public import dplug.math.box;
 
 /// `dplug:canvas` operates on RGBA 8-bit buffers.
 alias ImageDest = ImageRef!RGBA;
+
+enum FillRule
+{
+    /// Fill pixels whose scanline intersects a non-zero number of edges.
+    nonZero,
+
+    /// Fill pixels whose scanline intersects an odd number of edges.
+    evenOdd
+}
 
 /// A 2D Canvas able to render complex pathes into an `ImageRef!RGBA` buffer.
 /// `Canvas` tries to follow loosely the HTML 5 Canvas API.
@@ -86,6 +94,7 @@ nothrow:
 
         _stateStack.resize(1);
         _stateStack[0].transform = Transform2D.identity();
+        _stateStack[0].fillRule = FillRule.nonZero;
     }
 
     ~this()
@@ -110,7 +119,7 @@ nothrow:
                              _imageDest.h, 
                              color_as_uint);
         _currentBlitter.userData = &_plainColorBlit;
-        _currentBlitter.doBlit = &doBlit_ColorBlit;
+        _blitType = BlitType.color;
     }
     ///ditto
     void fillStyle(const(char)[] htmlColorString)
@@ -136,7 +145,7 @@ nothrow:
                                          gradient._gradient,
                                          gradient.x0, gradient.y0, gradient.x1, gradient.y1);
                 _currentBlitter.userData = &_linearGradientBlit;
-                _currentBlitter.doBlit = &doBlit_LinearBlit;
+                _blitType = BlitType.linear;
                 break;
 
             case CanvasGradient.Type.elliptical:
@@ -147,13 +156,24 @@ nothrow:
                                              gradient.x0, gradient.y0, 
                                              gradient.x1, gradient.y1, gradient.r2);
                 _currentBlitter.userData = &_ellipticalGradientBlit;
-                _currentBlitter.doBlit = &doBlit_EllipticalBlit;
+                _blitType = BlitType.elliptical;
                 break;
 
             case CanvasGradient.Type.radial:
             case CanvasGradient.Type.angular:
                 assert(false); // not implemented yet
         }
+    }
+
+    /// Set the current fill rule.
+    void fillRule(FillRule rule)
+    {
+        _stateStack[$-1].fillRule = rule;
+    }
+    /// Get current fill rule.
+    FillRule fillRule()
+    {
+        return _stateStack[$-1].fillRule;
     }
 
     // <PATH> functions
@@ -396,6 +416,10 @@ nothrow:
     void fill()
     {
         closePath();
+
+        // Select a particular blitter function here, depending on current state.
+        _currentBlitter.doBlit = getBlitFunction();
+
         _rasterizer.rasterize(_currentBlitter);
     }
 
@@ -611,9 +635,41 @@ private:
         plainColor
     }
 
+    enum BlitType
+    {
+        color, // Blit is a ColorBlit
+        linear,
+        elliptical
+    }
+
     Rasterizer   _rasterizer;
 
     Blitter _currentBlitter;
+    BlitType _blitType;
+
+    // depends upon current fill rule and blit type.
+    auto getBlitFunction() pure
+    {
+        FillRule rule = _stateStack[$-1].fillRule;
+        bool nonZero = (rule == FillRule.nonZero);
+        final switch(_blitType)
+        {
+            case BlitType.color:
+                return nonZero
+                          ? &doBlit_ColorBlit_NonZero
+                          : &doBlit_ColorBlit_EvenOdd;
+            case BlitType.linear:
+                return nonZero
+                        ? &doBlit_LinearBlit_NonZero
+                        : &doBlit_LinearBlit_EvenOdd;
+            case BlitType.elliptical:
+                return nonZero
+                        ? &doBlit_EllipticalBlit_NonZero
+                        : &doBlit_EllipticalBlit_EvenOdd;
+        }
+
+    }
+
 
     // Blitters (only one used at once)
     union
@@ -652,6 +708,7 @@ private:
     struct State
     {
         Transform2D transform;
+        FillRule fillRule;
     }
 
     ref Transform2D curMatrix()
