@@ -484,9 +484,15 @@ nothrow:
         m_fprevy = y2;
     }
 
-    // TODO: when all points are the same => stack overflow
     void cubicTo(float x1, float y1, float x2, float y2, float x3, float y3)
     {
+        bool error = (x1 == x2 && x2 == x3 && y1 == y2 && y2 == y3);
+
+        // Avoid stack overflow with infinite recursion.
+        // It is poorly understood why that happens.
+        if (error)
+            return;
+
         float x01 = (m_fprevx+x1)*0.5;
         float y01 = (m_fprevy+y1)*0.5;
         float x12 = (x1+x2)*0.5;
@@ -552,7 +558,7 @@ private:
     void intLineTo(int x, int y)
     {
         // mixin for adding edges. For some reason LDC wouldnt inline this when
-        // it was a seperate function, and it was 15% slower that way
+        // it was a separate function, and it was 15% slower that way
 
         string addEdgeM(string x0, string y0, string x1, string y1, string dir)
         {

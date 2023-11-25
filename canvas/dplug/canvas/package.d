@@ -165,7 +165,7 @@ nothrow:
         }
     }
 
-    /// Set the current fill rule.
+    /// Set current fill rule.
     void fillRule(FillRule rule)
     {
         _stateStack[$-1].fillRule = rule;
@@ -175,6 +175,7 @@ nothrow:
     {
         return _stateStack[$-1].fillRule;
     }
+
 
     // <PATH> functions
 
@@ -230,7 +231,7 @@ nothrow:
         }
     }
 
-    /// Adds a cubic Bézier curve to the current path.
+    /// Adds a cubic Bezier curve to the current path.
     void bezierCurveTo(float cp1x, float cp1y, float cp2x, float cp2y, float x, float y)
     {
         vec2f cp1 = transformPoint(cp1x, cp1y);
@@ -342,8 +343,6 @@ nothrow:
 
         // Make a line to there
         lineTo(xt, yt);
-        if (radius < 1e-4f) // Below 4e-5f => stack overflow in bezier split. This is invisible anyway.
-            return;
 
         enum float MAX_ANGLE_FOR_SINGLE_BEZIER_CURVE = PI / 2.0;
 
