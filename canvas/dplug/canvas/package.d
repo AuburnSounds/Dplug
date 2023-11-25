@@ -187,6 +187,7 @@ nothrow:
     }
 
     /// Connects the last point in the current sub-path to the specified (x, y) coordinates with a straight line.
+    /// If several points are provided, it is equivalent to consecutive single-point `lineTo` calls.
     void lineTo(float x, float y)
     {
         vec2f pt = transformPoint(x, y);
@@ -196,6 +197,17 @@ nothrow:
     void lineTo(vec2f point)
     {
         lineTo(point.x, point.y);
+    }
+    ///ditto
+    void lineTo(vec2f[] points...) // an helper for chaining lineTo calls.
+    {
+        Transform2D M = currentTransform();
+        foreach(pt; points)
+        {
+            float fx = pt.x * M.a + pt.y * M.b + M.c;
+            float fy = pt.x * M.d + pt.y * M.e + M.f;
+            _rasterizer.lineTo(fx, fy);
+        }
     }
 
     /// Adds a cubic Bézier curve to the current path.
