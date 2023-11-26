@@ -21,13 +21,8 @@ struct ColorBlit
 nothrow:
 @nogc:
 
-    void init(ubyte* pixels, size_t strideBytes, int height, uint color)
+    void init(uint color)
     {
-        assert(height > 0);
-        
-        this.pixels = pixels;
-        this.strideBytes = strideBytes;
-        this.height = height;
         this.color = color;
 
         __m128i xmColor = _mm_loadu_si32 (&color);
@@ -40,13 +35,10 @@ nothrow:
 
 private:
 
-    void color_blit(WindingRule wr)(int* delta, DMWord* mask, int x0, int x1, int y)
+    void color_blit(WindingRule wr)(uint* dest, int* delta, DMWord* mask, int x0, int x1, int y)
     {
         assert(x0 >= 0);
-        ulong sbytes = strideBytes;
-        assert(x1 * 4 <= sbytes);
         assert(y >= 0);
-        assert(y < height);
         assert((x0 & 3) == 0);
         assert((x1 & 3) == 0);
 
@@ -54,7 +46,6 @@ private:
 
         int bpos = x0 / 4;
         int endbit = x1 / 4;
-        uint* dest = cast(uint*)(&pixels[y*strideBytes]);
         __m128i xmWinding = 0;
         bool isopaque = (color >> 24) == 0xFF;
 
@@ -220,22 +211,19 @@ private:
         }
     }
 
-    ubyte* pixels;
-    size_t strideBytes;
-    int height;
     uint color;
     ubyte[16] _xmColor;
     ubyte[16] _xmAlpha;
 }
 
- void doBlit_ColorBlit_NonZero(void* userData, int* delta, DMWord* mask, int x0, int x1, int y)
+ void doBlit_ColorBlit_NonZero(void* userData, uint* dest, int* delta, DMWord* mask, int x0, int x1, int y)
  {
      ColorBlit* cb = cast(ColorBlit*)userData;
-     return cb.color_blit!(WindingRule.NonZero)(delta, mask, x0, x1, y);
+     return cb.color_blit!(WindingRule.NonZero)(dest, delta, mask, x0, x1, y);
  }
 
- void doBlit_ColorBlit_EvenOdd(void* userData, int* delta, DMWord* mask, int x0, int x1, int y)
+ void doBlit_ColorBlit_EvenOdd(void* userData, uint* dest, int* delta, DMWord* mask, int x0, int x1, int y)
  {
     ColorBlit* cb = cast(ColorBlit*)userData;
-    return cb.color_blit!(WindingRule.EvenOdd)(delta, mask, x0, x1, y);
+    return cb.color_blit!(WindingRule.EvenOdd)(dest, delta, mask, x0, x1, y);
  }

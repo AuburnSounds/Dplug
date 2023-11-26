@@ -132,14 +132,15 @@ enum fpDYScale = 1073741824.0; // as above but div 4
 /*
   Blitter delegate. A callback that does the actual blitting once coverage
   for the given scanline has been calculated.
+    dest  - destination pixels
     delta - pointer to the delta buffer
     mask  - pointer to delta mask
     x0    - start x
     x1    - end x
-    y     - y position
+    y     - current y (needed for gradients)
 */
 
-alias BlitFunction = void function(void* userData, int* delta, DMWord* mask, int x0, int x1, int y);
+alias BlitFunction = void function(void* userData, uint* dest, int* delta, DMWord* mask, int x0, int x1, int y);
 
 
 
@@ -245,7 +246,10 @@ nothrow:
 
     // rasterize
 
-    void rasterize(Blitter blitter)
+    void rasterize(ubyte* imagePixels,
+                   const size_t imagePitchInBytes,
+                   const int imageHeight,
+                   Blitter blitter)
     {
         Edge dummy;
         Edge* prev = &dummy;
@@ -259,6 +263,8 @@ nothrow:
         int cl_acc,cr_acc;
         int cl_pos = m_clipleft >> fpFracBits;
         int cr_pos = m_clipright >> fpFracBits;
+
+        ubyte* pDest = imagePixels + imagePitchInBytes * starty;
 
         for (int y = starty; y < endy; y++)
         {
@@ -388,7 +394,8 @@ nothrow:
 
             // Blit scanline
 
-            blitter.doBlit(blitter.userData, m_scandelta.ptr, m_deltamask, startx, endx, y);
+            blitter.doBlit(blitter.userData, cast(uint*)pDest, m_scandelta.ptr, m_deltamask, startx, endx, y);
+            pDest += imagePitchInBytes;
 
             // clear scandelta overspill
 

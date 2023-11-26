@@ -114,10 +114,7 @@ nothrow:
     void fillStyle(RGBA color)
     {
         uint color_as_uint = *cast(uint*)&color;
-        _plainColorBlit.init(cast(ubyte*)_imageDest.pixels, 
-                             _imageDest.pitch, 
-                             _imageDest.h, 
-                             color_as_uint);
+        _plainColorBlit.init(color_as_uint);
         _currentBlitter.userData = &_plainColorBlit;
         _blitType = BlitType.color;
     }
@@ -139,20 +136,14 @@ nothrow:
         final switch(gradient.type)
         {
             case CanvasGradient.Type.linear:
-                _linearGradientBlit.init(cast(ubyte*)_imageDest.pixels,
-                                         _imageDest.pitch, 
-                                         _imageDest.h, 
-                                         gradient._gradient,
+                _linearGradientBlit.init(gradient._gradient,
                                          gradient.x0, gradient.y0, gradient.x1, gradient.y1);
                 _currentBlitter.userData = &_linearGradientBlit;
                 _blitType = BlitType.linear;
                 break;
 
             case CanvasGradient.Type.elliptical:
-                _ellipticalGradientBlit.init(cast(ubyte*)_imageDest.pixels,
-                                             _imageDest.pitch, 
-                                             _imageDest.h, 
-                                             gradient._gradient,
+                _ellipticalGradientBlit.init(gradient._gradient,
                                              gradient.x0, gradient.y0, 
                                              gradient.x1, gradient.y1, gradient.r2);
                 _currentBlitter.userData = &_ellipticalGradientBlit;
@@ -419,7 +410,10 @@ nothrow:
         // Select a particular blitter function here, depending on current state.
         _currentBlitter.doBlit = getBlitFunction();
 
-        _rasterizer.rasterize(_currentBlitter);
+        _rasterizer.rasterize(cast(ubyte*) _imageDest.pixels,
+                              _imageDest.pitch,
+                              _imageDest.h,
+                              _currentBlitter);
     }
 
     /// Fill a rectangle using the current `fillStyle`.

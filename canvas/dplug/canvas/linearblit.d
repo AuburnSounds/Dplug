@@ -21,16 +21,11 @@ struct LinearBlit
 nothrow:
 @nogc:
 
-    void init(ubyte* pixels, size_t strideBytes, int height,
-              Gradient g, float x0, float y0, float x1, float y1)
+    void init(Gradient g, float x0, float y0, float x1, float y1)
     {
-        assert(height > 0);
         assert(g !is null);
         assert(isPow2(g.lutLength));
 
-        this.pixels = pixels;
-        this.strideBytes = strideBytes;
-        this.height = height;
         this.gradient = g;
         int lutsize = g.lutLength;
 
@@ -46,12 +41,10 @@ nothrow:
 
 private:
 
-    void linear_blit(WindingRule wr)(int* delta, DMWord* mask, int x0, int x1, int y)
+    void linear_blit(WindingRule wr)(uint* dest, int* delta, DMWord* mask, int x0, int x1, int y)
     {
         assert(x0 >= 0);
-        assert(x1*4 <= strideBytes);
         assert(y >= 0);
-        assert(y < height);
         assert((x0 & 3) == 0);
         assert((x1 & 3) == 0);
 
@@ -59,7 +52,6 @@ private:
 
         int bpos = x0 / 4;
         int endbit = x1 / 4;
-        uint* dest = cast(uint*)(&pixels[y*strideBytes]);
         __m128i xmWinding = 0;
         uint* lut = gradient.getLookup.ptr;
         assert(gradient.lutLength <= short.max); // LUT can be non-power-of-2 as far as LinearBlit is concerned, but this held low interest
@@ -287,9 +279,6 @@ private:
 
     // Member variables
 
-    ubyte* pixels;
-    size_t strideBytes;
-    int height;
     Gradient gradient;
     float xctr,yctr;
     float xstep,ystep;
@@ -298,14 +287,14 @@ private:
 nothrow:
 @nogc:
 
-void doBlit_LinearBlit_NonZero(void* userData, int* delta, DMWord* mask, int x0, int x1, int y)
+void doBlit_LinearBlit_NonZero(void* userData, uint* dest, int* delta, DMWord* mask, int x0, int x1, int y)
 {
     LinearBlit* lb = cast(LinearBlit*)userData;
-    return lb.linear_blit!(WindingRule.NonZero)(delta, mask, x0, x1, y);
+    return lb.linear_blit!(WindingRule.NonZero)(dest, delta, mask, x0, x1, y);
 }
 
-void doBlit_LinearBlit_EvenOdd(void* userData, int* delta, DMWord* mask, int x0, int x1, int y)
+void doBlit_LinearBlit_EvenOdd(void* userData, uint* dest, int* delta, DMWord* mask, int x0, int x1, int y)
 {
     LinearBlit* lb = cast(LinearBlit*)userData;
-    return lb.linear_blit!(WindingRule.EvenOdd)(delta, mask, x0, x1, y);
+    return lb.linear_blit!(WindingRule.EvenOdd)(dest, delta, mask, x0, x1, y);
 }
