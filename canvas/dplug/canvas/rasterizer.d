@@ -452,7 +452,7 @@ nothrow:
                             __m128i S0_3 = _mm_unpacklo_epi8(S, Z); 
                             __m128i S4_7 = _mm_unpackhi_epi8(S, Z);
                             D0_3 = _mm_add_epi16(D0_3, S0_3);
-                            D4_7 = _mm_add_epi16(D4_7, S0_3);
+                            D4_7 = _mm_add_epi16(D4_7, S4_7);
                             __m128i R = _mm_packus_epi16(D0_3, D4_7);
                             R = _mm_or_si128(R, alphaMask);
                             _mm_storeu_si128(cast(__m128i*) &dest[x], R);
@@ -470,7 +470,7 @@ nothrow:
                             __m128i S0_3 = _mm_unpacklo_epi8(S, Z); 
                             __m128i S4_7 = _mm_unpackhi_epi8(S, Z);
                             D0_3 = _mm_sub_epi16(D0_3, S0_3);
-                            D4_7 = _mm_sub_epi16(D4_7, S0_3);
+                            D4_7 = _mm_sub_epi16(D4_7, S4_7);
                             __m128i R = _mm_packus_epi16(D0_3, D4_7);
                             R = _mm_or_si128(R, alphaMask);
                             _mm_storeu_si128(cast(__m128i*) &dest[x], R);
