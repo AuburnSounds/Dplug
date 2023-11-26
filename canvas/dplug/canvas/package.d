@@ -12,6 +12,7 @@
   - added html color parsing
   - no alignment requirements
   - clipping is done with the ImageRef input
+  - added a few blendmodes
   However a failure of this fork is that for transforms and stroke() support
   you do need path abstraction in the end.
 
@@ -50,6 +51,7 @@ public import dplug.math.box;
 /// `dplug:canvas` operates on RGBA 8-bit buffers.
 alias ImageDest = ImageRef!RGBA;
 
+/// How to fill pixels.
 enum FillRule
 {
     /// Fill pixels whose scanline intersects a non-zero number of edges.
@@ -58,6 +60,23 @@ enum FillRule
     /// Fill pixels whose scanline intersects an odd number of edges.
     evenOdd
 }
+
+/// How to composite against background (background is always considered opaque in dplug:canvas).
+enum CompositeOperation
+{
+    /// (default) Fastest mode, blend source over the background.
+    /// Note that this goes considerable faster than other blend modes.
+    /// This is because this mode skips holes instead of compositing it,
+    /// And traverse pixels only once.
+    sourceOver,
+
+    /// Add source color (weighted by alpha) to background.
+    add,
+
+    /// Subtract source color (weighted by alpha) from background.
+    subtract
+}
+
 
 /// A 2D Canvas able to render complex pathes into an `ImageRef!RGBA` buffer.
 /// `Canvas` tries to follow loosely the HTML 5 Canvas API.
@@ -95,6 +114,7 @@ nothrow:
         _stateStack.resize(1);
         _stateStack[0].transform = Transform2D.identity();
         _stateStack[0].fillRule = FillRule.nonZero;
+        _stateStack[0].compositeOp = CompositeOperation.sourceOver;
     }
 
     ~this()
@@ -165,6 +185,17 @@ nothrow:
     FillRule fillRule()
     {
         return _stateStack[$-1].fillRule;
+    }
+
+    ///Set global composite operation.
+    void globalCompositeOperation(CompositeOperation op)
+    {
+        _stateStack[$-1].compositeOp = op;
+    }
+    /// Get global composite operation.
+    CompositeOperation globalCompositeOperation()
+    {
+        return _stateStack[$-1].compositeOp;
     }
 
 
@@ -410,10 +441,19 @@ nothrow:
         // Select a particular blitter function here, depending on current state.
         _currentBlitter.doBlit = getBlitFunction();
 
+        CompositeOp op;
+        final switch(_stateStack[$-1].compositeOp)
+        {
+            case CompositeOperation.sourceOver: op = CompositeOp.SourceOver; break;
+            case CompositeOperation.add:        op = CompositeOp.Add; break;
+            case CompositeOperation.subtract:   op = CompositeOp.Subtract; break;
+        }
+
         _rasterizer.rasterize(cast(ubyte*) _imageDest.pixels,
                               _imageDest.pitch,
                               _imageDest.h,
-                              _currentBlitter);
+                              _currentBlitter,
+                              op);
     }
 
     /// Fill a rectangle using the current `fillStyle`.
@@ -702,6 +742,7 @@ private:
     {
         Transform2D transform;
         FillRule fillRule;
+        CompositeOperation compositeOp;
     }
 
     ref Transform2D curMatrix()

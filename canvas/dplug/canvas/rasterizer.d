@@ -81,6 +81,13 @@ enum AngularMode
     Quad
 }
 
+enum CompositeOp
+{
+    SourceOver,
+    Add,
+    Subtract
+}
+
 /*
   Delta mask stuff
   what word type to use for mask
@@ -219,6 +226,8 @@ nothrow:
         m_clipbfr_l.resize(roundUpPow2((bottom+2)|63));
         m_clipbfr_r.resize(roundUpPow2((bottom+2)|63));
 
+        m_destBuf.reallocBuffer( (right+3)*4 ); // not sure for right size
+
         m_scandelta.fill(0);
         // m_deltamask is init on each rasterized line
         m_buckets.fill(null);
@@ -237,6 +246,7 @@ nothrow:
 
     ~this()
     {
+        m_destBuf.reallocBuffer(0);
         if (m_deltamask)
         {
             alignedFree(m_deltamask, 1);
@@ -249,7 +259,8 @@ nothrow:
     void rasterize(ubyte* imagePixels,
                    const size_t imagePitchInBytes,
                    const int imageHeight,
-                   Blitter blitter)
+                   Blitter blitter,
+                   CompositeOp compositeOp)
     {
         Edge dummy;
         Edge* prev = &dummy;
@@ -393,8 +404,81 @@ nothrow:
             }
 
             // Blit scanline
+            if (compositeOp == CompositeOp.SourceOver)
+            {
+                // special case for fastest blit, source-over is the default.
+                blitter.doBlit(blitter.userData, cast(uint*)pDest, m_scandelta.ptr, m_deltamask, startx, endx, y);                
+            }
+            else
+            {
+                uint* tmpBuf = cast(uint*)m_destBuf.ptr;
+                uint* dest = cast(uint*)pDest;
 
-            blitter.doBlit(blitter.userData, cast(uint*)pDest, m_scandelta.ptr, m_deltamask, startx, endx, y);
+                assert((startx & 3) == 0);
+                assert((endx & 3) == 0);
+
+                // Fill with zeroes
+                tmpBuf[startx..endx] = 0; // black in rgba8
+
+                // Write into destbuf.
+                // There is an additional difficulty, because the pixels that were touched have an excess in -3 to +3 potentially.
+                // This is done with coverage being zero. So our Porter-Duff would overwrite if we don't multiply with source-alpha!
+                blitter.doBlit(blitter.userData, tmpBuf, m_scandelta.ptr, m_deltamask, startx, endx, y);
+
+                // Custom composite operations go here.
+
+                // Note: in HTML standard, destination alpha is considered, and the resulting color
+                // is a weighted average of the dest and blended source. I suppose alpha also gets to be
+                // a weighted average, but this implies a divide, and we assume background alpha to be 255.
+                //
+                // alpha-res = (255 * 255 + src-alpha * src-alpha) / (src-alpha + 255)
+                // Under these circumstances, alpha-res is always close to 255.
+
+                __m128i alphaMask = _mm_set1_epi32(0xff000000);
+
+                final switch (compositeOp)
+                {
+                    case CompositeOp.SourceOver:
+                        assert(false);
+
+                    case CompositeOp.Add:
+                        for (int x = startx; x < endx; x += 4)
+                        {
+                            __m128i D = _mm_loadu_si128(cast(__m128i*) &dest[x]);
+                            __m128i S = _mm_loadu_si128(cast(__m128i*) &tmpBuf[x]);
+                            __m128i Z = _mm_setzero_si128();
+                            __m128i D0_3 = _mm_unpacklo_epi8(D, Z); 
+                            __m128i D4_7 = _mm_unpackhi_epi8(D, Z);
+                            __m128i S0_3 = _mm_unpacklo_epi8(S, Z); 
+                            __m128i S4_7 = _mm_unpackhi_epi8(S, Z);
+                            D0_3 = _mm_add_epi16(D0_3, S0_3);
+                            D4_7 = _mm_add_epi16(D4_7, S0_3);
+                            __m128i R = _mm_packus_epi16(D0_3, D4_7);
+                            R = _mm_or_si128(R, alphaMask);
+                            _mm_storeu_si128(cast(__m128i*) &dest[x], R);
+                        }
+                        break;
+
+                    case CompositeOp.Subtract:
+                        for (int x = startx; x < endx; x += 4)
+                        {
+                            __m128i D = _mm_loadu_si128(cast(__m128i*) &dest[x]);
+                            __m128i S = _mm_loadu_si128(cast(__m128i*) &tmpBuf[x]);
+                            __m128i Z = _mm_setzero_si128();
+                            __m128i D0_3 = _mm_unpacklo_epi8(D, Z); 
+                            __m128i D4_7 = _mm_unpackhi_epi8(D, Z);
+                            __m128i S0_3 = _mm_unpacklo_epi8(S, Z); 
+                            __m128i S4_7 = _mm_unpackhi_epi8(S, Z);
+                            D0_3 = _mm_sub_epi16(D0_3, S0_3);
+                            D4_7 = _mm_sub_epi16(D4_7, S0_3);
+                            __m128i R = _mm_packus_epi16(D0_3, D4_7);
+                            R = _mm_or_si128(R, alphaMask);
+                            _mm_storeu_si128(cast(__m128i*) &dest[x], R);
+                        }
+                        break;
+                }
+            }
+
             pDest += imagePitchInBytes;
 
             // clear scandelta overspill
@@ -844,6 +928,8 @@ private:
 
     float m_fprevx,m_fprevy;
 
+    // Temporary dest buffer for Porter Duff operations.
+    ubyte[] m_destBuf;
 }
 
 // the rasterizer itself should be a reusable, small object suitable for the stack
