@@ -1002,7 +1002,7 @@ int main(string[] args)
                     {
                         cwritefln("*** Making an universal binary with lipo");
 
-                        string cmd = format("lipo -create %s %s -output %s",
+                        string cmd = format("xcrun lipo -create %s %s -output %s",
                                             escapeShellArgument(path_arm64),
                                             escapeShellArgument(path_x86_64),
                                             escapeShellArgument(pluginFinalPath));
@@ -1115,7 +1115,7 @@ int main(string[] args)
 
                             cwritefln("*** Making an universal binary with lipo");
 
-                            string cmd = format("lipo -create %s %s -output %s",
+                            string cmd = format("xcrun lipo -create %s %s -output %s",
                                                 escapeShellArgument(path_arm64),
                                                 escapeShellArgument(path_x86_64),
                                                 escapeShellArgument(exePath));
@@ -1145,7 +1145,7 @@ int main(string[] args)
                             cwritefln("*** Signing bundle %s...", bundleDir);
                             if (plugin.developerIdentityOSX !is null)
                             {
-                                string command = format(`codesign --strict -f -s %s --timestamp %s --digest-algorithm=sha1,sha256`,
+                                string command = format(`xcrun codesign --deep --strict -f -s %s --timestamp %s --digest-algorithm=sha1,sha256`,
                                     escapeShellArgument(plugin.developerIdentityOSX), escapeShellArgument(bundleDir));
                                safeCommand(command);
                             }
@@ -1284,7 +1284,7 @@ int main(string[] args)
                         }
 
                         // Create individual .pkg installer for each VST, AU or AAX given
-                        string cmd = format("pkgbuild%s%s%s --install-location %s --identifier %s --version %s %s %s",
+                        string cmd = format("xcrun pkgbuild%s%s%s --install-location %s --identifier %s --version %s %s %s",
                             signStr,
                             quietStr,
                             componentPlistFlag,
@@ -1945,7 +1945,7 @@ void generateMacInstaller(string rootDir,
     string packagePaths = "";
     foreach(p; packs)
        packagePaths ~= format(` --package-path %s`, escapeShellArgument(dirName(p.pathToPkg)));
-    string cmd = format("productbuild%s%s --resources %s --distribution %s%s %s",
+    string cmd = format("xcrun productbuild%s%s --resources %s --distribution %s%s %s",
                         signStr,
                         quietStr,
                         escapeShellArgument(resDir),
