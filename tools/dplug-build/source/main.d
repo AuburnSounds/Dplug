@@ -1968,28 +1968,25 @@ void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, st
 
     string authString;
 
+    if (plugin.appSpecificPassword_stapler)
+        warning(`"appSpecificPassword-stapler" is not needed anymore. You can safely remove it.`);
+
     // keychainProfile overrides vendor Apple ID, app-specific passwords, and 
     if (plugin.keychainProfile is null)
     {
         if (plugin.vendorAppleID is null)
-            throw new Exception(`Missing "vendorAppleID" in plugin.json. Notarization need this key.`);
+            throw new Exception(`Missing "vendorAppleID" in plugin.json. Notarization need this key, or "keychainProfile-osx".`);
+
         if (plugin.appSpecificPassword_altool is null)
             throw new Exception(`Missing "appSpecificPassword-altool" in plugin.json. Notarization need this key.`);
-        if (plugin.appSpecificPassword_stapler is null)
-            throw new Exception(`Missing "appSpecificPassword-stapler" in plugin.json. Notarization need this key.`);
-        if (plugin.appSpecificPassword_altool == plugin.appSpecificPassword_stapler)
-            warning(`"appSpecificPassword-altool" and "appSpecificPassword-stapler" are the same. Apple may revoke your passwords at one point.`);
 
         authString = format("--team-id %s --apple-id %s --password %s",  plugin.getDeveloperIdentityMac(), plugin.vendorAppleID, plugin.appSpecificPassword_altool);
     }
     else
     {
-        info("Using your \"keychainProfile-osx\" key for notarytool instead of identity + Apple ID + password.");
         authString = format("--keychain-profile %s",  plugin.keychainProfile);
-
     }
 
-    
     bool notarizationSucceeded = false;
     bool notarizationFailed = false;
     string LogFileURL = "unknown location";
