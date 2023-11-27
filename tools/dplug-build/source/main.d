@@ -1145,7 +1145,7 @@ int main(string[] args)
                             cwritefln("*** Signing bundle %s...", bundleDir);
                             if (plugin.developerIdentityOSX !is null)
                             {
-                                string command = format(`xcrun codesign --deep --strict -f -s %s --timestamp %s --digest-algorithm=sha1,sha256`,
+                                string command = format(`xcrun codesign --options=runtime --deep --strict -f -s %s --timestamp %s --digest-algorithm=sha1,sha256`,
                                     escapeShellArgument(plugin.developerIdentityOSX), escapeShellArgument(bundleDir));
                                safeCommand(command);
                             }
