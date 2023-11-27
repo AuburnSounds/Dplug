@@ -226,7 +226,7 @@ nothrow:
         m_clipbfr_l.resize(roundUpPow2((bottom+2)|63));
         m_clipbfr_r.resize(roundUpPow2((bottom+2)|63));
 
-        m_destBuf.reallocBuffer( (right+3)*4 ); // not sure for right size
+        m_destBuf.resize( (right+3)*4 ); // 3 additional pixels, size of a scanline
 
         m_scandelta.fill(0);
         // m_deltamask is init on each rasterized line
@@ -246,7 +246,6 @@ nothrow:
 
     ~this()
     {
-        m_destBuf.reallocBuffer(0);
         if (m_deltamask)
         {
             alignedFree(m_deltamask, 1);
@@ -894,7 +893,8 @@ private:
 
     ArenaAllocator!(Edge,100) m_edgepool;
 
-    // PERF: no reasons to be Vec here
+    // Note: the reason why it's Vec is to avoid an initialization that would reallocate down.
+
     Vec!(Edge*) m_buckets;
     Vec!int m_scandelta;
 
@@ -929,11 +929,11 @@ private:
     float m_fprevx,m_fprevy;
 
     // Temporary dest buffer for Porter Duff operations.
-    ubyte[] m_destBuf;
+    Vec!ubyte m_destBuf;
 }
 
 // the rasterizer itself should be a reusable, small object suitable for the stack
-static assert(Rasterizer.sizeof < 256);
+static assert(Rasterizer.sizeof < 280);
 
 private:
 
