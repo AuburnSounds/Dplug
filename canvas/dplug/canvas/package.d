@@ -72,9 +72,16 @@ enum CompositeOperation
 
     /// Add source color (weighted by alpha) to background.
     add,
+    lighter = add,///ditto
 
     /// Subtract source color (weighted by alpha) from background.
-    subtract
+    subtract,
+
+    /// Choose maximum of color values. Do not mistake for "lighter" which is an add, not a max.
+    lighten,
+
+    /// Choose minimum of color values.
+    darken,
 }
 
 
@@ -447,6 +454,8 @@ nothrow:
             case CompositeOperation.sourceOver: op = CompositeOp.SourceOver; break;
             case CompositeOperation.add:        op = CompositeOp.Add; break;
             case CompositeOperation.subtract:   op = CompositeOp.Subtract; break;
+            case CompositeOperation.lighten:    op = CompositeOp.LightenOnly; break;
+            case CompositeOperation.darken:     op = CompositeOp.DarkenOnly; break;
         }
 
         _rasterizer.rasterize(cast(ubyte*) _imageDest.pixels,

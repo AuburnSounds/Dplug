@@ -85,7 +85,9 @@ enum CompositeOp
 {
     SourceOver,
     Add,
-    Subtract
+    Subtract,
+    LightenOnly,
+    DarkenOnly
 }
 
 /*
@@ -471,6 +473,88 @@ nothrow:
                             D0_3 = _mm_sub_epi16(D0_3, S0_3);
                             D4_7 = _mm_sub_epi16(D4_7, S4_7);
                             __m128i R = _mm_packus_epi16(D0_3, D4_7);
+                            R = _mm_or_si128(R, alphaMask);
+                            _mm_storeu_si128(cast(__m128i*) &dest[x], R);
+                        }
+                        break;
+
+                    case CompositeOp.LightenOnly:
+                        //    (1 - alpha) * bg + max(bg, fg) * alpha
+                        // == (1 - alpha) * bg + max(bg * alpha, fg * alpha) and we get fg.alpha
+                        for (int x = startx; x < endx; x += 4)
+                        {
+                            __m128i D = _mm_loadu_si128(cast(__m128i*) &dest[x]);   // BG
+                            __m128i S = _mm_loadu_si128(cast(__m128i*) &tmpBuf[x]); // FG * A, A
+                            __m128i Z = _mm_setzero_si128();
+                            
+                            __m128i D0_1 = _mm_unpacklo_epi8(D, Z); // two background pixels
+                            __m128i D2_3 = _mm_unpackhi_epi8(D, Z); // ditto
+                            __m128i S0_1 = _mm_unpacklo_epi8(S, Z); // two foreground pixels
+                            __m128i S2_3 = _mm_unpackhi_epi8(S, Z); // ditto
+
+                            __m128i A0_1 = _mm_shufflelo_epi16!0xff(_mm_shufflehi_epi16!0xff(S0_1)); // A0 A0 A0 A0 A1 A1 A1 A1
+                            __m128i A2_3 = _mm_shufflelo_epi16!0xff(_mm_shufflehi_epi16!0xff(S2_3)); // A2 A2 A2 A2 A3 A3 A3 A3
+                            __m128i m255 = _mm_set1_epi16(255);
+                            __m128i mA0_1 = _mm_sub_epi16(m255, A0_1); // (255-A0)x4 (255-A1)x4
+                            __m128i mA2_3 = _mm_sub_epi16(m255, A2_3);
+                            A0_1 = _mm_slli_epi16(A0_1, 8);
+                            A2_3 = _mm_slli_epi16(A2_3, 8);
+                            mA0_1 = _mm_slli_epi16(mA0_1, 8);
+                            mA2_3 = _mm_slli_epi16(mA2_3, 8);
+
+                            // multiply bg * alpha
+                            __m128i BGA0_1 = _mm_mulhi_epu16(A0_1, D0_1);
+                            __m128i BGA2_3 = _mm_mulhi_epu16(A2_3, D2_3);
+
+                            // multiply bg * (1 - alpha)
+                            __m128i mBGA0_1 = _mm_mulhi_epu16(mA0_1, D0_1);
+                            __m128i mBGA2_3 = _mm_mulhi_epu16(mA2_3, D2_3);
+
+                            __m128i R0_1 = _mm_add_epi16( _mm_max_epi16(S0_1, BGA0_1), mBGA0_1);
+                            __m128i R2_3 = _mm_add_epi16( _mm_max_epi16(S2_3, BGA2_3), mBGA2_3);
+
+                            __m128i R = _mm_packus_epi16(R0_1, R2_3);
+                            R = _mm_or_si128(R, alphaMask);
+                            _mm_storeu_si128(cast(__m128i*) &dest[x], R);
+                        }
+                        break;
+
+                    case CompositeOp.DarkenOnly:
+                        //    (1 - alpha) * bg + min(bg, fg) * alpha
+                        // == (1 - alpha) * bg + min(bg * alpha, fg * alpha) and we get fg.alpha
+                        for (int x = startx; x < endx; x += 4)
+                        {
+                            __m128i D = _mm_loadu_si128(cast(__m128i*) &dest[x]);   // BG
+                            __m128i S = _mm_loadu_si128(cast(__m128i*) &tmpBuf[x]); // FG * A, A
+                            __m128i Z = _mm_setzero_si128();
+
+                            __m128i D0_1 = _mm_unpacklo_epi8(D, Z); // two background pixels
+                            __m128i D2_3 = _mm_unpackhi_epi8(D, Z); // ditto
+                            __m128i S0_1 = _mm_unpacklo_epi8(S, Z); // two foreground pixels
+                            __m128i S2_3 = _mm_unpackhi_epi8(S, Z); // ditto
+
+                            __m128i A0_1 = _mm_shufflelo_epi16!0xff(_mm_shufflehi_epi16!0xff(S0_1)); // A0 A0 A0 A0 A1 A1 A1 A1
+                            __m128i A2_3 = _mm_shufflelo_epi16!0xff(_mm_shufflehi_epi16!0xff(S2_3)); // A2 A2 A2 A2 A3 A3 A3 A3
+                            __m128i m255 = _mm_set1_epi16(255);
+                            __m128i mA0_1 = _mm_sub_epi16(m255, A0_1); // (255-A0)x4 (255-A1)x4
+                            __m128i mA2_3 = _mm_sub_epi16(m255, A2_3);
+                            A0_1 = _mm_slli_epi16(A0_1, 8);
+                            A2_3 = _mm_slli_epi16(A2_3, 8);
+                            mA0_1 = _mm_slli_epi16(mA0_1, 8);
+                            mA2_3 = _mm_slli_epi16(mA2_3, 8);
+
+                            // multiply bg * alpha
+                            __m128i BGA0_1 = _mm_mulhi_epu16(A0_1, D0_1);
+                            __m128i BGA2_3 = _mm_mulhi_epu16(A2_3, D2_3);
+
+                            // multiply bg * (1 - alpha)
+                            __m128i mBGA0_1 = _mm_mulhi_epu16(mA0_1, D0_1);
+                            __m128i mBGA2_3 = _mm_mulhi_epu16(mA2_3, D2_3);
+
+                            __m128i R0_1 = _mm_add_epi16( _mm_min_epi16(S0_1, BGA0_1), mBGA0_1);
+                            __m128i R2_3 = _mm_add_epi16( _mm_min_epi16(S2_3, BGA2_3), mBGA2_3);
+
+                            __m128i R = _mm_packus_epi16(R0_1, R2_3);
                             R = _mm_or_si128(R, alphaMask);
                             _mm_storeu_si128(cast(__m128i*) &dest[x], R);
                         }
