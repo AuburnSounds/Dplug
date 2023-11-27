@@ -27,7 +27,7 @@
         "dplug:flat-widgets": { "path": "../.." }
     },
 
-    "versions": ["futureMouseDrag"],
+    "versions": ["futureMouseDrag", "futureBinState"],
 
     "configurations": [
         {
