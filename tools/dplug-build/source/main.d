@@ -1984,7 +1984,7 @@ void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, st
     }
     else
     {
-        authString = format("--keychain-profile %s",  plugin.keychainProfile);
+        authString = format("--keychain-profile %s",  escapeShellArgument(plugin.keychainProfile));
     }
 
     bool notarizationSucceeded = false;
