@@ -1145,7 +1145,7 @@ int main(string[] args)
                             cwritefln("*** Signing bundle %s...", bundleDir);
                             if (plugin.developerIdentityOSX !is null)
                             {
-                                string command = format(`xcrun codesign --options=runtime --deep --strict -f -s %s --timestamp %s --digest-algorithm=sha1,sha256`,
+                                string command = format(`xcrun codesign --options=runtime --strict -f -s %s --timestamp %s --digest-algorithm=sha1,sha256`,
                                     escapeShellArgument(plugin.developerIdentityOSX), escapeShellArgument(bundleDir));
                                safeCommand(command);
                             }
@@ -1966,177 +1966,44 @@ void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, st
     string uploadXMLPath = outputDir ~ "/temp/notarization-upload.xml";    
     string pollXMLPath = outputDir ~ "/temp/notarization-poll.xml";
 
-    if (plugin.vendorAppleID is null)
-        throw new Exception(`Missing "vendorAppleID" in plugin.json. Notarization need this key.`);
-    if (plugin.appSpecificPassword_altool is null)
-        throw new Exception(`Missing "appSpecificPassword-altool" in plugin.json. Notarization need this key.`);
-    if (plugin.appSpecificPassword_stapler is null)
-        throw new Exception(`Missing "appSpecificPassword-stapler" in plugin.json. Notarization need this key.`);
-    if (plugin.appSpecificPassword_altool == plugin.appSpecificPassword_stapler)
-        warning(`"appSpecificPassword-altool" and "appSpecificPassword-stapler" are the same. Apple may revoke your passwords at one point.`);
+    string authString;
 
+    // keychainProfile overrides vendor Apple ID, app-specific passwords, and 
+    if (plugin.keychainProfile is null)
+    {
+        if (plugin.vendorAppleID is null)
+            throw new Exception(`Missing "vendorAppleID" in plugin.json. Notarization need this key.`);
+        if (plugin.appSpecificPassword_altool is null)
+            throw new Exception(`Missing "appSpecificPassword-altool" in plugin.json. Notarization need this key.`);
+        if (plugin.appSpecificPassword_stapler is null)
+            throw new Exception(`Missing "appSpecificPassword-stapler" in plugin.json. Notarization need this key.`);
+        if (plugin.appSpecificPassword_altool == plugin.appSpecificPassword_stapler)
+            warning(`"appSpecificPassword-altool" and "appSpecificPassword-stapler" are the same. Apple may revoke your passwords at one point.`);
+
+        authString = format("--team-id %s --apple-id %s --password %s",  plugin.getDeveloperIdentityMac(), plugin.vendorAppleID, plugin.appSpecificPassword_altool);
+    }
+    else
+    {
+        info("Using your \"keychainProfile-osx\" key for notarytool instead of identity + Apple ID + password.");
+        authString = format("--keychain-profile %s",  plugin.keychainProfile);
+
+    }
+
+    
     bool notarizationSucceeded = false;
     bool notarizationFailed = false;
     string LogFileURL = "unknown location";
 
-    if (legacyNotarization)
-    {
-        {
-            string cmd = format(`xcrun altool %s--notarize-app -t osx -f %s -u %s -p %s --primary-bundle-id %s --output-format xml > %s`,
-                                verboseFlag,
-                                escapeShellArgument(outPkgPath),
-                                plugin.vendorAppleID,
-                                plugin.appSpecificPassword_altool,
-                                primaryBundleId,
-                                uploadXMLPath,
-                                );
-            safeCommand(cmd);
-        }
-
-        import arsd.dom;
-
-        // read XML
-        string requestUUID = null;
-
-        {
-            auto doc = new Document();
-            doc.parseUtf8( cast(string)(std.file.read(uploadXMLPath)), false, false);
-            auto plist = doc.root;
-
-            foreach(key; plist.querySelectorAll("key"))
-            {
-                if (key.innerHTML == "success-message")
-                {
-                    auto value = key.nextSibling("string");
-                    cwritefln("    Upload returned message '%s'", value.innerHTML);
-                }
-                else if (key.innerHTML == "notarization-upload")
-                {
-                    auto dict = key.nextSibling("dict");
-                    foreach(key2; dict.querySelectorAll("key"))
-                    {
-                        if (key2.innerHTML == "RequestUUID")
-                        {
-                            requestUUID = key2.nextSibling("string").innerHTML;
-                        }
-                    }
-                }
-            }
-        }
-
-        if (requestUUID)
-        {
-            cwritefln("    =&gt; Uploaded, RequestUUID = %s".lgreen, requestUUID);
-            cwriteln();
-        }
-        else
-            throw new Exception("Couldn't parse RequestUUID");
-
-        // Three possible outcomes: suceeded, invalid, and timeout (1 hour of polling)
-        double timeout = 5000;
-        double timeSpentPolling = 0;
-        while(true)
-        {
-            if (notarizationSucceeded || notarizationFailed)
-                break;
-
-            if (timeSpentPolling > 3600 * 1000)
-            {
-                notarizationSucceeded = false;
-                notarizationFailed = false;
-                break;
-            }
-
-            string cmd = format(`xcrun altool %s--notarization-info %s --username %s --password %s --output-format xml > %s`,
-                            verboseFlag,
-                            escapeShellArgument(requestUUID),
-                            plugin.vendorAppleID,
-                            plugin.appSpecificPassword_altool,
-                            pollXMLPath,
-                            );
-
-            int errorCode = 239;
-            int retryAttempts = 0;
-            do
-            {
-                errorCode = unsafeCommand(cmd);
-                if(errorCode == 239)
-                {
-                    cwritefln("    Notarization-info not yet available, retrying...".yellow);
-                }
-                else if (errorCode > 0)
-                {
-                    throw new ExternalProgramErrored(errorCode, format("Command '%s' returned %s", cmd, errorCode));
-                }
-                ++retryAttempts;
-            }
-            while (errorCode == 239 && retryAttempts < 20);
-
-            auto doc = new Document();
-            doc.parseUtf8( cast(string)(std.file.read(pollXMLPath)), false, false);
-            auto plist = doc.root;
-            string status;
-            foreach(key; plist.querySelectorAll("key"))
-            {
-                if (key.innerHTML == "notarization-info")
-                {
-                    auto dict = key.nextSibling("dict");
-                    foreach(key2; dict.querySelectorAll("key"))
-                    {
-                        if (key2.innerHTML == "LogFileURL")
-                        {
-                            LogFileURL = key2.nextSibling("string").innerHTML;
-                        }
-                        else if (key2.innerHTML == "Status")
-                        {
-                            status = key2.nextSibling("string").innerHTML;
-                            if (status == "in progress")
-                            {
-                                cwriteln("    =&gt; Notarization in progress, waiting...");
-                                Thread.sleep( (cast(long)timeout).msecs );
-                                timeSpentPolling += timeout;
-                                timeout = timeout * 1.61;
-                                if (timeout > 60000) timeout = 60000; // can't exceed one minute
-                            }
-                            else if (status == "success")
-                            {
-                                notarizationSucceeded = true;
-                            }
-                            else if (status == "invalid")
-                            {
-                                notarizationFailed = true;
-                            }
-                        }
-                    }
-                }
-            }
-            if (status is null)
-                throw new Exception(format("Couldn't parse a status in %s", pollXMLPath));
-        }
-
-        if (notarizationFailed)
-        {
-            cwritefln("    =&gt; Notarization failed, log available at %s".lred, LogFileURL);
-            cwriteln();
-            throw new Exception("Failed notarization");
-        }
-
-        if (!notarizationSucceeded)
-            throw new Exception("Time out. Notarization took more than one hour. Consider uploading smaller packages.");
-
-        cwritefln("    =&gt; Notarization succeeded, log available at %s".lgreen, LogFileURL);
-        cwriteln();
-    }
-    else
+   
     {
         // New notarytool use, former method was discontinued on 1st Nov 2023.
+        // Check we have all variable
+
 
         {
-            string cmd = format(`xcrun notarytool submit %s--wait --no-progress --team-id %s --apple-id %s --password %s %s -f json > %s`,
+            string cmd = format(`xcrun notarytool submit %s--wait --no-progress %s %s -f json > %s`,
                                 verboseFlag,
-                                plugin.getDeveloperIdentityMac(),
-                                plugin.vendorAppleID,
-                                plugin.appSpecificPassword_altool,
+                                authString,
                                 //uploadXMLPath,
                                 escapeShellArgument(outPkgPath),
                                 escapeShellArgument(notaJSONPath)
@@ -2161,11 +2028,7 @@ void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, st
             cwriteln();
 
             {
-                string cmd = format(`xcrun notarytool log %s --team-id %s --apple-id %s --password %s`,
-                                    notaID,
-                                    plugin.getDeveloperIdentityMac(),
-                                    plugin.vendorAppleID,
-                                    plugin.appSpecificPassword_altool);
+                string cmd = format(`xcrun notarytool log %s %s`, notaID, authString);
                 safeCommand(cmd);
             }
             throw new Exception("Failed notarization");
@@ -2174,14 +2037,6 @@ void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, st
 
 
     {
-        string cmd = format(`xcrun altool %s--notarize-app -t osx -f %s -u %s -p %s --primary-bundle-id %s --output-format xml > %s`,
-                            verboseFlag,
-                            escapeShellArgument(outPkgPath),
-                            plugin.vendorAppleID,
-                            plugin.appSpecificPassword_altool,
-                            primaryBundleId,
-                            uploadXMLPath,
-                            );
         safeCommand( format(`xcrun stapler staple %s`, escapeShellArgument(outPkgPath) ) );
     }
 }

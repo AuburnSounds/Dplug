@@ -203,6 +203,7 @@ struct Plugin
     string vendorAppleID;
     string appSpecificPassword_altool;
     string appSpecificPassword_stapler;
+    string keychainProfile;
     // </Used for Apple notarization>
 
     bool receivesMIDI;
@@ -819,6 +820,15 @@ Plugin readPluginDescription(string rootDir)
     catch(Exception e)
     {
         result.developerIdentityOSX = null;
+    }
+
+    try
+    {
+        result.keychainProfile = rawPluginFile["keychainProfile-osx"].str;
+    }
+    catch(Exception e)
+    {
+        result.keychainProfile = null;
     }
 
     try

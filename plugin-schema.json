@@ -168,6 +168,12 @@
             "type": "string"
         },
 
+        "keychainProfile-osx": {
+            "description": "Alternative authentication method for notarization.",
+            "id": "/properties/keychainProfile-osx",
+            "type": "string"
+        },
+
         "appSpecificPassword-altool": {
             "description": "An App-Specific Password created for being able to run altool. Read Dplug's Notarization Guide for explanations. Supports $VAR syntax.",
             "id": "/properties/appSpecificPassword-altool",
