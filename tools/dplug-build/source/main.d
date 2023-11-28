@@ -1533,8 +1533,14 @@ void generateWindowsInstaller(string outputDir,
     content ~= "!include \"x64.nsh\"\n";
 
 
-    // Test later, might be useful for installer ugliness in 150% DPI.
-    //content ~= "ManifestDPIAware true\n";
+    // See Issue #824, there is no real true win with this in non-100% DPI.
+    //  - Either we keep the installer DPI-unaware and everything is blurry in non-100% DPI.
+    //  - Either we set the flag to true and the MUI_HEADERIMAGE_BITMAP is resampled with something 
+    //    that looks like nearest-neighbour sampling.
+    //
+    // Moral of story: make your MUI_HEADERIMAGE in pixel art style to suffer this in a way that looks
+    // on-purpose.
+    content ~= "ManifestDPIAware true\n";
 
     content ~= "BrandingText \"" ~ plugin.vendorName ~ "\"\n";
     content ~= "SpaceTexts none\n";

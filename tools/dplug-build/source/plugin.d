@@ -783,6 +783,7 @@ Plugin readPluginDescription(string rootDir)
     // TODO: not all characters are allowed in pluginName.
     //       All characters in pluginName should be able to be in a filename.
     //       For Orion compatibility is should not have '-' in the file name
+    //       For Windows compatibility, probably more characters are disallowed.
 
     // Note: dplug-build parses it but doesn't need hasGUI
     try
