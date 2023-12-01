@@ -31,6 +31,7 @@ import inteli.math;
 import inteli.smmintrin;
 import dplug.gui.profiler;
 
+// FUTURE: introduce a tonemap operator that doesn't break existing things and only "add" to the final render.
 // TODO: PBR rendering doesn't depend rightly on size of the plugin.
 //       The #RESIZE tag below makrs all areas that needs updating.
 
@@ -105,7 +106,17 @@ nothrow @nogc:
     {
         (cast(PassAmbientOcclusion)getPass(PASS_AO)).amount = amount;
     }
+/*
+    void tonemapThreshold(float value)
+    {
+        (cast(PassClampAndConvertTo8bit)getPass(PASS_CLAMP)).tonemapThreshold = value;
+    }
 
+    void tonemapRatio(float value)
+    {
+        (cast(PassClampAndConvertTo8bit)getPass(PASS_CLAMP)).tonemapRatio = value;
+    }
+*/
     // </LEGACY>
 
 
@@ -953,22 +964,61 @@ public:
                 vec4f colorLevel4 = diffuseMap.linearSample(4, ic, jc);
                 vec4f colorLevel5 = diffuseMap.linearSample(5, ic, jc);
 
-                vec4f emitted = colorLevel1 * 0.00117647f;
-                emitted += colorLevel2      * 0.00176471f;
-                emitted += colorLevel3      * 0.00147059f;
-                emitted += colorLevel4      * 0.00088235f;
-                emitted += colorLevel5      * 0.00058823f;
+                version(futurePBREmissive)
+                {
+                    // What is super nice with the linear-space mipmap in Diffuse, is that
+                    // taking a blurred samples seemingly take equal weights in several layers.
+                    float noise = (BLUE_NOISE_16x16[(i & 15)*16 + (j & 15)] - 127.5f) * 0.003f;
+                    vec4f emitted = colorLevel1 * 0.002f;
+                    emitted += colorLevel2      * 0.002f;
+                    emitted += colorLevel3      * 0.002f;
+                    emitted += colorLevel4      * 0.002f;
+                    emitted += colorLevel5      * 0.002f * (1 + noise);
+                }
+                else
+                {
+                    vec4f emitted = colorLevel1 * 0.00117647f;
+                    emitted += colorLevel2      * 0.00176471f;
+                    emitted += colorLevel3      * 0.00147059f;
+                    emitted += colorLevel4      * 0.00088235f;
+                    emitted += colorLevel5      * 0.00058823f;
+                }
                 accumScan[i - area.min.x] += RGBAf(emitted.r, emitted.g, emitted.b, emitted.a);
             }
         }
     }
 }
 
+
+// 16x16 Patch of 8-bit blue noise, tileable.
+private static immutable ubyte[256] BLUE_NOISE_16x16 =
+[
+    127, 194, 167,  79,  64, 173,  22,  83, 167, 105, 119, 250, 201,  34, 214, 145, 
+    233,  56,  13, 251, 203, 124, 243,  42, 216,  34,  73, 175, 133,  64, 185,  73, 
+     93, 156, 109, 144,  34,  98, 153, 138, 187, 238, 155,  46,  13, 102, 247,   0,
+     28, 180,  46, 218, 183,  13, 212,  69,  13,  92, 126, 228, 211, 161, 117, 197, 
+    134, 240, 121,  75, 234,  88,  53, 170, 109, 204,  59,  22,  86, 141,  38, 222,
+     81, 205,  13,  59, 160, 198, 129, 252,   0, 147, 176, 193, 244,  71, 173,  56,
+     22, 168, 104, 139,  22, 114,  38, 220, 101, 231,  77,  34, 113,  13, 189,  96, 
+    253, 148, 227, 190, 246, 174,  66, 155,  28,  50, 164, 131, 217, 151, 232, 128, 
+    115,  69,  34,  50,  93,  13, 209,  85, 192, 120, 248,  64,  90,  28, 208,  42,
+      0, 200, 215,  79, 125, 148, 239, 136, 181,  22, 206,  13, 185, 108,  59, 179,
+     90, 130, 159, 182, 235,  42, 106,   0,  56,  99, 226, 140, 157, 237,  77, 165, 
+    249,  28, 105,  13,  61, 170, 224,  75, 202, 163, 114,  81,  46,  22, 137, 223, 
+    189,  53, 219, 142, 196,  28, 122, 154, 254,  42,  28, 242, 196, 210, 119,  38, 
+    149,  86, 118, 245,  71,  96, 213,  13,  88, 178,  66, 129, 171,   0,  99,  69, 
+    178,  13, 207,  38, 159, 187,  50, 132, 236, 146, 191,  95,  53, 229, 163, 241,
+     46, 225, 102, 135,   0, 230, 110, 199,  61,   0, 221,  22, 150,  83, 112, 22
+];
+
 class PassClampAndConvertTo8bit : CompositorPass
 {
 nothrow:
 @nogc:
 public:
+
+    //float tonemapThreshold = 1.0f;
+    //float tonemapRatio     = 0.0f; // 0.3f is a good starting value. Emissive can make color exceed 1.0f, make them bleed to other channels.
 
     this(MultipassCompositor parent)
     {
@@ -984,16 +1034,27 @@ public:
         immutable __m128 mm255_99 = _mm_set1_ps(255.99f);
         immutable __m128i zero = _mm_setzero_si128();
 
+        //float toneRatio = tonemapRatio / 3;
+
         // Final pass, clamp, convert to ubyte
         for (int j = area.min.y; j < area.max.y; ++j)
         {
             int* wfb_scan = cast(int*)(wfb.scanline(j).ptr);
-            const(RGBAf)* accumScan = accumBuffer.scanlinePtr(j - area.min.y);            
+            const(RGBAf)* accumScan = accumBuffer.scanlinePtr(j - area.min.y);
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
                 RGBAf accum = accumScan[i - area.min.x];
                 __m128 color = _mm_setr_ps(accum.r, accum.g, accum.b, 1.0f);
+
+/*
+                // Very basic tonemapping operator for colors whiter than white.
+                // Tones above 1 leak into other colors.
+                __m128 exceed = _mm_max_ps(_mm_setzero_ps(), color - _mm_set1_ps(tonemapThreshold));
+                float exceedMean = exceed.array[0] + exceed.array[1] + exceed.array[2];
+                color += _mm_set1_ps(exceedMean*toneRatio);
+                color.ptr[3] = 1.0f;
+*/
                 __m128i icolorD = _mm_cvttps_epi32(color * mm255_99);
                 __m128i icolorW = _mm_packs_epi32(icolorD, zero);
                 __m128i icolorB = _mm_packus_epi16(icolorW, zero);

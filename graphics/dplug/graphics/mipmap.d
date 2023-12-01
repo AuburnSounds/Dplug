@@ -53,8 +53,14 @@ nothrow:
     {
         box,                   // simple 2x2 filter, creates phase problems with NPOT. For higher levels, automatically uses cubic.
         cubic,                 // Very smooth kernel [1 2 1] x [1 2 1]
+
+        // TODO: not used anymore, deprecate
         boxAlphaCov,           // ditto but alpha is used as weight, only implemented for RGBA
-        boxAlphaCovIntoPremul, // same as boxAlphaConv but after such a step the next level is alpha-premultiplied
+
+        /// same as boxAlphaConv but after such a step the next level is alpha-premultiplied
+        /// Within version(futurePBRLinearEmissive), this also transitions to linear space to have 
+        /// more natural highlights.
+        boxAlphaCovIntoPremul, 
     }
 
     Vec!(OwnedImage!COLOR) levels;
@@ -1455,142 +1461,45 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(OwnedImage!RGBA thisLevel,
         RGBA* L1   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2 + 1) + updateRect.min.x * 2;
         RGBA* dest =     thisLevel.scanlinePtr(           updateRect.min.y + y) + updateRect.min.x;
 
-        version(inlineAsmCanLoadGlobalsInPIC)
+        version(futurePBREmissive)
         {
-            version(D_InlineAsm_X86)
+            // PERF: SIMD
+            for (int x = 0; x < width; ++x)
             {
-                asm nothrow @nogc
+                RGBA A = L0[2 * x];
+                RGBA B = L0[2 * x + 1];
+                RGBA C = L1[2 * x];
+                RGBA D = L1[2 * x + 1];
+
+                // This is only approximate, does a pow2
+                static RGBAf convert_gammaspace_to_linear_premul (RGBA col)
                 {
-                    mov ECX, width;
-
-                    mov EAX, L0;
-                    mov EDX, L1;
-                    mov EDI, dest;
-
-                    movdqa XMM5, xmm512;               // 512 512 5121 512
-                    pxor XMM4, XMM4;                   // all zeroes
-
-                loop_ecx:
-
-                    movq XMM0, [EAX];                  // Ar Ag Ab Aa Br Bg Bb Ba + zeroes
-                    movq XMM1, [EDX];                  // Cr Cg Cb Ca Dr Dg Db Da + zeroes
-                    pxor XMM4, XMM4;
-                    add EAX, 8;
-                    add EDX, 8;
-
-                    punpcklbw XMM0, XMM4;              // Ar Ag Ab Aa Br Bg Bb Ba
-                    punpcklbw XMM1, XMM4;              // Cr Cg Cb Ca Dr Dg Db Da
-
-                    movdqa XMM2, XMM0;
-                    punpcklwd XMM0, XMM1;              // Ar Cr Ag Cg Ab Cb Aa Ca
-                    punpckhwd XMM2, XMM1;              // Br Dr Bg Dg Bb Db Ba Da
-
-                    movdqa XMM3, XMM0;
-                    punpcklwd XMM0, XMM2;              // Ar Br Cr Dr Ag Bg Cg Dg
-                    punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da
-
-                    movdqa XMM1, XMM3;
-                    punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
-
-                    add EDI, 4;
-
-                    pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
-                    pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
-
-                    movdqa XMM2, XMM0;
-                    movdqa XMM1, XMM3;
-
-                    psrldq XMM2, 4;                // Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da 0
-                    psrldq XMM1, 4;                // Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da 0
-
-                    paddd XMM0, XMM2;              // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da garbage Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage
-                    paddd XMM3, XMM1;              // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da garbage Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage
-
-                    pshufd XMM0, XMM0, 0b00001000; // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage garbage
-                    pshufd XMM3, XMM3, 0b00001000; // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage garbage
-
-                    punpcklqdq XMM0, XMM3;     // fR fG fB fA
-
-
-                    paddd XMM0, XMM5;
-                    psrld XMM0, 10;             // final color in dwords
-
-                    packssdw XMM0, XMM4;       // same in words
-                    packuswb XMM0, XMM4;       // same in bytes
-
-                    sub ECX, 1;
-                    movd [EDI-4], XMM0;            // dest[x] = A
-                    jnz loop_ecx;
+                    RGBAf res;
+                    res.a = col.a / 255.0f; // alpha is linear
+                    enum float inv_255 = 1.0f / 255;
+                    res.r = col.r * inv_255 *col.r * inv_255* res.a;
+                    res.g = col.g * inv_255 *col.g * inv_255* res.a;
+                    res.b = col.b * inv_255 *col.b * inv_255* res.a;
+                    return res;
                 }
+
+                // Convert those into 
+                RGBAf A_linear = convert_gammaspace_to_linear_premul(A);
+                RGBAf B_linear = convert_gammaspace_to_linear_premul(B);
+                RGBAf C_linear = convert_gammaspace_to_linear_premul(C);
+                RGBAf D_linear = convert_gammaspace_to_linear_premul(D);
+
+                float meanR = A_linear.r + B_linear.r + C_linear.r + D_linear.r;
+                float meanG = A_linear.g + B_linear.g + C_linear.g + D_linear.g;
+                float meanB = A_linear.b + B_linear.b + C_linear.b + D_linear.b;
+                float meanA = A_linear.a + B_linear.a + C_linear.a + D_linear.a;
+
+                RGBA finalColor = RGBA( cast(ubyte)(meanR * 0.25f * 255.0f + 0.5f),
+                                        cast(ubyte)(meanG * 0.25f * 255.0f + 0.5f),
+                                        cast(ubyte)(meanB * 0.25f * 255.0f + 0.5f),
+                                        cast(ubyte)(meanA * 0.25f * 255.0f + 0.5f) );
+                dest[x] = finalColor;
             }
-            else version(D_InlineAsm_X86_64)
-            {
-                asm nothrow @nogc
-                {
-                    mov ECX, width;
-
-                    mov RAX, L0;
-                    mov RDX, L1;
-                    mov RDI, dest;
-
-                    movdqa XMM5, xmm512;               // 512 512 5121 512
-                    pxor XMM4, XMM4;                   // all zeroes
-
-                loop_ecx:
-
-                    movq XMM0, [RAX];                  // Ar Ag Ab Aa Br Bg Bb Ba + zeroes
-                    movq XMM1, [RDX];                  // Cr Cg Cb Ca Dr Dg Db Da + zeroes
-                    pxor XMM4, XMM4;
-                    add RAX, 8;
-                    add RDX, 8;
-
-                    punpcklbw XMM0, XMM4;              // Ar Ag Ab Aa Br Bg Bb Ba
-                    punpcklbw XMM1, XMM4;              // Cr Cg Cb Ca Dr Dg Db Da
-
-                    movdqa XMM2, XMM0;
-                    punpcklwd XMM0, XMM1;              // Ar Cr Ag Cg Ab Cb Aa Ca
-                    punpckhwd XMM2, XMM1;              // Br Dr Bg Dg Bb Db Ba Da
-
-                    movdqa XMM3, XMM0;
-                    punpcklwd XMM0, XMM2;              // Ar Br Cr Dr Ag Bg Cg Dg
-                    punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da
-
-                    movdqa XMM1, XMM3;
-                    punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
-
-                    add RDI, 4;
-
-                    pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
-                    pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
-
-                    movdqa XMM2, XMM0;
-                    movdqa XMM1, XMM3;
-
-                    psrldq XMM2, 4;                // Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da 0
-                    psrldq XMM1, 4;                // Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da 0
-
-                    paddd XMM0, XMM2;              // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da garbage Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage
-                    paddd XMM3, XMM1;              // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da garbage Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage
-
-                    pshufd XMM0, XMM0, 0b00001000; // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage garbage
-                    pshufd XMM3, XMM3, 0b00001000; // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage garbage
-
-                    punpcklqdq XMM0, XMM3;     // fR fG fB fA
-
-
-                    paddd XMM0, XMM5;
-                    psrld XMM0, 10;             // final color in dwords
-
-                    packssdw XMM0, XMM4;       // same in words
-                    packuswb XMM0, XMM4;       // same in bytes
-
-                    sub ECX, 1;
-                    movd [RDI-4], XMM0;            // dest[x] = A
-                    jnz loop_ecx;
-                }
-            }
-            else 
-                static assert(false);
         }
         else
         {
@@ -1606,31 +1515,9 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(OwnedImage!RGBA thisLevel,
                 int alpha =  (A.a * A.a + B.a* B.a + C.a * C.a + D.a * D.a);
                 RGBA finalColor = RGBA( cast(ubyte)((red + 512) >> 10),
                                         cast(ubyte)((green + 512) >> 10),
-                                        cast(ubyte)((blue + 512) >> 10),
-                                        cast(ubyte)((alpha + 512) >> 10));
-                dest[x] = finalColor;
-            }
-        }
-
-        enum bool verify = false;
-
-        static if (verify)
-        {
-            for (int x = 0; x < width; ++x)
-            {
-                RGBA A = L0[2 * x];
-                RGBA B = L0[2 * x + 1];
-                RGBA C = L1[2 * x];
-                RGBA D = L1[2 * x + 1];
-                int red =   (A.r * A.a + B.r * B.a + C.r * C.a + D.r * D.a);
-                int green = (A.g * A.a + B.g * B.a + C.g * C.a + D.g * D.a);
-                int blue =  (A.b * A.a + B.b* B.a + C.b * C.a + D.b * D.a);
-                int alpha =  (A.a * A.a + B.a* B.a + C.a * C.a + D.a * D.a);
-                RGBA finalColor = RGBA( cast(ubyte)((red + 512) >> 10),
-                                        cast(ubyte)((green + 512) >> 10),
                                        cast(ubyte)((blue + 512) >> 10),
                                        cast(ubyte)((alpha + 512) >> 10));
-                assert(dest[x] == finalColor);
+                dest[x] = finalColor;
             }
         }
     }
