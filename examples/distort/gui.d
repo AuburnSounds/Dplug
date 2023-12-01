@@ -53,9 +53,8 @@ nothrow:
 
         // Sets the number of pixels recomputed around dirtied controls.
         // This is a tradeoff between Emissive light accuracy and speed.
-        // A typical good value is 20, and this is the default, as this is
-        // what `PBRCompositor` needs for the emissive pass.
-        setUpdateMargin(20); // TODO: put this in reflow, depends on scale factor
+        // This needs to be adjusted visually.
+        setUpdateMargin(30);
 
         // All resources are bundled as a string import.
         // You can avoid resource compilers that way.

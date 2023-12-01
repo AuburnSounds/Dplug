@@ -13,8 +13,8 @@ class Plugin {
         // in case of Wren VM reload (live edit), create won't be called.
 
         ($"_imageKnob").hasTrail = false  // no trail by default
-        var litTrailDiffuse = RGBA.new(151, 119, 255, 100)
-        var unlitTrailDiffuse = RGBA.new(81, 54, 108, 0)
+        var litTrailDiffuse = RGBA.new(30, 120, 200, 100)
+        var unlitTrailDiffuse = RGBA.new(90, 90, 90, 0)
 
         var driveKnob = ($"_driveKnob")
         driveKnob.knobDiffuse = RGBA.new(255, 255, 238, 0)
@@ -32,8 +32,8 @@ class Plugin {
                          .unlitTrailDiffuse(unlitTrailDiffuse)
         ($"_outputSlider").litTrailDiffuse(litTrailDiffuse)
                           .unlitTrailDiffuse(unlitTrailDiffuse)
-        ($"_onOffSwitch").diffuseOn(litTrailDiffuse)
-                         .diffuseOff(unlitTrailDiffuse)
+        ($"_onOffSwitch").diffuseOn( RGBA.new(255, 120, 90, 255) )
+                         .diffuseOff(RGBA.new(255, 120, 90, 0))
 
         ($"_driveKnob").knobRadius(0.65) // does nothing yet, but an UIKnob is returned
                        .numLEDs(15)
