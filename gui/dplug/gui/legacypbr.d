@@ -74,7 +74,7 @@ nothrow @nogc:
 
     void light1Color(vec3f color)
     {
-        (cast(PassObliqueShadowLight)getPass(PASS_OBLIQUE_SHADOW)).color = color;        
+        (cast(PassObliqueShadowLight)getPass(PASS_OBLIQUE_SHADOW)).color = color;
     }
 
     void light2Dir(vec3f dir)
@@ -84,7 +84,7 @@ nothrow @nogc:
 
     void light2Color(vec3f color)
     {
-        (cast(PassDirectionalLight)getPass(PASS_DIRECTIONAL)).color = color;        
+        (cast(PassDirectionalLight)getPass(PASS_DIRECTIONAL)).color = color;
     }
 
     void light3Dir(vec3f dir)
@@ -94,7 +94,7 @@ nothrow @nogc:
 
     void light3Color(vec3f color)
     {
-        (cast(PassSpecularLight)getPass(PASS_SPECULAR)).color = color;        
+        (cast(PassSpecularLight)getPass(PASS_SPECULAR)).color = color;
     }
 
     void skyboxAmount(float amount)
@@ -106,17 +106,20 @@ nothrow @nogc:
     {
         (cast(PassAmbientOcclusion)getPass(PASS_AO)).amount = amount;
     }
-/*
-    void tonemapThreshold(float value)
+
+    version(futurePBREmissive)
     {
-        (cast(PassClampAndConvertTo8bit)getPass(PASS_CLAMP)).tonemapThreshold = value;
+        void tonemapThreshold(float value)
+        {
+            (cast(PassClampAndConvertTo8bit)getPass(PASS_CLAMP)).tonemapThreshold = value;
+        }
+
+        void tonemapRatio(float value)
+        {
+            (cast(PassClampAndConvertTo8bit)getPass(PASS_CLAMP)).tonemapRatio = value;
+        }
     }
 
-    void tonemapRatio(float value)
-    {
-        (cast(PassClampAndConvertTo8bit)getPass(PASS_CLAMP)).tonemapRatio = value;
-    }
-*/
     // </LEGACY>
 
 
@@ -969,11 +972,12 @@ public:
                     // What is super nice with the linear-space mipmap in Diffuse, is that
                     // taking a blurred samples seemingly take equal weights in several layers.
                     float noise = (BLUE_NOISE_16x16[(i & 15)*16 + (j & 15)] - 127.5f) * 0.003f;
-                    vec4f emitted = colorLevel1 * 0.002f;
-                    emitted += colorLevel2      * 0.002f;
-                    emitted += colorLevel3      * 0.002f;
-                    emitted += colorLevel4      * 0.002f;
-                    emitted += colorLevel5      * 0.002f * (1 + noise);
+                    enum float AMT = 0.002f * 0.67f; // good values for Couture: 0.67f (and 0.66f in 2nd pos)
+                    vec4f emitted = colorLevel1 * AMT;
+                    emitted += colorLevel2      * AMT;
+                    emitted += colorLevel3      * AMT;
+                    emitted += colorLevel4      * AMT;
+                    emitted += colorLevel5      * AMT * (1 + noise);
                 }
                 else
                 {
@@ -1017,8 +1021,16 @@ nothrow:
 @nogc:
 public:
 
-    //float tonemapThreshold = 1.0f;
-    //float tonemapRatio     = 0.0f; // 0.3f is a good starting value. Emissive can make color exceed 1.0f, make them bleed to other channels.
+    version(futurePBREmissive)
+    {
+        /// Normally not much reason to change this. This is the threshold above which colors are 
+        /// allowed to "bleed" into others in a gray way.
+        float tonemapThreshold = 1.0f;
+
+        /// Tuned on Auburn plugins. This brings a sense of dynamic range, 
+        /// possibly lower would be a bit better. 0.3f wins over 0.5f and 1.0f.
+        float tonemapRatio     = 0.3f; 
+    }
 
     this(MultipassCompositor parent)
     {
@@ -1034,7 +1046,10 @@ public:
         immutable __m128 mm255_99 = _mm_set1_ps(255.99f);
         immutable __m128i zero = _mm_setzero_si128();
 
-        //float toneRatio = tonemapRatio / 3;
+        version(futurePBREmissive)
+        {
+            float toneRatio = tonemapRatio / 3;
+        }
 
         // Final pass, clamp, convert to ubyte
         for (int j = area.min.y; j < area.max.y; ++j)
@@ -1047,14 +1062,23 @@ public:
                 RGBAf accum = accumScan[i - area.min.x];
                 __m128 color = _mm_setr_ps(accum.r, accum.g, accum.b, 1.0f);
 
-/*
-                // Very basic tonemapping operator for colors whiter than white.
-                // Tones above 1 leak into other colors.
-                __m128 exceed = _mm_max_ps(_mm_setzero_ps(), color - _mm_set1_ps(tonemapThreshold));
-                float exceedMean = exceed.array[0] + exceed.array[1] + exceed.array[2];
-                color += _mm_set1_ps(exceedMean*toneRatio);
-                color.ptr[3] = 1.0f;
-*/
+                version(futurePBREmissive)
+                {
+                    // Try to weight green higher.
+                    // This avoids shifting hue when tonemapping.
+                    __m128 exceed = _mm_max_ps(_mm_setzero_ps(), color - _mm_set1_ps(tonemapThreshold));
+
+                    // Compute luma of exceed energy. Note that we're operating in gamma-space still.
+                    // Should it be applied equivalently to all components? not sure
+                    float exceedLuma = 0.212655f * exceed.array[0] 
+                                     + 0.715158f * exceed.array[1] 
+                                     + 0.072187f * exceed.array[2];
+
+                    // should it be applied equivalently to all components? not sure
+                    color += _mm_set1_ps(exceedLuma * toneRatio); 
+                    color.ptr[3] = 1.0f;
+                }
+
                 __m128i icolorD = _mm_cvttps_epi32(color * mm255_99);
                 __m128i icolorW = _mm_packs_epi32(icolorD, zero);
                 __m128i icolorB = _mm_packus_epi16(icolorW, zero);
