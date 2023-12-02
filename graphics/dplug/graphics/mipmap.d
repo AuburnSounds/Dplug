@@ -685,138 +685,40 @@ void generateLevelBoxRGBA(OwnedImage!RGBA thisLevel,
         RGBA* L0   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2    ) + updateRect.min.x * 2;
         RGBA* L1   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2 + 1) + updateRect.min.x * 2;
         RGBA* dest =     thisLevel.scanlinePtr(           updateRect.min.y + y) + updateRect.min.x;
-        version(inlineAsmCanLoadGlobalsInPIC)
+
+        __m128i zero = _mm_setzero_si128();
+        __m128i two = _mm_set1_epi16(2);
+        int x = 0;
+        for ( ; x + 1 < width; x += 2)
         {
-            version(D_InlineAsm_X86)
-            {
-                asm pure nothrow @nogc
-                {
-                    mov ECX, width;
-                    shr ECX, 1;
-                    jz no_need; // ECX = 0 => no pair of pixels to process
-
-                    mov EAX, L0;
-                    mov EDX, L1;
-                    mov EDI, dest;
-                    movaps XMM5, xmmTwoShort;
-
-                loop_ecx:
-                    movdqu XMM0, [EAX]; // A B E F
-                    pxor XMM4, XMM4;
-                    movdqu XMM1, [EDX]; // C D G H
-                    movdqa XMM2, XMM0;
-                    movdqa XMM3, XMM1;
-                    punpcklbw XMM0, XMM4; // A B in short
-                    punpcklbw XMM1, XMM4; // C D in short
-                    punpckhbw XMM2, XMM4; // E F in short
-                    punpckhbw XMM3, XMM4; // G H in short
-                    paddusw XMM0, XMM1; // A + C | B + D
-                    paddusw XMM2, XMM3; // E + F | G + H
-                    movdqa XMM1, XMM0;
-                    movdqa XMM3, XMM2;
-                    psrldq XMM1, 8;
-                    psrldq XMM3, 8;
-                    add EDI, 8;
-                    paddusw XMM0, XMM1; // A + B + C + D | garbage
-                    paddusw XMM2, XMM3; // E + F + G + H | garbage
-                    paddusw XMM0, XMM5; // A + B + C + D + 2 | garbage
-                    paddusw XMM2, XMM5; // E + F + G + H + 2 | garbage
-                    psrlw XMM0, 2; // (A + B + C + D + 2) >> 2 | garbage
-                    psrlw XMM2, 2; // (E + F + G + H + 2) >> 2 | garbage
-                    add EAX, 16;
-                    punpcklqdq XMM0, XMM2;
-                    add EDX, 16;
-                    packuswb XMM0, XMM4; // (A + B + C + D + 2) >> 2 | (E + F + G + H + 2) >> 2 | 0 | 0
-                    movq [EDI-8], XMM0;
-                    sub ECX, 1;
-                    jnz loop_ecx;
-                no_need: ;
-                }
-
-                // Eventually filter the last pixel
-                int remaining = width & ~1;
-                for (int x = remaining; x < width; ++x)
-                {
-                    RGBA A = L0[2 * x];
-                    RGBA B = L0[2 * x + 1];
-                    RGBA C = L1[2 * x];
-                    RGBA D = L1[2 * x + 1];
-                    dest[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
-                }
-            }
-            else version(D_InlineAsm_X86_64)
-            {
-                asm pure nothrow @nogc
-                {
-                    mov ECX, width;
-                    shr ECX, 1;
-                    jz no_need; // ECX = 0 => no pair of pixels to process
-
-                    mov RAX, L0;
-                    mov RDX, L1;
-                    mov RDI, dest;
-                    movaps XMM5, xmmTwoShort;
-
-                loop_ecx:
-                    movdqu XMM0, [RAX]; // A B E F
-                    pxor XMM4, XMM4;
-                    movdqu XMM1, [RDX]; // C D G H
-                    movdqa XMM2, XMM0;
-                    movdqa XMM3, XMM1;
-                    punpcklbw XMM0, XMM4; // A B in short
-                    punpcklbw XMM1, XMM4; // C D in short
-                    punpckhbw XMM2, XMM4; // E F in short
-                    punpckhbw XMM3, XMM4; // G H in short
-                    paddusw XMM0, XMM1; // A + C | B + D
-                    paddusw XMM2, XMM3; // E + F | G + H
-                    movdqa XMM1, XMM0;
-                    movdqa XMM3, XMM2;
-                    psrldq XMM1, 8;
-                    psrldq XMM3, 8;
-                    add RDI, 8;
-                    paddusw XMM0, XMM1; // A + B + C + D | garbage
-                    paddusw XMM2, XMM3; // E + F + G + H | garbage
-                    paddusw XMM0, XMM5; // A + B + C + D + 2 | garbage
-                    paddusw XMM2, XMM5; // E + F + G + H + 2 | garbage
-                    psrlw XMM0, 2; // (A + B + C + D + 2) >> 2 | garbage
-                    psrlw XMM2, 2; // (E + F + G + H + 2) >> 2 | garbage
-                    add RAX, 16;
-                    punpcklqdq XMM0, XMM2;
-                    add RDX, 16;
-                    packuswb XMM0, XMM4; // (A + B + C + D + 2) >> 2 | (E + F + G + H + 2) >> 2 | 0 | 0
-                    movq [RDI-8], XMM0;
-                    sub ECX, 1;
-                    jnz loop_ecx;
-                no_need: ;
-                }
-
-                // Eventually filter the last pixel
-                int remaining = width & ~1;
-                for (int x = remaining; x < width; ++x)
-                {
-                    RGBA A = L0[2 * x];
-                    RGBA B = L0[2 * x + 1];
-                    RGBA C = L1[2 * x];
-                    RGBA D = L1[2 * x + 1];
-                    dest[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
-                }
-            }
-            else
-                static assert(false);
+            // pixel patches:
+            // A B E F   Goal = (A + B + C + D + 2) / 4   => res
+            // C D G H          (E + F + G + H + 2) / 4   => res+1
+            //
+            __m128i ABEF = _mm_loadu_si128(cast(const(__m128)*) &L0[2*x]);
+            __m128i CDGH = _mm_loadu_si128(cast(const(__m128)*) &L1[2*x]);
+            __m128i AB = _mm_unpacklo_epi8(ABEF, zero);
+            __m128i EF = _mm_unpackhi_epi8(ABEF, zero);
+            __m128i CD = _mm_unpacklo_epi8(CDGH, zero);
+            __m128i GH = _mm_unpackhi_epi8(CDGH, zero);
+            AB = _mm_add_epi16(AB, CD);                 // A + C   B + D
+            EF = _mm_add_epi16(EF, GH);                 // E + G   F + H
+            __m128i AC_EG = _mm_unpacklo_epi64(AB, EF); // A+C  E+G
+            __m128i BD_FH = _mm_unpackhi_epi64(AB, EF); // B+D  F+H
+            __m128i sum = _mm_add_epi16(AC_EG, BD_FH); // A+B+C+D   E+F+G+H
+            sum = _mm_add_epi16(sum, two);             // A+B+C+D+2 E+F+G+H+2
+            sum = _mm_srai_epi16(sum, 2);              // (A+B+C+D+2)/4 (E+F+G+H+2)/4
+            __m128i finalPixels = _mm_packus_epi16(sum, zero);
+            _mm_storeu_si64(&dest[x], finalPixels);
         }
-        else
-        {
-            for (int x = 0; x < width; ++x)
-            {
-                // A B
-                // C D
-                RGBA A = L0[2 * x];
-                RGBA B = L0[2 * x + 1];
-                RGBA C = L1[2 * x];
-                RGBA D = L1[2 * x + 1];
 
-                dest[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
-            }
+        for (; x < width; ++x)
+        {
+            RGBA A = L0[2 * x];
+            RGBA B = L0[2 * x + 1];
+            RGBA C = L1[2 * x];
+            RGBA D = L1[2 * x + 1];
+            dest[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
         }
     }
 }
