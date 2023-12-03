@@ -739,7 +739,6 @@ void generateLevelBoxL16(OwnedImage!L16 thisLevel,
 
         // Fun performance fact: for this loop (LDC 1.33, arch x86_64), assembly is slower than intrinsics, 
         // themselves slower than normal D code.
-        // Also would crash in x86...
 
         int x = 0;
 
@@ -774,7 +773,7 @@ void generateLevelBoxL16(OwnedImage!L16 thisLevel,
             sum = _mm_srai_epi32(sum, 16);
             sum = _mm_packs_epi32(sum, mmZero);
 
-            _mm_storeu_si128(cast(__m128*) &dest[x], sum);
+            _mm_storeu_si64(cast(__m128*) &dest[x], sum);
         }
 
         */
