@@ -736,168 +736,60 @@ void generateLevelBoxL16(OwnedImage!L16 thisLevel,
         L16* L1   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2 + 1) + updateRect.min.x * 2;
         L16* dest =     thisLevel.scanlinePtr(           updateRect.min.y + y) + updateRect.min.x;
 
-        version(inlineAsmCanLoadGlobalsInPIC)
+
+        // Fun performance fact: for this loop (LDC 1.33, arch x86_64), assembly is slower than intrinsics, 
+        // themselves slower than normal D code.
+        // Also would crash in x86...
+
+        int x = 0;
+
+        /*
+        for ( ; x + 3 < width; x += 4)
         {
-            version(D_InlineAsm_X86)
-            {
-                asm pure nothrow @nogc
-                {
-                    mov ECX, width;
-                    shr ECX, 2;
-                    jz no_need; // ECX = 0 => less than 4 pixels to process
+            // Read 4 2x2 patches of pixels in lower level
+            // A B E F I J M N
+            // C D G H K L O P
+            __m128i ABEFIJMN = _mm_loadu_si128(cast(const(__m128)*) &L0[2*x]);
+            __m128i CDGHKLOP = _mm_loadu_si128(cast(const(__m128)*) &L1[2*x]);
+            __m128i mmZero = _mm_setzero_si128();
+            __m128i ABEF = _mm_unpacklo_epi16(ABEFIJMN, mmZero);
+            __m128i IJMN = _mm_unpackhi_epi16(ABEFIJMN, mmZero);
+            __m128i CDGH = _mm_unpacklo_epi16(CDGHKLOP, mmZero);
+            __m128i KLOP = _mm_unpackhi_epi16(CDGHKLOP, mmZero);
+            __m128i sum0 = _mm_add_epi32(ABEF, CDGH); // A+C B+D E+G F+H
+            __m128i sum1 = _mm_add_epi32(IJMN, KLOP); // I+K J+L M+O N+P
+            sum0 = _mm_add_epi32(sum0, _mm_srli_si128!4(sum0));  // A+B+C+D garbage E+F+G+H garbage
+            sum1 = _mm_add_epi32(sum1, _mm_srli_si128!4(sum1));  // I+J+K+L garbage M+N+O+P garbage
+            sum0 = _mm_shuffle_epi32!0b00001000(sum0); // A+B+C+D E+F+G+H garbage garbage
+            sum1 = _mm_shuffle_epi32!0b00001000(sum1); // I+J+K+L M+N+O+P garbage garbage
+            __m128i sum = _mm_unpacklo_epi64(sum0, sum1); // A+B+C+D E+F+G+H I+J+K+L M+N+O+P
+            sum = _mm_add_epi32(sum, _mm_set1_epi32(2));
+            sum = _mm_srli_epi32(sum, 2);
 
-                    mov EAX, L0;
-                    mov EDX, L1;
-                    mov EDI, dest;
-                    movdqa XMM5, xmmTwoInt;
-                    pxor XMM4, XMM4;
+            // _mm_packus_epi32 not yet implemented without SSE4.1, do otherwise.
+            // As our results are comprised in 0 to 65535, we don't have negative numbers,
+            // we can simply use _mm_packs_epi32 and tricks it by extending the left most bit
+            // to make the upper range pass as negative, and avoid clip.
+            sum = _mm_slli_epi32(sum, 16);
+            sum = _mm_srai_epi32(sum, 16);
+            sum = _mm_packs_epi32(sum, mmZero);
 
-                loop_ecx:
-                    movdqu XMM0, [EAX]; // A B E F I J M N
-                    movdqu XMM1, [EDX]; // C D G H K L O P
-
-                    add EAX, 16;
-                    add EDX, 16;
-
-                    movdqa XMM2, XMM0;
-                    movdqa XMM3, XMM1;
-
-                    punpcklwd XMM0, XMM4; // A B E F in int32
-                    punpckhwd XMM2, XMM4; // I J M N in int32
-                    punpcklwd XMM1, XMM4; // C D G H in int32
-                    punpckhwd XMM3, XMM4; // K L O P in int32
-
-                    paddd XMM0, XMM1; // A+C B+D E+G F+H
-                    paddd XMM2, XMM3; // I+K J+L M+O N+P
-
-                    movdqa XMM1, XMM0;
-                    movdqa XMM3, XMM2;
-
-                    psrldq XMM1, 4; // B+D E+G F+H 0
-                    psrldq XMM3, 4; // J+L M+O N+P 0
-
-                    paddd XMM0, XMM1; // A+B+C+D garbage E+F+G+H garbage
-                    paddd XMM2, XMM3; // I+J+K+L garbage M+N+O+P garbage
-
-                    pshufd XMM0, XMM0, 0b00001000; // A+B+C+D E+F+G+H garbage garbage
-                    pshufd XMM2, XMM2, 0b00001000; // I+J+K+L M+N+O+P garbage garbage
-
-                    punpcklqdq XMM0, XMM2; // A+B+C+D E+F+G+H I+J+K+L M+N+O+P
-                    paddd XMM0, XMM5; // add 2
-                    psrld XMM0, 2; // >> 2
-
-                    // because packusdw is not available before SSE4.1
-                    // Extend sign bit to the right
-                    pslld XMM0, 16;
-                    psrad XMM0, 16;
-                    add EDI, 8;
-                    packssdw XMM0, XMM4;
-
-                    movq [EDI-8], XMM0;
-                    sub ECX, 1;
-                    jnz loop_ecx;
-                no_need: ;
-                }
-
-                // Eventually filter the 0 to 3 pixels
-                int remaining = width & ~3;
-                for (int x = remaining; x < width; ++x)
-                {
-                    L16 A = L0[2 * x];
-                    L16 B = L0[2 * x + 1];
-                    L16 C = L1[2 * x];
-                    L16 D = L1[2 * x + 1];
-                    dest[x] = L16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
-                }
-            }
-            else version(D_InlineAsm_X86_64)
-            {
-                asm pure nothrow @nogc
-                {
-                    mov ECX, width;
-                    shr ECX, 2;
-                    jz no_need; // ECX = 0 => less than 4 pixels to process
-
-                    mov RAX, L0;
-                    mov RDX, L1;
-                    mov RDI, dest;
-                    movdqa XMM5, xmmTwoInt;
-                    pxor XMM4, XMM4;
-
-                loop_ecx:
-                    movdqu XMM0, [RAX]; // A B E F I J M N
-                    movdqu XMM1, [RDX]; // C D G H K L O P
-
-                    add RAX, 16;
-                    add RDX, 16;
-
-                    movdqa XMM2, XMM0;
-                    movdqa XMM3, XMM1;
-
-                    punpcklwd XMM0, XMM4; // A B E F in int32
-                    punpckhwd XMM2, XMM4; // I J M N in int32
-                    punpcklwd XMM1, XMM4; // C D G H in int32
-                    punpckhwd XMM3, XMM4; // K L O P in int32
-
-                    paddd XMM0, XMM1; // A+C B+D E+G F+H
-                    paddd XMM2, XMM3; // I+K J+L M+O N+P
-
-                    movdqa XMM1, XMM0;
-                    movdqa XMM3, XMM2;
-
-                    psrldq XMM1, 4; // B+D E+G F+H 0
-                    psrldq XMM3, 4; // J+L M+O N+P 0
-
-                    paddd XMM0, XMM1; // A+B+C+D garbage E+F+G+H garbage
-                    paddd XMM2, XMM3; // I+J+K+L garbage M+N+O+P garbage
-
-                    pshufd XMM0, XMM0, 0b00001000; // A+B+C+D E+F+G+H garbage garbage
-                    pshufd XMM2, XMM2, 0b00001000; // I+J+K+L M+N+O+P garbage garbage
-
-                    punpcklqdq XMM0, XMM2; // A+B+C+D E+F+G+H I+J+K+L M+N+O+P
-                    paddd XMM0, XMM5; // add 2
-                    psrld XMM0, 2; // >> 2
-
-                    // because packusdw is not available before SSE4.1
-                    // Extend sign bit to the right
-                    pslld XMM0, 16;
-                    psrad XMM0, 16;
-                    add RDI, 8;
-                    packssdw XMM0, XMM4;
-
-                    movq [RDI-8], XMM0;
-                    sub ECX, 1;
-                    jnz loop_ecx;
-                no_need: ;
-                }
-
-                // Eventually filter the 0 to 3 pixels
-                int remaining = width & ~3;
-                for (int x = remaining; x < width; ++x)
-                {
-                    L16 A = L0[2 * x];
-                    L16 B = L0[2 * x + 1];
-                    L16 C = L1[2 * x];
-                    L16 D = L1[2 * x + 1];
-                    dest[x] = L16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
-                }
-            }
-            else
-                static assert(false);
+            _mm_storeu_si128(cast(__m128*) &dest[x], sum);
         }
-        else
-        {
-            for (int x = 0; x < width; ++x)
-            {
-                // A B
-                // C D
-                L16 A = L0[2 * x];
-                L16 B = L0[2 * x + 1];
-                L16 C = L1[2 * x];
-                L16 D = L1[2 * x + 1];
 
-                dest[x] = L16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
-            }
+        */
+
+        // this is better
+        for (; x < width; ++x)
+        {
+            // A B
+            // C D
+            L16 A = L0[2 * x];
+            L16 B = L0[2 * x + 1];
+            L16 C = L1[2 * x];
+            L16 D = L1[2 * x + 1];
+
+            dest[x] = L16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
         }
     }
 }
