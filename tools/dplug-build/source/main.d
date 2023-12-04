@@ -106,6 +106,7 @@ void usage()
     flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only)".lred, null, "no");
     flag("--rez", "Generate Audio Unit .rsrc file with Rez " ~ "(OSX only)".lred, null, "no");
     flag("--legacy-pt10", "Allow creation of x86 AAX for Protools 10 support" ~ " (Windows only)".lred, null, "no");
+    flag("--compiler-x86_64", " Force a particular compiler for x86_64 architecture.", null, "Use same binary as --compiler");
     flag("-h --help", "Shows this help", null, null);
 
     cwriteln();
@@ -141,7 +142,8 @@ int main(string[] args)
 {
     try
     {
-        string compiler = "ldc2"; // use LDC by default
+        string compiler = "ldc2";      // use LDC by default
+        string compiler_x86_64 = null; // Default: Use same as --compiler
 
         // The _target_ architectures. null means "default".
         Arch[] archs = null;
@@ -198,6 +200,11 @@ int main(string[] args)
             {
                 ++i;
                 compiler = args[i];
+            }
+            else if (arg == "--compiler-x86_64")
+            {
+                ++i;
+                compiler_x86_64 = args[i];
             }
             else if (arg == "-c" || arg == "--config")
             {
@@ -344,6 +351,9 @@ int main(string[] args)
         }
 
         assert(archs != [ Arch.all ]);
+
+        if (compiler_x86_64 is null)
+            compiler_x86_64 = compiler;
 
         Plugin plugin = readPluginDescription(rootDir);
 
@@ -559,7 +569,22 @@ int main(string[] args)
 
                 if (arch != Arch.universalBinary)
                 {
-                    buildPlugin(targetOS, compiler, config, build, arch, rootDir, verbose, force, combined, quiet, skipRegistry, parallel);
+                    // Apply compiler path overrides, allows to build a plugins with different 
+                    // compilers depending on the arch.
+                    string compilerPath;
+                    bool pathOverriden;
+                    if (arch == Arch.x86_64 && (compiler_x86_64 != compiler))
+                    {
+                        compilerPath = compiler_x86_64;
+                        pathOverriden = true;
+                    }
+                    else
+                    {
+                        compilerPath = compiler;
+                        pathOverriden = false;
+                    }
+
+                    buildPlugin(targetOS, compilerPath, pathOverriden, config, build, arch, rootDir, verbose, force, combined, quiet, skipRegistry, parallel);
                     double bytes = getSize(plugin.dubOutputFileName()) / (1024.0 * 1024.0);
                     cwritefln("    =&gt; Build OK, binary size = %0.1f mb, available in %s".lgreen, bytes, normalizedPath("./" ~ path));
                     cwriteln();
@@ -1412,12 +1437,16 @@ int main(string[] args)
 }
 
 void buildPlugin(OS targetOS, 
-                 string compiler, string config, string build, Arch arch, 
+                 string compiler, bool pathOverriden, string config, string build, Arch arch, 
                  string rootDir,
                  bool verbose, bool force, bool combined, bool quiet, 
                  bool skipRegistry, bool parallel)
 {
-    cwritefln("*** Building configuration %s with %s, %s arch...", config, compiler, convertArchToPrettyString(arch));
+    cwritefln("*** Building configuration %s with %s%s, %s arch...", 
+              config, 
+              compiler, 
+              pathOverriden ? " (overriden path)" : "",
+              convertArchToPrettyString(arch));
 
     // If we want to support Notarization, we can't target earlier than 10.11
     // Note: it seems it is overriden at some point and when notarizing you can't target lower
