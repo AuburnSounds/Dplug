@@ -686,6 +686,43 @@ void generateLevelBoxRGBA(OwnedImage!RGBA thisLevel,
         RGBA* L1   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2 + 1) + updateRect.min.x * 2;
         RGBA* dest =     thisLevel.scanlinePtr(           updateRect.min.y + y) + updateRect.min.x;
 
+        int x = 0;
+
+     // PERF: enable later, this is faster on a full mipmap even without AVX2
+     /// Requires a somewhat recent intel-intrinsics though
+     /+
+            __m256i zero = _mm256_setzero_si256();
+            __m256i two = _mm256_set1_epi16(2);
+            for ( ; x + 3 < width; x += 4)
+            {
+                // pixel patches:
+                // A B E F   Goal = (A + B + C + D + 2) / 4   => res
+                // C D G H          (E + F + G + H + 2) / 4   => res+1
+                //
+                __m256i ABEF = _mm256_loadu_si256(cast(const(__m256i)*) &L0[2*x]);
+                __m256i CDGH = _mm256_loadu_si256(cast(const(__m256i)*) &L1[2*x]);
+                __m256i AB = _mm256_unpacklo_epi8(ABEF, zero);
+                __m256i EF = _mm256_unpackhi_epi8(ABEF, zero);
+                __m256i CD = _mm256_unpacklo_epi8(CDGH, zero);
+                __m256i GH = _mm256_unpackhi_epi8(CDGH, zero);
+                AB = _mm256_add_epi16(AB, CD);                 // A + C   B + D
+                EF = _mm256_add_epi16(EF, GH);                 // E + G   F + H
+                __m256i AC_EG = _mm256_unpacklo_epi64(AB, EF); // A+C  E+G
+                __m256i BD_FH = _mm256_unpackhi_epi64(AB, EF); // B+D  F+H
+                __m256i sum = _mm256_add_epi16(AC_EG, BD_FH); // A+B+C+D   E+F+G+H
+                sum = _mm256_add_epi16(sum, two);             // A+B+C+D+2 E+F+G+H+2
+                sum = _mm256_srai_epi16(sum, 2);              // (A+B+C+D+2)/4 (E+F+G+H+2)/4
+                __m256i finalPixels = _mm256_packus_epi16(sum, zero);
+
+                __m128i f_lo = _mm256_extractf128_si256!0(finalPixels);
+                __m128i f_hi = _mm256_extractf128_si256!1(finalPixels);
+                _mm_storeu_si64(&dest[x], f_lo);  // PERF Would need a vpermute here. In each lane, only the low 8 bytes are interesting.
+                _mm_storeu_si64(&dest[x+2], f_hi);
+            }
+        }
+
+        +/
+
         __m128i zero = _mm_setzero_si128();
         __m128i two = _mm_set1_epi16(2);
         int x = 0;
