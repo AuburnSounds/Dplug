@@ -967,162 +967,67 @@ void generateLevelCubicRGBA(OwnedImage!RGBA thisLevel,
             if (x2p2 > previousLevel.w - 1)
                 x2p2 = previousLevel.w - 1;
 
-            version(inlineAsmCanLoadGlobalsInPIC)
+            static if (true)
             {
-                version(D_InlineAsm_X86)
-                {
-                    RGBA[16] buf = void;
-                    buf[0] = LM1[x2m1];
-                    buf[1] = LM1[x2p0];
-                    buf[2] = LM1[x2p0+1];
-                    buf[3] = LM1[x2p2];
-                    buf[4] = L0[x2m1];
-                    buf[5] = L0[x2p0];
-                    buf[6] = L0[x2p0+1];
-                    buf[7] = L0[x2p2];
-                    buf[8] = L1[x2m1];
-                    buf[9] = L1[x2p0];
-                    buf[10] = L1[x2p0+1];
-                    buf[11] = L1[x2p2];
-                    buf[12] = L2[x2m1];
-                    buf[13] = L2[x2p0];
-                    buf[14] = L2[x2p0+1];
-                    buf[15] = L2[x2p2];
-                    RGBA* pDest = dest + x;
+                align(16) RGBA[16] buf = void;
+                buf[0] = LM1[x2m1];
+                buf[1] = LM1[x2p0];
+                buf[2] = LM1[x2p0+1];
+                buf[3] = LM1[x2p2];
+                buf[4] = L0[x2m1];
+                buf[5] = L0[x2p0];
+                buf[6] = L0[x2p0+1];
+                buf[7] = L0[x2p2];
+                buf[8] = L1[x2m1];
+                buf[9] = L1[x2p0];
+                buf[10] = L1[x2p0+1];
+                buf[11] = L1[x2p2];
+                buf[12] = L2[x2m1];
+                buf[13] = L2[x2p0];
+                buf[14] = L2[x2p0+1];
+                buf[15] = L2[x2p2];
+                RGBA* pDest = dest + x;
 
-                    asm nothrow @nogc
-                    {
-                        movdqu XMM0, buf;  // A B C D
-                        movdqu XMM1, buf;
-                        pxor XMM2, XMM2;      // zeroes
-                        punpcklbw XMM0, XMM2; // A B
-                        punpckhbw XMM1, XMM2; // C D
-                        pmullw XMM0, xmm11113333; // A*1 B*3 in shorts
-                        movdqa XMM3, XMM0;
-                        pmullw XMM1, xmm33331111; // C*3 D*3 in shorts
-                        movdqa XMM5, XMM1;
+                const __m128i mmZero = _mm_setzero_si128();
 
-                        movdqu XMM0, buf+16;  // E F G H
-                        movdqu XMM1, buf+16;
-                        punpcklbw XMM0, XMM2; // E F
-                        punpckhbw XMM1, XMM2; // G H
-                        pmullw XMM0, xmm33339999; // E*3 F*9 in shorts
-                        paddw XMM3, XMM0;
-                        pmullw XMM1, xmm99993333; // G*9 H*3 in shorts
-                        paddw XMM5, XMM1;
+                // Note: could improve the coefficients probably
+                const __m128i xmm11113333 = _mm_setr_epi16(1, 1, 1, 1, 3, 3, 3, 3);
+                const __m128i xmm33339999 = _mm_setr_epi16(3, 3, 3, 3, 9, 9, 9, 9);
 
-                        movdqu XMM0, buf+32;  // I J K L
-                        movdqu XMM1, buf+32;
-                        punpcklbw XMM0, XMM2; // I J
-                        punpckhbw XMM1, XMM2; // K L
-                        pmullw XMM0, xmm33339999; // I*3 J*9 in shorts
-                        paddw XMM3, XMM0;
-                        pmullw XMM1, xmm99993333; // K*9 L*3 in shorts
-                        paddw XMM5, XMM1;
+                __m128i ABCD = _mm_load_si128(cast(const(__m128i*)) &buf[0]);
+                __m128i EFGH = _mm_load_si128(cast(const(__m128i*)) &buf[4]);
+                __m128i IJKL = _mm_load_si128(cast(const(__m128i*)) &buf[8]);
+                __m128i MNOP = _mm_load_si128(cast(const(__m128i*)) &buf[12]);
 
-                        movdqu XMM0, buf+48;  // M N O P
-                        movdqu XMM1, buf+48;
-                        punpcklbw XMM0, XMM2; // M N
-                        punpckhbw XMM1, XMM2; // O P
-                        pmullw XMM0, xmm11113333; // M*1 N*3 in shorts
-                        paddw XMM3, XMM0; // A+E*3+I*3+M B*3+F*9+J*9+3*N
-                        pmullw XMM1, xmm33331111; // O*3 P*1 in shorts
-                        paddw XMM5, XMM1; // C*3+G*9+K*9+O*3 D+H*3+L*3+P
+                __m128i AB = _mm_unpacklo_epi8(ABCD, mmZero);
+                __m128i CD = _mm_unpackhi_epi8(ABCD, mmZero);
+                __m128i EF = _mm_unpacklo_epi8(EFGH, mmZero);
+                __m128i GH = _mm_unpackhi_epi8(EFGH, mmZero);
+                __m128i IJ = _mm_unpacklo_epi8(IJKL, mmZero);
+                __m128i KL = _mm_unpackhi_epi8(IJKL, mmZero);
+                __m128i MN = _mm_unpacklo_epi8(MNOP, mmZero);
+                __m128i OP = _mm_unpackhi_epi8(MNOP, mmZero);
 
-                        movdqa XMM0, XMM3;
-                        movdqa XMM1, XMM5;
-                        psrldq XMM0, 8;
-                        psrldq XMM1, 8;
-                        paddw XMM3, XMM0; // A+E*3+I*3+M+B*3+F*9+J*9+3*N garbage(x4)
-                        paddw XMM5, XMM1; // C*3+G*9+K*9+O*3+D+H*3+L*3+P garbage(x4)
-                        paddw XMM3, XMM5; // total-sum garbage(x4)
+                // This avoid a few multiplications
+                AB = _mm_add_epi16(AB, MN);
+                CD = _mm_add_epi16(CD, OP);
+                EF = _mm_add_epi16(EF, IJ);
+                GH = _mm_add_epi16(GH, KL);
 
-                        paddw XMM3, xmm32;
-                        psrlw XMM3, 6;
-                        mov EAX, pDest;
-                        packuswb XMM3, XMM2;
+                // Wrap a bit more, avoids two muls
+                AB = _mm_add_epi16(AB, _mm_shuffle_epi32!0x4e(CD)); // invert quadwords
+                EF = _mm_add_epi16(EF, _mm_shuffle_epi32!0x4e(GH)); // invert quadwords
 
-                        movd [EAX], XMM3;
-                    }
-                }
-                else version(D_InlineAsm_X86_64)
-                {
-                    RGBA[16] buf = void;
-                    buf[0] = LM1[x2m1];
-                    buf[1] = LM1[x2p0];
-                    buf[2] = LM1[x2p0+1];
-                    buf[3] = LM1[x2p2];
-                    buf[4] = L0[x2m1];
-                    buf[5] = L0[x2p0];
-                    buf[6] = L0[x2p0+1];
-                    buf[7] = L0[x2p2];
-                    buf[8] = L1[x2m1];
-                    buf[9] = L1[x2p0];
-                    buf[10] = L1[x2p0+1];
-                    buf[11] = L1[x2p2];
-                    buf[12] = L2[x2m1];
-                    buf[13] = L2[x2p0];
-                    buf[14] = L2[x2p0+1];
-                    buf[15] = L2[x2p2];
-                    RGBA* pDest = dest + x;
+                // PERF: we can win a few mul here
+                __m128i sum01 = _mm_mullo_epi16(AB, xmm11113333);
+                sum01 = _mm_add_epi16(sum01, _mm_mullo_epi16(EF, xmm33339999));
+                sum01 = _mm_add_epi16(sum01, _mm_srli_si128!8(sum01));
 
-                    asm nothrow @nogc
-                    {
-                        movdqu XMM0, buf;  // A B C D
-                        movdqu XMM1, buf;
-                        pxor XMM2, XMM2;      // zeroes
-                        punpcklbw XMM0, XMM2; // A B
-                        punpckhbw XMM1, XMM2; // C D
-                        pmullw XMM0, xmm11113333; // A*1 B*3 in shorts
-                        movdqa XMM3, XMM0;
-                        pmullw XMM1, xmm33331111; // C*3 D*3 in shorts
-                        movdqa XMM5, XMM1;
-
-                        movdqu XMM0, buf+16;  // E F G H
-                        movdqu XMM1, buf+16;
-                        punpcklbw XMM0, XMM2; // E F
-                        punpckhbw XMM1, XMM2; // G H
-                        pmullw XMM0, xmm33339999; // E*3 F*9 in shorts
-                        paddw XMM3, XMM0;
-                        pmullw XMM1, xmm99993333; // G*9 H*3 in shorts
-                        paddw XMM5, XMM1;
-
-                        movdqu XMM0, buf+32;  // I J K L
-                        movdqu XMM1, buf+32;
-                        punpcklbw XMM0, XMM2; // I J
-                        punpckhbw XMM1, XMM2; // K L
-                        pmullw XMM0, xmm33339999; // I*3 J*9 in shorts
-                        paddw XMM3, XMM0;
-                        pmullw XMM1, xmm99993333; // K*9 L*3 in shorts
-                        paddw XMM5, XMM1;
-
-                        movdqu XMM0, buf+48;  // M N O P
-                        movdqu XMM1, buf+48;
-                        punpcklbw XMM0, XMM2; // M N
-                        punpckhbw XMM1, XMM2; // O P
-                        pmullw XMM0, xmm11113333; // M*1 N*3 in shorts
-                        paddw XMM3, XMM0; // A+E*3+I*3+M B*3+F*9+J*9+3*N
-                        pmullw XMM1, xmm33331111; // O*3 P*1 in shorts
-                        paddw XMM5, XMM1; // C*3+G*9+K*9+O*3 D+H*3+L*3+P
-
-                        movdqa XMM0, XMM3;
-                        movdqa XMM1, XMM5;
-                        psrldq XMM0, 8;
-                        psrldq XMM1, 8;
-                        paddw XMM3, XMM0; // A+E*3+I*3+M+B*3+F*9+J*9+3*N garbage(x4)
-                        paddw XMM5, XMM1; // C*3+G*9+K*9+O*3+D+H*3+L*3+P garbage(x4)
-                        paddw XMM3, XMM5; // total-sum garbage(x4)
-
-                        paddw XMM3, xmm32;
-                        psrlw XMM3, 6;
-                        mov RAX, pDest;
-                        packuswb XMM3, XMM2;
-
-                        movd [RAX], XMM3;
-                    }
-                }
-                else
-                    static assert(false);
+                __m128i sum = sum01;
+                sum = _mm_add_epi16(sum, _mm_set1_epi16(32));
+                sum = _mm_srli_epi16(sum, 6);
+                __m128i finalPixels = _mm_packus_epi16(sum, mmZero);
+                _mm_storeu_si32(pDest, finalPixels);
             }
             else
             {
