@@ -19,8 +19,7 @@ import dplug.pbrwidgets.knob;
 import dplug.client.params;
 
 import gamut;
-// Note about gamut: would be way easier to use if there was a way to copy a single channel from another image,
-// to fill a single channel with 255, to resize from an image to another, to easily crop a rectangle.
+
 // FUTURE: ABDME_8 shall disappear.
 nothrow:
 @nogc:
