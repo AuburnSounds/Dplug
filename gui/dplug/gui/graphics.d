@@ -1287,6 +1287,9 @@ protected:
                     quality = Mipmap!RGBA.Quality.cubic;
                 foreach(ref area; _updateRectScratch[0])
                 {
+                    // Note: the rects might be disjointed, but each leveling up makes them
+                    // Possibly overlapping. It is assumed the cost is minor.
+                    // Some pixels in higher mipmap levels might be computed several times.
                     area = mipmap.generateNextLevel(quality, area, level);
                 }
             }

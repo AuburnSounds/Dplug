@@ -686,11 +686,12 @@ void generateLevelBoxRGBA(OwnedImage!RGBA thisLevel,
         RGBA* L1   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2 + 1) + updateRect.min.x * 2;
         RGBA* dest =     thisLevel.scanlinePtr(           updateRect.min.y + y) + updateRect.min.x;
 
-        int x = 0;
+        
 
      // PERF: enable later, this is faster on a full mipmap even without AVX2
      /// Requires a somewhat recent intel-intrinsics though
      /+
+            int x = 0;
             __m256i zero = _mm256_setzero_si256();
             __m256i two = _mm256_set1_epi16(2);
             for ( ; x + 3 < width; x += 4)
@@ -732,8 +733,8 @@ void generateLevelBoxRGBA(OwnedImage!RGBA thisLevel,
             // A B E F   Goal = (A + B + C + D + 2) / 4   => res
             // C D G H          (E + F + G + H + 2) / 4   => res+1
             //
-            __m128i ABEF = _mm_loadu_si128(cast(const(__m128)*) &L0[2*x]);
-            __m128i CDGH = _mm_loadu_si128(cast(const(__m128)*) &L1[2*x]);
+            __m128i ABEF = _mm_loadu_si128(cast(const(__m128i)*) &L0[2*x]);
+            __m128i CDGH = _mm_loadu_si128(cast(const(__m128i)*) &L1[2*x]);
             __m128i AB = _mm_unpacklo_epi8(ABEF, zero);
             __m128i EF = _mm_unpackhi_epi8(ABEF, zero);
             __m128i CD = _mm_unpacklo_epi8(CDGH, zero);
