@@ -964,8 +964,18 @@ public:
                 vec4f colorLevel1 = diffuseMap.linearSample(1, ic, jc);
                 vec4f colorLevel2 = diffuseMap.linearSample(2, ic, jc);
                 vec4f colorLevel3 = diffuseMap.linearSample(3, ic, jc);
-                vec4f colorLevel4 = diffuseMap.linearSample(4, ic, jc);
-                vec4f colorLevel5 = diffuseMap.linearSample(5, ic, jc);
+
+                version(futurePBREmissive)
+                {
+                    // See Issue #827; this was a problem for Emissive highlights.
+                    vec4f colorLevel4 = diffuseMap.cubicSample(4, ic, jc);
+                    vec4f colorLevel5 = diffuseMap.cubicSample(5, ic, jc);
+                }
+                else
+                {
+                    vec4f colorLevel4 = diffuseMap.linearSample(4, ic, jc);
+                    vec4f colorLevel5 = diffuseMap.linearSample(5, ic, jc);
+                }
 
                 version(futurePBREmissive)
                 {
