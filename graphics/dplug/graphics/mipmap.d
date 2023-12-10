@@ -23,22 +23,6 @@ else version( D_InlineAsm_X86_64 )
     version = AsmX86;
 }
 
-// Because of unability to load globals in PIC code with DMD, only enable some assembly with LDC
-// Then also disabled in LDC because of Issue #797
-// PERF: speed-up with intrinsics instead
-/*version(LDC)
-{
-    version( D_InlineAsm_X86 )
-    {
-        version = inlineAsmCanLoadGlobalsInPIC;
-    }
-    else version( D_InlineAsm_X86_64 )
-    {
-        version = inlineAsmCanLoadGlobalsInPIC;
-    }
-}*/
-
-
 /// Mipmapped images.
 /// Supports non power-of-two textures.
 /// Size of the i+1-th mipmap is { (width)/2, (height)/2 }
@@ -54,7 +38,8 @@ nothrow:
         box,                   // simple 2x2 filter, creates phase problems with NPOT. For higher levels, automatically uses cubic.
         cubic,                 // Very smooth kernel [1 2 1] x [1 2 1]
 
-        /// same as boxAlphaConv but after such a step the next level is alpha-premultiplied
+        /// Box-filter, and after such a step the next level is alpha-premultiplied.
+        /// This is intended for the first level 0 to level 1 transition, in case of bloom.
         /// Within version(futurePBREmissive), this also transitions to linear space to have 
         /// more natural highlights.
         boxAlphaCovIntoPremul, 
@@ -873,7 +858,10 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(OwnedImage!RGBA thisLevel,
 
         version(futurePBREmissive)
         {
-            // PERF: SIMD
+            // Note: basically very hard to beat with intrinsics.
+            // Hours lost trying to do that: 4.
+            // Neither float or integer intrinsics shenanigans do better than this plain code.
+
             for (int x = 0; x < width; ++x)
             {
                 RGBA A = L0[2 * x];
@@ -885,8 +873,8 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(OwnedImage!RGBA thisLevel,
                 static RGBAf convert_gammaspace_to_linear_premul (RGBA col)
                 {
                     RGBAf res;
-                    res.a = col.a / 255.0f; // alpha is linear
                     enum float inv_255 = 1.0f / 255;
+                    res.a = col.a * inv_255; // alpha is linear
                     res.r = col.r * inv_255 *col.r * inv_255* res.a;
                     res.g = col.g * inv_255 *col.g * inv_255* res.a;
                     res.b = col.b * inv_255 *col.b * inv_255* res.a;
@@ -991,7 +979,9 @@ void generateLevelCubicRGBA(OwnedImage!RGBA thisLevel,
 
                 const __m128i mmZero = _mm_setzero_si128();
 
-                // Note: could improve the coefficients probably
+                // Note: no coefficients improvements really convince.
+                // This was Issue #827, read for more context.
+
                 const __m128i xmm11113333 = _mm_setr_epi16(1, 1, 1, 1, 3, 3, 3, 3);
                 const __m128i xmm33339999 = _mm_setr_epi16(3, 3, 3, 3, 9, 9, 9, 9);
 
@@ -1032,29 +1022,29 @@ void generateLevelCubicRGBA(OwnedImage!RGBA thisLevel,
             }
             else
             {
-                auto A = LM1[x2m1];
-                auto B = LM1[x2p0];
-                auto C = LM1[x2p0+1];
-                auto D = LM1[x2p2];
+                RGBA A = LM1[x2m1];
+                RGBA B = LM1[x2p0];
+                RGBA C = LM1[x2p0+1];
+                RGBA D = LM1[x2p2];
 
-                auto E = L0[x2m1];
-                auto F = L0[x2p0];
-                auto G = L0[x2p0+1];
-                auto H = L0[x2p2];
+                RGBA E = L0[x2m1];
+                RGBA F = L0[x2p0];
+                RGBA G = L0[x2p0+1];
+                RGBA H = L0[x2p2];
 
-                auto I = L1[x2m1];
-                auto J = L1[x2p0];
-                auto K = L1[x2p0+1];
-                auto L = L1[x2p2];
+                RGBA I = L1[x2m1];
+                RGBA J = L1[x2p0];
+                RGBA K = L1[x2p0+1];
+                RGBA L = L1[x2p2];
 
-                auto M = L2[x2m1];
-                auto N = L2[x2p0];
-                auto O = L2[x2p0+1];
-                auto P = L2[x2p2];
+                RGBA M = L2[x2m1];
+                RGBA N = L2[x2p0];
+                RGBA O = L2[x2p0+1];
+                RGBA P = L2[x2p2];
 
                 // Apply filter
                 // 1 3 3 1
-                // 3 9 9 3
+                // 3 9 9 3      / 64
                 // 3 9 9 3
                 // 1 3 3 1
 
