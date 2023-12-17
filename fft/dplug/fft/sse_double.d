@@ -1,21 +1,12 @@
 //          Copyright Jernej Krempuš 2012
+//          Copyright Guillaume Piolat 2016-2023
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
-
 module dplug.fft.sse_double;
 
-import core.simd;
-
+import inteli.emmintrin;
 import dplug.fft.fft_impl;
-
-template shuf_mask(int a3, int a2, int a1, int a0)
-{ 
-    enum shuf_mask = a0 | (a1<<2) | (a2<<4) | (a3<<6); 
-}
-
-import dplug.fft.ldc_compat;
-import dplug.fft.dmd32_compat;
 
 struct Vector
 {
@@ -27,110 +18,37 @@ nothrow:
     enum vec_size = 2;
     enum log2_bitreverse_chunk_size = 2;
     
-    version(GNU)
+    static vec scalar_to_vector(T a)
     {
-        import gcc.builtins;
-        
-        static vec scalar_to_vector(T a)
-        {
-            return a;
-        }
-        
-        static void interleave( 
-            vec a0,  vec a1, ref vec r0, ref vec r1)
-        {
-            r0 = __builtin_ia32_unpcklpd(a0, a1);
-            r1 = __builtin_ia32_unpckhpd(a0, a1);
-        }
-        
-        static vec unaligned_load(T* p)
-        {
-            return __builtin_ia32_loadupd(p);
-        }
-
-        static void unaligned_store(T* p, vec v)
-        {
-            return __builtin_ia32_storeupd(p, v);
-        }
-
-        static vec reverse(vec v)
-        {
-            return __builtin_ia32_shufpd(v, v, 0x1);
-        }
+        return a;
     }
-    else version(LDC)
+        
+    static void interleave(vec a0,  vec a1, ref vec r0, ref vec r1)
     {
-        static vec scalar_to_vector(T a)
-        {
-            return a;
-        }
-        
-        static void interleave( 
-            vec a0,  vec a1, ref vec r0, ref vec r1)
-        {
-            r0 = shufflevector!(double2, 0, 2)(a0, a1);
-            r1 = shufflevector!(double2, 1, 3)(a0, a1);
-        }
-        
-        static vec unaligned_load(T* p)
-        {
-            return loadUnaligned!vec(cast(double*)p);
-        }
-
-        static void unaligned_store(T* p, vec v)
-        {
-            storeUnaligned!vec(v, cast(double*)p);
-        }
-        
-        static vec reverse(vec v)
-        {
-            return shufflevector!(vec, 1, 0)(v, v);
-        }
+        r0 = _mm_unpacklo_pd(a0, a1);
+        r1 = _mm_unpackhi_pd(a0, a1);
     }
-    else version(DigitalMars)
+        
+    static vec unaligned_load(T* p)
     {
-        version(D_SIMD)
-        {
-            static vec scalar_to_vector(T a)
-            {
-               vec r;
-               r.ptr[0] = a;
-               r.ptr[1] = a;
-               return r;
-            }
-        
-            static void interleave( 
-                vec a0,  vec a1, ref vec r0, ref vec r1)
-            {
-                r0 = cast(double2) __simd(XMM.UNPCKLPD, a0, a1);
-                r1 = cast(double2) __simd(XMM.UNPCKHPD, a0, a1);
-            }
-        }
-        else
-        {
-            static vec scalar_to_vector(T a)
-            {
-                return vec(a, a);
-            }
-
-            static void interleave(vec a0,  vec a1, ref vec r0, ref vec r1)
-            {
-                r0.x = a0.x;
-                r0.y = a1.x;
-                r1.x = a0.y;
-                r1.y = a1.y;
-            }
-
-        }
+        return _mm_loadu_pd(p);
     }
-    else
-        static assert(false, "Unsupported compiler");
-        
+
+    static void unaligned_store(T* p, vec v)
+    {
+        _mm_storeu_pd(p, v);
+    }
+
+    static vec reverse(vec v)
+    {
+        return _mm_shuffle_pd!1(v, v);
+    }
+
     private static vec * v(T * a)
     {
         return cast(vec*)a;
     }
-            
+
     static void complex_array_to_real_imag_vec(int len)(
         T * arr, ref vec rr, ref vec ri)
     {
@@ -147,7 +65,7 @@ nothrow:
         else
             static assert(0);
     }
-    
+
     static void bit_reverse_swap(T * p0, T * p1, size_t m)
     {
         vec a0, a1, a2, a3, b0, b1, b2, b3;
