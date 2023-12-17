@@ -20,7 +20,7 @@ nothrow:
     
     static vec scalar_to_vector(T a)
     {
-        return a;
+        return _mm_set1_pd(a);
     }
         
     static void interleave(vec a0,  vec a1, ref vec r0, ref vec r1)
