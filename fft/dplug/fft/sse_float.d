@@ -5,23 +5,9 @@
 
 module dplug.fft.sse_float;
 
-import core.simd;
-
+import inteli.emmintrin;
 import dplug.fft.fft_impl;
 
-template shuf_mask(int a3, int a2, int a1, int a0)
-{ 
-    enum shuf_mask = a0 | (a1<<2) | (a2<<4) | (a3<<6); 
-}
-
-version(X86_64)
-    version(linux)
-        version = linux_x86_64;
-
-
-import dplug.fft.ldc_compat;
-import dplug.fft.dmd32_compat;
-        
 struct Vector 
 {
 nothrow:
@@ -32,67 +18,8 @@ nothrow:
     enum vec_size = 4;
     enum log2_bitreverse_chunk_size = 2;
     
-    version(GNU)
+    version(all)
     {
-        import gcc.builtins;
-                
-        static vec scalar_to_vector()(T a)
-        {
-            return a;
-        }  
-
-        private static shufps(int m0, int m1, int m2, int m3)(float4 a, float4 b)
-        {
-            return __builtin_ia32_shufps(a, b, shuf_mask!(m0, m1, m2, m3));
-        }
-
-        alias __builtin_ia32_unpcklps unpcklps;
-        alias __builtin_ia32_unpckhps unpckhps;
-              
-        static vec unaligned_load(T* p)
-        {
-            return __builtin_ia32_loadups(p);
-        }
-
-        static void unaligned_store(T* p, vec v)
-        {
-            return __builtin_ia32_storeups(p, v);
-        }
-
-        static vec reverse(vec v)
-        {
-            return shufps!(0, 1, 2, 3)(v, v);
-        }
-    }
-    
-    version(DigitalMars)
-    {
-        static vec scalar_to_vector()(float a)
-        {
-            version(linux_x86_64)
-                asm nothrow @nogc
-                {
-                    naked;
-                    shufps XMM0, XMM0, 0;
-                    ret;
-                }
-            else
-            {
-                static struct quad
-                {
-                    align(16) float a;
-                    float b;
-                    float c;
-                    float d;
-                }
-                auto q = quad(a,a,a,a);
-                return *cast(vec*)& q;
-            }
-        }
-    }
-    
-    version(LDC)
-    {    
         static vec scalar_to_vector()(float a)
         {
             return a;
@@ -100,32 +27,33 @@ nothrow:
 
         static auto shufps(int m0, int m1, int m2, int m3)(float4 a, float4 b)
         {
-            return shufflevector!(float4, m3, m2, m1+4, m0+4)(a, b);
+            enum shufmask = _MM_SHUFFLE(m0, m1, m2, m3);
+            return _mm_shuffle_ps!shufmask(a, b);
         }
         
         static vec unpcklps(vec a, vec b)
         { 
-            return shufflevector!(float4, 0, 4, 1, 5)(a, b);
+            return _mm_unpacklo_ps(a, b);
         }
         
         static vec unpckhps(vec a, vec b)
         { 
-            return shufflevector!(float4, 2, 6, 3, 7)(a, b);
+            return _mm_unpackhi_ps(a, b);
         }
 
        static vec unaligned_load(T* p)
         {
-            return loadUnaligned!vec(cast(float*)p);
+            return _mm_loadu_ps(p);
         }
 
         static void unaligned_store(T* p, vec v)
         {
-            storeUnaligned!vec(v, cast(float*)p);
+            _mm_storeu_ps(p, v);
         }
         
         static vec reverse(vec v)
         {
-            return shufflevector!(float4, 3, 2, 1, 0)(v, v);
+            return _mm_shuffle_ps!(_MM_SHUFFLE(0, 1, 2, 3))(v, v);
         }
     }
     
@@ -220,107 +148,7 @@ nothrow:
         }
     }
     else
-    {        
-        static void bit_reverse()(T * p0, size_t m)
-        {
-            version(linux_x86_64)
-                asm nothrow @nogc
-                {
-                    naked;
-                    lea     RAX,[RDI+RDI*1];
-                    lea     RCX,[RSI+RDI*4];
-                    lea     RDI,[RDI+RDI*2];
-                    movaps  XMM1,[RSI];
-                    lea     RDX,[RSI+RAX*4];
-                    lea     R8,[RSI+RDI*4];
-                    movaps  XMM0,[RCX];
-                    movaps  XMM3,XMM1;
-                    movaps  XMM5,[RDX];
-                    movaps  XMM2,XMM0;
-                    movaps  XMM4,[R8];
-                    shufps  XMM1,XMM5,0xEE;
-                    movlhps XMM3,XMM5;
-                    shufps  XMM0,XMM4,0xEE;
-                    movlhps XMM2,XMM4;
-                    movaps  XMM6,XMM3;
-                    movaps  XMM7,XMM1;
-                    shufps  XMM3,XMM2,0xDD;
-                    shufps  XMM6,XMM2,0x88;
-                    shufps  XMM7,XMM0,0x88;
-                    shufps  XMM1,XMM0,0xDD;
-                    movaps  [RSI],XMM6;
-                    movaps  [RCX],XMM7;
-                    movaps  [RDX],XMM3;
-                    movaps  [R8],XMM1;
-                    ret;
-                }
-            else
-                Scalar!T.bit_reverse(p0, m);
-        }
-
-        static void bit_reverse_swap()(T * p0, T * p1, size_t m)
-        {
-            version(linux_x86_64)
-                asm nothrow @nogc
-                {
-                    naked;
-                    lea     RAX,[RDI+RDI*1];
-                    lea     RCX,[RDI*4+0x0];
-                    lea     RDI,[RDI+RDI*2];
-                    movaps  XMM1,[RSI];
-                    shl     RAX,0x2;
-                    lea     R10,[RSI+RCX*1];
-                    shl     RDI,0x2;
-                    lea     R9,[RSI+RAX*1];
-                    movaps  XMM3,[RDX];
-                    add     RAX,RDX;
-                    lea     R8,[RSI+RDI*1];
-                    add     RCX,RDX;
-                    movaps  XMM5,[R9];
-                    add     RDI,RDX;
-                    movaps  XMM7,XMM3;
-                    movaps  XMM9,[RAX];
-                    movaps  XMM12,XMM1;
-                    shufps  XMM1,XMM5,0xEE;
-                    movaps  XMM0,[R10];
-                    shufps  XMM3,XMM9,0xEE;
-                    movlhps XMM7,XMM9;
-                    movaps  XMM2,[RCX];
-                    movlhps XMM12,XMM5;
-                    movaps  XMM13,XMM0;
-                    movaps  XMM4,[R8];
-                    movaps  XMM6,XMM2;
-                    movaps  XMM10,XMM7;
-                    movaps  XMM8,[RDI];
-                    shufps  XMM0,XMM4,0xEE;
-                    movaps  XMM11,XMM3;
-                    shufps  XMM2,XMM8,0xEE;
-                    movlhps XMM6,XMM8;
-                    movlhps XMM13,XMM4;
-                    movaps  XMM14,XMM12;
-                    movaps  XMM15,XMM1;
-                    shufps  XMM10,XMM6,0x88;
-                    shufps  XMM11,XMM2,0x88;
-                    shufps  XMM7,XMM6,0xDD;
-                    shufps  XMM3,XMM2,0xDD;
-                    shufps  XMM14,XMM13,0x88;
-                    shufps  XMM15,XMM0,0x88;
-                    shufps  XMM12,XMM13,0xDD;
-                    shufps  XMM1,XMM0,0xDD;
-                    movaps  [RSI],XMM10;
-                    movaps  [R10],XMM11;
-                    movaps  [R9],XMM7;
-                    movaps  [R8],XMM3;
-                    movaps  [RDX],XMM14;
-                    movaps  [RCX],XMM15;
-                    movaps  [RAX],XMM12;
-                    movaps  [RDI],XMM1;
-                    ret;
-                }
-            else
-                Scalar!T.bit_reverse_swap(p0, p1, m);
-        }                         
-    }
+        static assert(false);
 }
 
 struct Options
@@ -334,3 +162,48 @@ struct Options
     //enum { fast_init };
 }
 
+unittest
+{
+    alias V = Vector;
+    float[4] m;
+    float[4] correct = [4.0f, 4.0f, 4.0f, 4.0f];
+    V.vec A = V.scalar_to_vector(4.0f);
+    V.unaligned_store(m.ptr, A);
+    assert(m == correct);
+}
+
+unittest
+{
+    alias V = Vector;
+    float[4] m = [2.0f, 3.0f, 4.0f, 5.0f];
+    float[4] r;
+    V.vec A = V.unaligned_load(m.ptr);
+    A = V.reverse(A);
+    float[4] correct = [5.0f, 4.0f, 3.0f, 2.0f];
+    V.unaligned_store(r.ptr, A);
+    assert(r == correct);
+
+    // unpcklps
+    V.vec B = V.unpcklps(A, A);
+    correct = [5.0f, 5.0f, 4.0f, 4.0f];
+    V.unaligned_store(r.ptr, B);
+    assert(r == correct);
+
+     // unpckhps
+    B = V.unpckhps(A, A);
+    correct = [3.0f, 3.0f, 2.0f, 2.0f];
+    V.unaligned_store(r.ptr, B);
+    assert(r == correct);
+}
+
+unittest
+{
+    alias V = Vector;
+    float[4] A = [-1.0f, 2.0f, 3.0f, 4.0f];
+    V.vec B = V.unaligned_load(A.ptr);
+    V.vec C = V.shufps!(3,1,2,1)(B, B);
+    float[4] correct = [2.0f, 3.0f, 2.0f, 4.0f];
+    float[4] r;
+    V.unaligned_store(r.ptr, C);
+    assert(r == correct);
+}
