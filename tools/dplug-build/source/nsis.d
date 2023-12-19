@@ -127,7 +127,10 @@ void generateWindowsInstaller(string outputDir,
     auto sections = packs.uniq!((p1, p2) => p1.format == p2.format);
     foreach(p; sections)
     {
-        content ~= `Section "` ~ p.title ~ `" Sec` ~ p.format ~ "\n";
+        // FLStudio format optional, and disabled by default.
+        bool optional = (p.format == "FLP");
+        string optionalFlag = optional ? "/o " : "";
+        content ~= `Section ` ~ optionalFlag ~ `"` ~ p.title ~ `" Sec` ~ p.format ~ "\n";
         content ~= "AddSize " ~ p.bytes.to!string ~ "\n";
         content ~= "SectionEnd\n";
     }

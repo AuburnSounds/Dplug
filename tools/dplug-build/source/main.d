@@ -502,10 +502,17 @@ int main(string[] args)
 
             foreach (size_t archCount, arch; architectures)
             {
-                // Only build x86_64 on Windows
+                // Only build x86_64 AAX on Windows
                 if (targetOS == OS.windows && configIsAAX(config) && (arch != Arch.x86_64) && !(legacyPT10 && arch == Arch.x86) )
                 {
                     cwritefln("info: Skipping architecture %s for AAX on Windows\n", arch);
+                    continue;
+                }
+
+                // Only build x86_64 FLP on Windows
+                if (targetOS == OS.windows && configIsFLP(config) && (arch != Arch.x86_64))
+                {
+                    cwritefln("info: Skipping architecture %s for FLP on Windows\n", arch);
                     continue;
                 }
 
