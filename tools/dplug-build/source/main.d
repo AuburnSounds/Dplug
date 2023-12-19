@@ -103,7 +103,6 @@ void usage()
     flag("--root", "Path to operate in instead of the current working dir", null, ".");
     flag("--installer", "Make an installer " ~ "(Windows and OSX only)".lred, null, "no");
     flag("--notarize", "Notarize the installer " ~ "(OSX only)".lred, null, "no");
-    flag("--legacy-notarization", " Use legacy notarization method " ~ "(OSX only)".lred, null, "no");    
     flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only)".lred, null, "no");
     flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only)".lred, null, "no");
     flag("--rez", "Generate Audio Unit .rsrc file with Rez " ~ "(OSX only)".lred, null, "no");
@@ -161,7 +160,6 @@ int main(string[] args)
         bool auval = false;
         bool makeInstaller = false;
         bool notarize = false;
-        bool legacyNotarization = false;
         bool useRez = false;
         bool skipRegistry = false;
         bool parallel = false;
@@ -227,10 +225,6 @@ int main(string[] args)
             else if (arg == "--notarize")
             {
                 notarize = true;
-            }
-            else if (arg == "--legacy-notarization")
-            {
-                legacyNotarization = true;
             }
             else if (arg == "--root")
             {
@@ -1403,7 +1397,7 @@ int main(string[] args)
                 string primaryBundle = plugin.getNotarizationBundleIdentifier(configurations[0]);
 
                 cwritefln("*** Notarizing final Mac installer %s...", primaryBundle);
-                notarizeMacInstaller(outputDir, plugin, finalPkgPath, primaryBundle, verbose, legacyNotarization);
+                notarizeMacInstaller(outputDir, plugin, finalPkgPath, primaryBundle, verbose);
                 cwriteln("    =&gt; Notarization OK".lgreen);
                 cwriteln;
             }
@@ -1618,7 +1612,7 @@ void generateMacInstaller(string rootDir,
     safeCommand(cmd);
 }
 
-void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, string primaryBundleId, bool verbose, bool legacyNotarization)
+void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, string primaryBundleId, bool verbose)
 {
     string verboseFlag = verbose ? "--verbose " : "";
 
