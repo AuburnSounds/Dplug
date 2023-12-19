@@ -1808,10 +1808,8 @@ void generateWindowsInstaller(string outputDir,
 
     std.file.write(nsisPath, cast(void[])content);
 
-
-
     // run makensis on the generated WindowsInstaller.nsi with verbosity set to errors only
-    string makeNsiCommand = format("makensis.exe /V1 %s", nsisPath);
+    string makeNsiCommand = format("makensis.exe /V2 %s", nsisPath);
     safeCommand(makeNsiCommand);
     double sizeOfExe_mb = getSize(outExePath) / (1024.0*1024.0);
     cwritefln("    =&gt; Build OK, binary size = %0.1f mb, available in %s\n".lgreen, sizeOfExe_mb, normalizedPath(outExePath));
