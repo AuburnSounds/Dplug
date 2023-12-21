@@ -198,6 +198,7 @@ void generateWindowsInstaller(string outputDir,
     }
 
     content ~= "Page instfiles\n";
+    content ~= "  InstallColors 000000 FFFFFF\n";
 
     foreach(p; packs)
     {
