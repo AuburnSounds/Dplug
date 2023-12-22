@@ -167,37 +167,35 @@ int main(string[]args)
 
         int[] bufferPattern = parseBufferPattern(bufferPatternStr);
 
-        bool outputXML = xmlFilename !is null;
-        Document xmlOutput;
+        bool doOutputXML = xmlFilename !is null;
+        File xmlOutput;
 
-        if (outputXML)
+        if (doOutputXML)
         {
-            xmlOutput = new Document;
-            xmlOutput.setProlog(`<?xml version="1.0" encoding="UTF-8"?>`);
-            xmlOutput.root = xmlOutput.createElement("measurements");
-            Element parametersXml = xmlOutput.root.addChild("parameters");
+            xmlOutput = File(xmlFilename, "w"); // open for writing
+            xmlOutput.writeln(`<?xml version="1.0" encoding="UTF-8"?>`);
+            xmlOutput.writeln(`<measurements>`);
+            xmlOutput.writeln(`    <parameters>`);
 
             foreach (index, value; parameterValues)
             {
-                parametersXml.addChild("param")
-                             .setAttribute("index", to!string(index))
-                             .setAttribute("value", to!string(value));
+                xmlOutput.writefln(`        <param index="%s" value="%s" />`, index, value);
             }
             
             pluginPath = pluginPath.absolutePath.buildNormalizedPath;
 
             // store singular parameters
-            parametersXml.addChild("input").innerText = inPath;
+            xmlOutput.writefln(`        <input>%s</input>`, escapeXML(inPath));
+            xmlOutput.writefln(`        <output>%s</output>`, escapeXML(outPath));
+            xmlOutput.writefln(`        <buffer>%s</buffer>`, escapeXML(bufferPatternStr));
 
-            parametersXml.addChild("output").innerText = outPath;
-
-            parametersXml.addChild("buffer").innerText = bufferPatternStr;
-            if (preRoll) parametersXml.addChild("preroll");
-            if (precise) parametersXml.addChild("precise");
-            parametersXml.addChild("times").innerText = times.to!string;
-            parametersXml.addChild("preset").innerText = preset.to!string;
-            parametersXml.addChild("plugin").innerText = pluginPath;
-            parametersXml.addChild("plugin_timestamp").innerText = pluginPath.timeLastModified.toISOExtString;
+            if (preRoll) xmlOutput.writeln(`        <preroll/>`);
+            if (precise) xmlOutput.writeln(`        <precise/>`);
+            xmlOutput.writefln(`        <times>%s</times>`, times);
+            xmlOutput.writefln(`        <preset>%s</preset>`, preset);
+            xmlOutput.writefln(`        <plugin>%s</plugin>`, escapeXML(pluginPath));
+            xmlOutput.writefln(`        <plugin_timestamp>%s</plugin_timestamp>`, escapeXML( pluginPath.timeLastModified.toISOExtString));
+            xmlOutput.writefln(`    </parameters>`);
         }
 
         // this flag is only there to be verbose even in -outpu-xml scenario
@@ -409,8 +407,10 @@ int main(string[]args)
 
             measures ~= cast(double)measureUs;
 
-            if (outputXML)
-                xmlOutput.root.addChild("run_seconds").innerText = (measureUs / 1_000_000.0).to!string;
+            if (doOutputXML)
+            {
+                xmlOutput.writefln(`    <run_seconds>%s</run_seconds>`, (measureUs / 1_000_000.0));
+            }
         }
 
         double minTime = measures[0];
@@ -442,11 +442,13 @@ int main(string[]args)
             }
         }
 
-        if (outputXML)
+        if (doOutputXML)
         {
-            xmlOutput.root.addChild("min_seconds").innerText = (minTime / 1_000_000.0).to!string;
-            xmlOutput.root.addChild("avg_seconds").innerText = (averageTime / 1_000_000.0).to!string;
-            xmlOutput.root.addChild("median_seconds").innerText = (medianTime / 1_000_000.0).to!string;
+            xmlOutput.writefln(`    <min_seconds>%s</min_seconds>`, (minTime / 1_000_000.0));
+            xmlOutput.writefln(`    <avg_seconds>%s</avg_seconds>`, (averageTime / 1_000_000.0));
+            xmlOutput.writefln(`    <median_seconds>%s</median_seconds>`, (medianTime / 1_000_000.0));
+            xmlOutput.writefln(`</measurements>`);
+            xmlOutput.close();
         }
 
         // write output if necessary
@@ -465,9 +467,6 @@ int main(string[]args)
 
         host.endAudioProcessing();
         destroyPluginHost(host);
-
-        // Dump xml
-        if (outputXML) xmlOutput.getData.toFile(xmlFilename);
 
         return 0;
     }
@@ -656,4 +655,15 @@ private:
     int _totalSamples;
 
 
+}
+
+
+string escapeXML(string s)
+{
+    s = s.replace("&", "&amp;");
+    s = s.replace("<", "&lt;");
+    s = s.replace(">", "&gt;");
+    s = s.replace("\"", "&quot;");
+    s = s.replace("\'", "&apos;");
+    return s;
 }
