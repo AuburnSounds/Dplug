@@ -7,7 +7,6 @@ import std.string;
 import std.file;
 import std.path;
 
-import arsd.dom;
 import waved;
 
 import dplug.host;
