@@ -19,9 +19,9 @@ enum Arch
 }
 
 
-Arch detectArch(string pluginPath)
+Arch detectArch(const(char)[] pluginPath)
 {
-    static bool detectPEBitness(string pluginPath) // true if 64-bit, false else
+    static bool detectPEBitness(const(char)[] pluginPath) // true if 64-bit, false else
     {
         import std.stdio;
         File f = File(pluginPath, "rb");

@@ -2,7 +2,7 @@
     "name": "bench",
     "dependencies": {
         "wave-d": "~>1.0",
-        "arsd-official:dom": "~>10.0",
+        "yxml": "~>0.0",
         "console-colors": "~>1.0",
     },
 

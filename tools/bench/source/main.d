@@ -17,7 +17,7 @@ import utils;
 
 import waved;
 import consolecolors;
-import arsd.dom;
+import yxml;
 import arch;
 
 
@@ -174,12 +174,12 @@ class Plugin
             formattedWrite(sink, " %s=%s", paramIndex, paramvalue);
     }
 
-    this(string pluginPath, int cacheIDInt)
+    this(const(char)[] pluginPath, int cacheIDInt)
     {
-        this.pluginPath = pluginPath;
+        this.pluginPath = pluginPath.idup;
         enforce(exists(pluginPath), format("Can't find plugin file '%s'", pluginPath));
         pluginTimestamp = pluginPath.timeLastModified;
-        this.shortName = pluginPath.baseName.stripExtension;
+        this.shortName = pluginPath.baseName.stripExtension.idup;
         this.arch = detectArch(pluginPath);
         this.cacheID = "#" ~ to!string(cacheIDInt);
     }
@@ -201,11 +201,11 @@ class Source
     string shortName;
     string outputDirectory;
 
-    this(string wavPath, string outputDirectory)
+    this(const(char)[] wavPath, const(char)[] outputDirectory)
     {
-        this.wavPath = wavPath;
-        this.shortName = wavPath.baseName.stripExtension;
-        this.outputDirectory = outputDirectory;
+        this.wavPath = wavPath.idup;
+        this.shortName = wavPath.baseName.stripExtension.idup;
+        this.outputDirectory = outputDirectory.idup;
     }
 }
 
@@ -294,33 +294,33 @@ class Universe
         xmlDir = xmlPath.dirName;
 
         string content = cast(string)(std.file.read(xmlPath));
-        auto doc = new Document();
-        doc.parseUtf8(content, true, true);
+        XmlDocument doc;
+        doc.parse(content);
 
-        parseBaseline(doc);
-        parseChallengers(doc);
-        parsePresets(doc);
-        parseSources(doc);
-        parseProcessors(doc);
+        parseBaseline(doc.root);
+        parseChallengers(doc.root);
+        parsePresets(doc.root);
+        parseSources(doc.root);
+        parseProcessors(doc.root);
     }
 
-    Plugin parsePlugin(Element pluginTag, int cacheID)
+    Plugin parsePlugin(XmlElement pluginTag, int cacheID)
     {
-        string pluginPath = pluginTag.innerText.strip;
-        
+        const(char)[] pluginPath = pluginTag.textContent.strip;
+
         auto plugin = new Plugin(pluginPath, cacheID);
-        foreach(e; pluginTag.getElementsByTagName("buffer-size"))
+        foreach(e; pluginTag.getChildrenByTagName("buffer-size"))
         {
-            plugin.bufferPattern = e.getAttribute("pattern"); // null means default, process will choose one for you
+            plugin.bufferPattern = e.getAttribute("pattern").idup; // null means default, process will choose one for you
         }
 
-        foreach(e; pluginTag.getElementsByTagName("parameter"))
+        foreach(e; pluginTag.getChildrenByTagName("parameter"))
         {
-            string parameterIndexStr = e.getAttribute("index");
+            const(char)[] parameterIndexStr = e.getAttribute("index");
             if (parameterIndexStr is null)
                 throw new Exception(`parameter node must have 'index' attribute set (example: index="0")`);
             int parameterIndex = to!int(parameterIndexStr);
-            string parameterValueStr = e.getAttribute("value");
+            const(char)[] parameterValueStr = e.getAttribute("value");
             if (parameterValueStr is null)
                 throw new Exception(`parameter node must have 'value' attribute set (example: value="0.5")`);
             double parameterValue = to!double(parameterValueStr);
@@ -330,9 +330,9 @@ class Universe
         return plugin;
     }
 
-    void parseBaseline(Document doc)
+    void parseBaseline(XmlElement doc)
     {
-        auto elems = doc.getElementsByTagName("baseline");
+        auto elems = doc.getChildrenByTagName("baseline").array;
         if (elems.length == 0)
             throw new Exception("baseline must be provided");
         if (elems.length > 1)
@@ -342,10 +342,10 @@ class Universe
 
     }
 
-    void parseChallengers(Document doc)
+    void parseChallengers(XmlElement doc)
     {
         int cacheID = 1;
-        foreach(e; doc.getElementsByTagName("challenger"))
+        foreach(e; doc.getChildrenByTagName("challenger"))
         {
             auto plugin = parsePlugin(e, cacheID); // challengers have cacheID > 1
             challengers ~= plugin;
@@ -353,17 +353,20 @@ class Universe
         }
     }
 
-    void parsePresets(Document doc)
+    void parsePresets(XmlElement doc)
     {
-        foreach(e; doc.getElementsByTagName("preset"))
+        foreach(e; doc.getChildrenByTagName("preset"))
         {
-            int presetIndex = to!int(e.innerText);
+            const(char)[] presetS = e.textContent;
+            string s = presetS[1..$].idup;
+            int presetIndex = to!int(presetS);
             configurations ~= new TaskConfiguration(presetIndex);
         }
 
-        foreach(e; doc.getElementsByTagName("preset-range"))
+        foreach(e; doc.getChildrenByTagName("preset-range"))
         {
-            int min = e.getAttribute("min").to!int;
+            const(char)[] attr = e.getAttribute("min");
+            int min = attr.to!int;
             int max = e.getAttribute("max").to!int;
             foreach(presetIndex; min..max + 1)
             {
@@ -378,11 +381,11 @@ class Universe
         }
     }
 
-    void parseSources(Document doc)
+    void parseSources(XmlElement doc)
     {
-        foreach(e; doc.getElementsByTagName("source"))
+        foreach(e; doc.getChildrenByTagName("source"))
         {
-            string sourcePath = e.innerText.strip;
+            const(char)[] sourcePath = e.textContent.strip;
 
             if (!exists(sourcePath))
                 throw new Exception(format("source '%s' doesn't exist.", sourcePath));
@@ -391,21 +394,22 @@ class Universe
         }
     }
 
-    void parseProcessors(Document doc)
+    void parseProcessors(XmlElement doc)
     {
-        if (doc.getElementsByTagName("quality-compare").length > 0)
+        if (doc.hasChildWithTagName("quality-compare"))
         {
             processors ~= new QualityCompareProcessor();
         }
         
-        if (doc.getElementsByTagName("speed-measure").length > 0)
+        if (doc.hasChildWithTagName("speed-measure"))
         {
             processors ~= new SpeedMeasureProcessor();
         }        
 
-        if (doc.getElementsByTagName("times").length > 0)
+        if (doc.hasChildWithTagName("times"))
         {
-            speedMeasureCount = doc.getElementsByTagName("times")[0].innerText.to!int;
+            const(char)[] stimes =  doc.firstChildByTagName("times").textContent;
+            speedMeasureCount = stimes.to!int;
         }
     }
 
@@ -455,7 +459,7 @@ class Universe
         mkdirRecurse(dirName(outputFile));
         string exeProcess = processExecutablePathForThisArch(plugin.arch);
         string parameterValues;
-        string bufferPattern = (plugin.bufferPattern is null) ? "" : (" -buffer " ~ plugin.bufferPattern);
+        const(char)[] bufferPattern = (plugin.bufferPattern is null) ? "" : (" -buffer " ~ plugin.bufferPattern);
         string verboseStr = verbose ? " -vverbose" : "";
         foreach (int paramIndex, double paramvalue; plugin.parameterValues)
         {
@@ -494,36 +498,38 @@ struct ProcessMeasurements
     void parse(string xmlPath)
     {
         string content = cast(string)(std.file.read(xmlPath));
-        auto doc = new Document();
-        doc.parseUtf8(content, true, true);
+        XmlDocument doc;
+        doc.parse(content);
 
-        parse(doc);
+        parse(doc.root);
     }
 
-    void parse(Document doc)
+    void parse(XmlElement doc)
     {
-        input = doc.getElementsByTagName("input")[0].innerText;
-        output = doc.getElementsByTagName("output")[0].innerText;
-        times = doc.getElementsByTagName("times")[0].innerText.to!int;
-        if (doc.getElementsByTagName("precise").length > 0) precise = true;
-        if (doc.getElementsByTagName("preroll").length > 0) preroll = true;
-        bufferPattern = doc.getElementsByTagName("buffer")[0].innerText;
-        preset = doc.getElementsByTagName("preset")[0].innerText.to!int;
-        plugin = doc.getElementsByTagName("plugin")[0].innerText;
-        pluginTimestamp = SysTime.fromISOExtString(doc.getElementsByTagName("plugin_timestamp")[0].innerText);
+        XmlElement paramNode = doc.firstChildByTagName("parameters");
 
-        foreach(e; doc.getElementsByTagName("param"))
+        input = paramNode.firstChildByTagName("input").textContent.idup;
+        output = paramNode.firstChildByTagName("output").textContent.idup;
+        times = paramNode.firstChildByTagName("times").textContent.to!int;
+        if (paramNode.hasChildWithTagName("precise")) precise = true;
+        if (paramNode.hasChildWithTagName("preroll")) preroll = true;
+        bufferPattern = paramNode.firstChildByTagName("buffer").textContent.idup;
+        preset = paramNode.firstChildByTagName("preset").textContent.to!int;
+        plugin = paramNode.firstChildByTagName("plugin").textContent.idup;
+        pluginTimestamp = SysTime.fromISOExtString(paramNode.firstChildByTagName("plugin_timestamp").textContent);
+
+        foreach(e; paramNode.getChildrenByTagName("param"))
         {
             int parameterIndex = e.getAttribute("index").to!int;
             double parameterValue = e.getAttribute("value").to!double;
             parameters[parameterIndex] = parameterValue;
         }
 
-        minSeconds = doc.getElementsByTagName("min_seconds")[0].innerText.to!double;
+        minSeconds = doc.firstChildByTagName("min_seconds").textContent.to!double;
 
-        foreach(e; doc.getElementsByTagName("run_seconds"))
+        foreach(e; doc.getChildrenByTagName("run_seconds"))
         {
-            runSeconds ~= e.innerText.to!double;
+            runSeconds ~= e.textContent.to!double;
         }
     }
 
