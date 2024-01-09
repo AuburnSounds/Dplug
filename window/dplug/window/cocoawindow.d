@@ -436,6 +436,21 @@ private:
 
             enum bool fullDraw = false;
 
+            //import core.stdc.stdio;
+            //printf("drawRect: _wfb WxH = %dx%d\n", _wfb.w, _wfb.h);
+            //printf("          width = %d  height = %d\n", _width, _height);
+            //printf("          rect = %f %f %f %f\n",
+            //    rect.origin.x,
+            //    rect.origin.y,
+            //    rect.origin.x+rect.size.width,
+            //    rect.origin.y+rect.size.height);
+
+            // Would be very interesting to find a crash there! Please contact Dplug admins if you do so.
+            assert(_wfb.w == _width);
+            assert(_wfb.h == _height);
+            assert(_wfb.w >= cast(int)(rect.origin.x+rect.size.width));
+            assert(_wfb.h >= cast(int)(rect.origin.y+rect.size.height));
+
             static if (fullDraw)
             {
                 size_t sizeNeeded = _wfb.pitch * _wfb.h;
