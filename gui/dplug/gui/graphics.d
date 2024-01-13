@@ -1045,7 +1045,12 @@ protected:
         _renderedBuffer.size(_currentUserWidth, _currentUserHeight, border_0, rowAlign_16, xMultiplicity_1, trailingSamples_3);
 
         // Extends final buffer with logical size
-        size_t sizeNeeded = byteStride(_currentLogicalWidth) * _currentLogicalHeight;
+        //
+        // Why one line more with the +1? This is to fixIssue #741 and all other related macOS bugs.
+        // This workarounds an Apple bug that made a lot of crashed between Nov2022 and Jan2024.
+        size_t sizeNeeded = byteStride(_currentLogicalWidth) * (_currentLogicalHeight + 1);
+
+
         _resizedBuffer = cast(ubyte*) alignedRealloc(_resizedBuffer, sizeNeeded, 16);
 
         debug(resizing) debugLogf("<doResize(%d, %d)\n", widthLogicalPixels, heightLogicalPixels);
