@@ -764,44 +764,6 @@ void generateLevelBoxL16(OwnedImage!L16 thisLevel,
         // themselves slower than normal D code.
 
         int x = 0;
-
-        /*
-        for ( ; x + 3 < width; x += 4)
-        {
-            // Read 4 2x2 patches of pixels in lower level
-            // A B E F I J M N
-            // C D G H K L O P
-            __m128i ABEFIJMN = _mm_loadu_si128(cast(const(__m128)*) &L0[2*x]);
-            __m128i CDGHKLOP = _mm_loadu_si128(cast(const(__m128)*) &L1[2*x]);
-            __m128i mmZero = _mm_setzero_si128();
-            __m128i ABEF = _mm_unpacklo_epi16(ABEFIJMN, mmZero);
-            __m128i IJMN = _mm_unpackhi_epi16(ABEFIJMN, mmZero);
-            __m128i CDGH = _mm_unpacklo_epi16(CDGHKLOP, mmZero);
-            __m128i KLOP = _mm_unpackhi_epi16(CDGHKLOP, mmZero);
-            __m128i sum0 = _mm_add_epi32(ABEF, CDGH); // A+C B+D E+G F+H
-            __m128i sum1 = _mm_add_epi32(IJMN, KLOP); // I+K J+L M+O N+P
-            sum0 = _mm_add_epi32(sum0, _mm_srli_si128!4(sum0));  // A+B+C+D garbage E+F+G+H garbage
-            sum1 = _mm_add_epi32(sum1, _mm_srli_si128!4(sum1));  // I+J+K+L garbage M+N+O+P garbage
-            sum0 = _mm_shuffle_epi32!0b00001000(sum0); // A+B+C+D E+F+G+H garbage garbage
-            sum1 = _mm_shuffle_epi32!0b00001000(sum1); // I+J+K+L M+N+O+P garbage garbage
-            __m128i sum = _mm_unpacklo_epi64(sum0, sum1); // A+B+C+D E+F+G+H I+J+K+L M+N+O+P
-            sum = _mm_add_epi32(sum, _mm_set1_epi32(2));
-            sum = _mm_srli_epi32(sum, 2);
-
-            // _mm_packus_epi32 not yet implemented without SSE4.1, do otherwise.
-            // As our results are comprised in 0 to 65535, we don't have negative numbers,
-            // we can simply use _mm_packs_epi32 and tricks it by extending the left most bit
-            // to make the upper range pass as negative, and avoid clip.
-            sum = _mm_slli_epi32(sum, 16);
-            sum = _mm_srai_epi32(sum, 16);
-            sum = _mm_packs_epi32(sum, mmZero);
-
-            _mm_storeu_si64(cast(__m128*) &dest[x], sum);
-        }
-
-        */
-
-        // this is better
         for (; x < width; ++x)
         {
             // A B
