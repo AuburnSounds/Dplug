@@ -298,6 +298,17 @@ nothrow:
         }
     }
 
+    /// Override this to round the parameter normalized value to some particular values.
+    /// For example for a special drag movement with right-click or control-click.
+    /// Default does nothing.
+    /// Params:
+    ///      normalizedValue The main parameter normalized value (0 to 1).
+    /// Returns: the mapped value in normalized space (0 to 1).
+    double roundParamValue(double normalizedValue, MouseState mstate)
+    {
+        return normalizedValue;
+    }
+
     override Click onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         if (!containsPoint(x, y))
@@ -317,20 +328,21 @@ nothrow:
         }
 
         _normalizedValueWhileDragging = _param.getNormalized();
+        _displacementInHeightDebt = 0;
         return Click.startDrag;
     }
 
     // Called when mouse drag this Element.
     override void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
     {
-        float displacementInHeight = cast(float)(dy) / _position.height;
+        _displacementInHeightDebt += cast(float)(dy) / _position.height;
 
         float modifier = 1.0f;
         if (mstate.shiftPressed || mstate.ctrlPressed)
             modifier *= 0.1f;
 
         double oldParamValue = _normalizedValueWhileDragging;
-        double newParamValue = oldParamValue - displacementInHeight * modifier * _sensivity;
+        double newParamValue = oldParamValue - _displacementInHeightDebt * modifier * _sensivity;
         if (mstate.altPressed)
             newParamValue = _param.getNormalizedDefault();
 
@@ -356,6 +368,8 @@ nothrow:
         if (newParamValue < 1)
             _mousePosOnLast1Cross = -float.infinity;
 
+        newParamValue = roundParamValue(newParamValue, mstate);
+
         if (newParamValue != oldParamValue)
         {
             if (auto fp = cast(FloatParameter)_param)
@@ -365,10 +379,12 @@ nothrow:
             else
                 assert(false);
             _normalizedValueWhileDragging = newParamValue;
+            _displacementInHeightDebt = 0;
         }
+
     }
 
-    // For lazy updates
+    // For lazy updates 
     override void onBeginDrag()
     {
         _param.beginParamEdit();
@@ -439,7 +455,11 @@ protected:
 
     // Normalized value last set while dragging. Necessary for integer paramerers 
     // that may round that normalized value when setting the parameter.
-    float _normalizedValueWhileDragging; 
+    float _normalizedValueWhileDragging;
+
+
+    // To support rounded mappings properly.
+    double _displacementInHeightDebt = 0.0;
 
     /// Exists because public angle properties are given in a
     /// different referential, where 0 is at the top
