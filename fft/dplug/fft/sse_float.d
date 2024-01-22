@@ -20,7 +20,7 @@ nothrow:
     
     static vec scalar_to_vector()(float a)
     {
-        return _mm_set1_ps(a);;
+        return _mm_set1_ps(a);
     }
 
     static auto shufps(int m0, int m1, int m2, int m3)(float4 a, float4 b)
