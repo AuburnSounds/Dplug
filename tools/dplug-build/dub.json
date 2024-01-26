@@ -9,5 +9,10 @@
         "commonmark-d": "~>1.0",
         "sdlang-d": "~>0.0",
         "dplug:client": { "path": "../.." }
+    },
+
+    "subConfigurations":
+    {
+        "sdlang-d": "library"
     }
 }
