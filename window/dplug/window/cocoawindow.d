@@ -477,26 +477,51 @@ private:
             }
             else
             {
-                alias r = rect;
+                /// Hear! A nice gift from Apple greatest OS in the world. Because drawRect: must
+                /// be broken every year if at all possible.
+                ///              
+                /// "Some patterns that have historically worked will require adjustment:
+                ///  Filling the dirty rect of a view inside of -drawRect. A fairly common 
+                ///  pattern is to simply rect fill the dirty rect passed into an override
+                ///  of NSView.draw(). The dirty rect can now extend outside of your view's
+                ///  bounds. This pattern can be adjusted by filling the bounds instead of 
+                ///  the dirty rect, or by setting clipsToBounds = true.
+                ///  Confusing a view’s bounds and its dirty rect. The dirty rect passed to .drawRect() 
+                ///  should be used to determine what to draw, not where to draw it. Use NSView.bounds 
+                ///  when determining the layout of what your view draws." (10905750)
+                ///
+                /// Thus is the story of Issue #835.
 
-                int origX = cast(int)rect.origin.x;
-                int origY = cast(int)rect.origin.y;
-                int width = cast(int)rect.size.width;
-                int height = cast(int)rect.size.height;
+                int rectOrigX = cast(int)rect.origin.x;
+                int rectOrigY = cast(int)rect.origin.y;
+                int rectWidth = cast(int)rect.size.width;
+                int rectHeight = cast(int)rect.size.height;
 
-                int ysource = -origY + _height - height;
+                box2i dirtyRect = box2i.rectangle(rectOrigX, rectOrigY, rectWidth, rectHeight);
+                box2i bounds = box2i(0, 0, _width, _height);
+
+                // clip dirtyRect to bounds
+                box2i clipped = dirtyRect.intersection(bounds);
+
+
+                int clippedOrigX = clipped.min.x;
+                int clippedOrigY = clipped.min.y;
+                int clippedWidth  = clipped.width;
+                int clippedHeight = clipped.height;
+
+                int ysource = -clippedOrigY + _height - clippedHeight;
 
                 assert(ysource >= 0);
                 assert(ysource < _height);
 
-                const (RGBA)* firstPixel = &(_wfb.scanline(ysource)[origX]);
-                size_t sizeNeeded = _wfb.pitch * height;
+                const (RGBA)* firstPixel = &(_wfb.scanline(ysource)[clippedOrigX]);
+                size_t sizeNeeded = _wfb.pitch * clippedHeight;
                 size_t bytesPerRow = _wfb.pitch;
 
                 CGDataProviderRef provider = CGDataProviderCreateWithData(null, firstPixel, sizeNeeded, null);
 
-                CGImageRef image = CGImageCreate(width,
-                                                 height,
+                CGImageRef image = CGImageCreate(clippedWidth,
+                                                 clippedHeight,
                                                  8,
                                                  32,
                                                  bytesPerRow,
@@ -510,8 +535,8 @@ private:
                 CGDataProviderRelease(provider);
                 scope(exit) CGImageRelease(image);
 
-                //CGRect fullRect = CGMakeRect(0, 0, width, height);
-                CGContextDrawImage(cgContext, rect, image);
+                CGRect clippedDirtyRect = CGMakeRect(clippedOrigX, clippedOrigY, clippedWidth, clippedHeight);
+                CGContextDrawImage(cgContext, clippedDirtyRect, image);
             }
         }
         else
@@ -941,7 +966,7 @@ extern(C)
 
     bool isOpaque(id self, SEL selector) nothrow @nogc
     {
-        return YES;
+        return NO; // Since with the #835 issue, doesn't cover all the dirt rect but only the part intersecting bounds.
     }
 
     // Since 10.7, called on resize.
