@@ -1694,6 +1694,16 @@ private:
             {
                 _sampleRate = *(cast(Float64*)pData);
                 _messageQueue.pushBack(makeResetStateMessage());
+
+
+                // Warn about change of latency.
+                // Most hosts listen this property.
+                foreach (ref listener; _propertyListeners)
+                {
+                    if (listener.mPropID == kAudioUnitProperty_Latency)
+                        listener.mListenerProc(listener.mProcArgs, instanceHandle(), kAudioUnitProperty_Latency, kAudioUnitScope_Global, 0);
+                }
+
                 return noErr;
             }
 
