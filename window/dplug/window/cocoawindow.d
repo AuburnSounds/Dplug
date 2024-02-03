@@ -477,8 +477,7 @@ private:
             }
             else
             {
-                /// Hear! A nice gift from Apple greatest OS in the world. Because drawRect: must
-                /// be broken every year if at all possible.
+                /// rect can be outsides frame and needs clipping.
                 ///              
                 /// "Some patterns that have historically worked will require adjustment:
                 ///  Filling the dirty rect of a view inside of -drawRect. A fairly common 
