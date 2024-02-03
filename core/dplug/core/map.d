@@ -66,7 +66,7 @@ nothrow:
     void clearContents()
     {
         destroyNoGC(_tree);
-        _tree = InternalTree.init;
+        // _tree reset to .init, still valid
     }
 
     /// Returns: A pointer to the value corresponding to this key, or null if not available.
@@ -116,7 +116,7 @@ nothrow:
     }
 
     // Iterate by value only
-
+/*
     /// Fetch a forward range on all values.
     Range!(MapRangeType.value) byValue()
     {
@@ -235,15 +235,16 @@ nothrow:
 
         auto kv = KeyValue(key, V.init);
         return ImmutableRange!(MapRangeType.value)(_rbt.range(kv));
-    }
+    }*/
 
 
 private:
 
-    alias Range(MapRangeType type) = MapRange!(RBNode!KeyValue*, type);
-    alias ConstRange(MapRangeType type) = MapRange!(const(RBNode!KeyValue)*, type); /// Ditto
-    alias ImmutableRange(MapRangeType type) = MapRange!(immutable(RBNode!KeyValue)*, type); /// Ditto
+    //alias Range(MapRangeType type) = MapRange!(RBNode!KeyValue*, type);
+    //alias ConstRange(MapRangeType type) = MapRange!(const(RBNode!KeyValue)*, type); /// Ditto
+    //alias ImmutableRange(MapRangeType type) = MapRange!(immutable(RBNode!KeyValue)*, type); /// Ditto
 
+    alias InternalTree = BTree!(K, V, less, allowDuplicates, false);
     InternalTree _tree;
 }
 
@@ -257,11 +258,11 @@ unittest
     assert(m.empty);
     assert(!m.contains(7));
 
-    auto range = m.byKey();
+    /*auto range = m.byKey();
     assert(range.empty);
     foreach(e; range)
     {        
-    }
+    }*/
 
     m[1] = "fun";
 }
@@ -342,18 +343,12 @@ nothrow:
 
     this(int dummy)
     {
-         lazyInitialize();
     }
 
     @disable this(this);
 
     ~this()
     {
-        if (isInitialized)
-        {
-            destroyFree(_rbt);
-            _rbt = null;
-        }
     }
 
     /// Insert an element in the container. 
@@ -362,112 +357,68 @@ nothrow:
     /// Returns: `true` if the insertion took place.
     bool insert(K key)
     {
-        lazyInitialize();
-        return _rbt.insert(key) != 0;
+        ubyte whatever = 0;
+        return _tree.insert(key, whatever);
     }
 
     /// Removes an element from the container.
     /// Returns: `true` if the removal took place.
     bool remove(K key)
     {
-        if (!isInitialized)
-            return false;
-        return _rbt.removeKey(key) != 0;
+        return _tree.remove(key) != 0;
     }
 
     /// Removes all elements from the set.
     void clearContents()
     {
-        if (!isInitialized)
-            return;
-        while(_rbt.length > 0)
-            _rbt.removeBack();
+        destroyNoGC(_tree);
+        // _tree reset to .init, still valid
     }
 
     /// Returns: `true` if the element is present.
     bool opBinaryRight(string op)(K key) inout if (op == "in")
     {
-        if (!isInitialized)
-            return false;
-        return key in _rbt;
+        return (key in _tree) !is null;
     }
 
     /// Returns: `true` if the element is present.
     bool opIndex(K key) const
     {
-        if (!isInitialized)
-            return false;
-        return key in _rbt;
+        return (key in _tree) !is null;
     }
 
     /// Returns: `true` if the element is present.
     bool contains(K key) const
     {
-        if (!isInitialized)
-            return false;
-        return key in _rbt;
+        return (key in _tree) !is null;
     }
 
     /// Fetch a range that spans all the elements in the container.
-    auto opSlice() inout
+    /*auto opSlice() inout
     {
-        if (!isInitialized)
-            return nullRange();
-        return _rbt[];
-    }
+        return _tree[];
+    }*/
 
     /// Returns: Number of elements in the set.
     size_t length() const
     {
-        if (!isInitialized)
-            return 0;
-        return _rbt.length();
+        return _tree.length();
     }
 
     /// Returns: `ttue` is the set has no element.
     bool empty() const
     {
-        if (!isInitialized)
-            return true;
-        return _rbt.length() == 0;
+        return _tree.empty();
     }
 
 private:
-    alias InternalTree = RedBlackTree!(K, less, allowDuplicates); 
-    InternalTree _rbt;
 
-    bool isInitialized() const
-    {
-        return _rbt !is null;
-    }
+    // dummy type
+    alias V = ubyte;
 
-    void lazyInitialize()
-    {
-        if (_rbt is null)
-        {
-            _rbt = mallocNew!InternalTree();
-        }
-    }
+    alias InternalTree = BTree!(K, V, less, allowDuplicates, false);
+    InternalTree _tree;
 
-    /**
-    * Return a range without any items.
-    */
-    auto nullRange()
-    {
-        return InternalTree.Range.init;
-    }
-
-    /// Ditto
-    auto nullRange() const
-    {
-        return InternalTree.ConstRange.init;
-    }
-
-    /// Ditto
-    auto nullRange() immutable
-    {
-        return InternalTree.ImmutableRange.init;
-    }
 }
 
 unittest
@@ -481,11 +432,12 @@ unittest
     set.clearContents();
     assert(!set.contains("toto"));
 
+    /*
     auto range = set[];
     assert(range.empty);
     foreach(e; range)
     {
-    }
+    }*/
 
     // Finally create the internal state
     set.insert("titi");
@@ -495,21 +447,15 @@ unittest
 
 unittest
 {
-    {
-        Set!(string) keywords = makeSet!string;
+    Set!(string) keywords = makeSet!string;
 
-        assert(keywords.insert("public"));
-        assert(keywords.insert("private"));
-        assert(!keywords.insert("private"));
+    assert(keywords.insert("public"));
+    assert(keywords.insert("private"));
+    assert(!keywords.insert("private"));
 
-        assert(keywords.remove("public"));
-        assert(!keywords.remove("non-existent"));
+    assert(keywords.remove("public"));
+    assert(!keywords.remove("non-existent"));
 
-        assert(keywords.contains("private"));
-        assert(!keywords.contains("public"));
-    }
-
+    assert(keywords.contains("private"));
+    assert(!keywords.contains("public"));
 }
-
-*/
-
