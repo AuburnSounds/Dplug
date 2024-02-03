@@ -157,6 +157,30 @@ nothrow:
     }
 
     /**
+        Return forward range of values, over all elements.
+    */
+    auto byValue() inout
+    {
+        return BTreeRange!(RangeType.value)(this);
+    }
+
+    /**
+        Return forward range of keys, over all elements.
+    */
+    auto byKey() inout
+    {
+        return BTreeRange!(RangeType.key)(this);
+    }
+
+    /**
+        Return forward range of a struct that has .key and .value.
+    */
+    auto byKeyValue() inout
+    {
+        return BTreeRange!(RangeType.keyValue)(this);
+    }
+
+    /**
         Erases an element from the tree, if found.
         Returns: Number of elements erased (for now: 0 or 1 only).
     */
@@ -814,6 +838,99 @@ private:
             }
         }
     }    
+
+
+public:
+
+    enum RangeType
+    {
+        key,
+        value,
+        keyValue
+    }
+
+    /// Btree Range 
+    static struct BTreeRange(RangeType type)
+    {
+    nothrow @nogc:
+        this(ref const(BTree) tree)
+        {
+            _current = tree._root;
+            while(_current.isLeaf)
+                _current = _current.children[0];
+        }
+
+        bool empty() const
+        {
+            return _current is null;
+        }
+
+        auto front()
+        {
+            static if (type == RangeType.key)
+                return _current.kv[_currentItem].key;
+            static if (type == RangeType.value)
+                return _current.kv[_currentItem].value; 
+            static if (type == RangeType.keyValue)
+                return _current.kv[_currentItem];
+        }
+
+        void popFront()
+        {
+            //  v v  v  v v
+            //       2
+            //     /   \
+            //  0 1     3 4
+            // If not a leaf, go inside the next children
+            if (!_current.isLeaf)
+            {
+                _current = _current.children[_currentItem];
+                _currentItem = 0;
+            }
+            else
+            {
+                _currentItem++;
+                if (_currentItem >= _current.numKeys)
+                {
+                search_next:
+                    const(Node)* child = _current;
+                    const(Node)* parent = _current.parent;
+
+                    if (parent)
+                    {
+                        _currentItem = -2;
+                        
+                        // Find index of child.
+                        // PERF: probably there is a better way to do it.
+                        for (int n = 0; n < parent.numChildren(); ++n)
+                        {
+                            if (parent.children[n] == child)
+                            {
+                                _currentItem = n + 1;
+                                if (_currentItem >= parent.numKeys)
+                                {
+                                    // Go up one level.
+                                    _current = parent;
+                                    goto search_next;
+                                }
+                            }
+                        }
+                        assert(_currentItem != -2);
+                    }
+                    else
+                    {
+                        // finished iterating the _root, no more items
+                        _current = null;
+                    }
+                }
+            }            
+        }
+
+    private:
+        // Next item returned by .front
+        const(Node)* _current;
+        int _currentItem;
+    }
 }
 
 // <digression>
@@ -921,4 +1038,12 @@ unittest // "in" without initialization
     BTree!(int, int) m;
     void* p = 1 in m;
     assert(p is null);
+}
+
+unittest
+{
+    BTree!(int, int) m;
+    m.insert(4, 5);
+    m.insert(4, 9);
+
 }

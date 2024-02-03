@@ -116,32 +116,23 @@ nothrow:
     }
 
     // Iterate by value only
-/*
+
     /// Fetch a forward range on all values.
-    Range!(MapRangeType.value) byValue()
+    auto byValue()
     {
-        if (!isInitialized)
-            return Range!(MapRangeType.value).init;
-
-        return Range!(MapRangeType.value)(_rbt[]);
+        return _tree.byValue();
     }
 
     /// ditto
-    ConstRange!(MapRangeType.value) byValue() const
+    auto byValue() const
     {
-        if (!isInitialized)
-            return ConstRange!(MapRangeType.value).init;
-
-        return ConstRange!(MapRangeType.value)(_rbt[]);
+        return _tree.byValue();
     }
 
     /// ditto
-    ImmutableRange!(MapRangeType.value) byValue() immutable
+    auto byValue() immutable
     {
-        if (!isInitialized)
-            return ImmutableRange!(MapRangeType.value).init;
-        
-        return ImmutableRange!(MapRangeType.value)(_rbt[]);
+        return _tree.byValue();
     }
 
     // default opSlice is like byValue for builtin associative arrays
@@ -150,61 +141,43 @@ nothrow:
     // Iterate by key only
 
     /// Fetch a forward range on all keys.
-    Range!(MapRangeType.key) byKey()
+    auto byKey()
     {
-        if (!isInitialized)
-            return Range!(MapRangeType.key).init;
-
-        return Range!(MapRangeType.key)(_rbt[]);
+        return _tree.byKey();
     }
 
     /// ditto
-    ConstRange!(MapRangeType.key) byKey() const
+    auto byKey() const
     {
-        if (!isInitialized)
-            return ConstRange!(MapRangeType.key).init;
-
-        return ConstRange!(MapRangeType.key)(_rbt[]);
+        return _tree.byKey();
     }
 
     /// ditto
-    ImmutableRange!(MapRangeType.key) byKey() immutable
+    auto byKey() immutable
     {
-        if (!isInitialized)
-            return ImmutableRange!(MapRangeType.key).init;
-
-        return ImmutableRange!(MapRangeType.key)(_rbt[]);
+        return _tree.byKey();
     }
 
     // Iterate by key-value
-
-    /// Fetch a forward range on all keys.
-    Range!(MapRangeType.keyValue) byKeyValue()
+    auto byKeyValue()
     {
-        if (!isInitialized)
-            return Range!(MapRangeType.keyValue).init;
-
-        return Range!(MapRangeType.keyValue)(_rbt[]);
+        return _tree.byKeyValue();
     }
 
     /// ditto
-    ConstRange!(MapRangeType.keyValue) byKeyValue() const
+    auto byKeyValue() const
     {
-        if (!isInitialized)
-            return ConstRange!(MapRangeType.keyValue).init;
-
-        return ConstRange!(MapRangeType.keyValue)(_rbt[]);
+        return _tree.byKeyValue();
     }
 
     /// ditto
-    ImmutableRange!(MapRangeType.keyValue) byKeyValue() immutable
+    auto byKeyValue() immutable
     {
-        if (!isInitialized)
-            return ImmutableRange!(MapRangeType.keyValue).init;
-
-        return ImmutableRange!(MapRangeType.keyValue)(_rbt[]);
+        return _tree.byKeyValue();
     }
 
+
+    /+
     // Iterate by single value (return a range where all elements have equal key)
 
     /// Fetch a forward range on all elements with given key.
@@ -235,7 +208,8 @@ nothrow:
 
         auto kv = KeyValue(key, V.init);
         return ImmutableRange!(MapRangeType.value)(_rbt.range(kv));
-    }*/
+    }*
+    +/
 
 
 private:
@@ -393,12 +367,6 @@ nothrow:
         return (key in _tree) !is null;
     }
 
-    /// Fetch a range that spans all the elements in the container.
-    /*auto opSlice() inout
-    {
-        return _tree[];
-    }*/
-
     /// Returns: Number of elements in the set.
     size_t length() const
     {
@@ -410,6 +378,29 @@ nothrow:
     {
         return _tree.empty();
     }
+
+    // Iterate by value only
+
+    /// Fetch a forward range on all values.
+    auto byValue()
+    {
+        return _tree.byValue();
+    }
+
+    /// ditto
+    auto byValue() const
+    {
+        return _tree.byValue();
+    }
+
+    /// ditto
+    auto byValue() immutable
+    {
+        return _tree.byValue();
+    }
+
+    // default opSlice is like byValue for builtin associative arrays
+    alias opSlice = byValue;
 
 private:
 
@@ -431,13 +422,12 @@ unittest
     assert(set.empty);
     set.clearContents();
     assert(!set.contains("toto"));
-
-    /*
+    
     auto range = set[];
     assert(range.empty);
     foreach(e; range)
     {
-    }*/
+    }
 
     // Finally create the internal state
     set.insert("titi");
