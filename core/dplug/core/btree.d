@@ -28,6 +28,9 @@ debug(btree)
     This `BTree` is designed to operate even without initialization through
     `makeBTree`.
 
+    Note: the keys don't need opEquals, but !(a < b) && !(b > a) should 
+          imply that a == b
+
     Reference: 
         http://staff.ustc.edu.cn/~csli/graduate/algorithms/book6/chap19.htm
         https://en.wikipedia.org/wiki/B-tree
@@ -334,7 +337,9 @@ private:
         while (i < x.numKeys && _less(x.kv[i].key, key))
             i += 1;
 
-        if (i < x.numKeys && key == x.kv[i].key)
+        // Like in Phobos Red Black tree, !less(a,b) && !less(b,a) means equality.
+
+        if (i < x.numKeys && !_less(key, x.kv[i].key))
         {
             index = i;
             return x;
@@ -360,9 +365,9 @@ private:
     {
         int i = 0;
         while (i < node.numKeys && _less(node.kv[i].key, key))
-            i += 1;            
+            i += 1;
 
-        if (i < node.numKeys && key == node.kv[i].key)
+        if (i < node.numKeys && !_less(key, node.kv[i].key))
         {
             // Found the key here.
             keyIndex = i;
