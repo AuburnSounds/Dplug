@@ -209,15 +209,7 @@ nothrow:
             return 0;
 
         int keyIndex;
-        Node* parent;
-        int childIndexInParent;
-
-        Node* node = findNodeAndItsParent(_root, 
-                                          key, 
-                                          -1, // invalid child index
-                                          keyIndex,
-                                          parent,
-                                          childIndexInParent);
+        Node* node = findNode(_root, key, keyIndex);
         if (node is null)
             return 0; // not found
 
@@ -350,44 +342,6 @@ private:
                 return null;
             else
                 return findNode(x.children[i], key, index);
-        }
-    }
-
-    // Return node containing key at index keyIndex.
-    // Return parent is non-null (ie. non root), along with node child index
-    // in parent store.
-    Node* findNodeAndItsParent(Node* node, 
-                               K key, 
-                               int childIndex,
-                               out int keyIndex, 
-                               ref Node* parent,
-                               out int childIndexInParentStore)
-    {
-        int i = 0;
-        while (i < node.numKeys && _less(node.kv[i].key, key))
-            i += 1;
-
-        if (i < node.numKeys && !_less(key, node.kv[i].key))
-        {
-            // Found the key here.
-            keyIndex = i;
-            childIndexInParentStore = childIndex;
-            return node;
-        }
-        else
-        {
-            if (node.isLeaf)
-                return null;
-            else
-            {
-                parent = node;
-                return findNodeAndItsParent(node.children[i], 
-                                            key, 
-                                            i, 
-                                            keyIndex, 
-                                            parent, 
-                                            childIndexInParentStore);
-            }
         }
     }
 
