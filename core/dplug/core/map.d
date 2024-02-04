@@ -358,20 +358,20 @@ nothrow:
 
     // Iterate by value only
 
-    /// Fetch a forward range on all values.
-    auto byValue()
+    /// Fetch a forward range on all keys.
+    auto byKey()
     {
-        return _tree.byValue();
+        return _tree.byKey();
     }
 
     /// ditto
-    auto byValue() const
+    auto byKey() const
     {
-        return _tree.byValue();
+        return _tree.byKey();
     }
 
-    // default opSlice is like byValue for builtin associative arrays
-    alias opSlice = byValue;
+    // default opSlice is like byKey for sets, since the value is a fake value.
+    alias opSlice = byKey;
 
 private:
 
