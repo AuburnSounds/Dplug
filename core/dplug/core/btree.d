@@ -693,8 +693,8 @@ private:
             // Check internal key ordering
             for (int n = 0; n + 1 < node.numKeys; ++n)
             {
-                K k1 = node.kv[n].key;
-                K k2 = node.kv[n+1].key;
+                const(K) k1 = node.kv[n].key;
+                const(K) k2 = node.kv[n+1].key;
                 static if (allowDuplicates)
                 {
                     assert(! _less(k2, k1));
@@ -708,7 +708,7 @@ private:
             // Check key orderings with children. All keys of child must be inside parent range.
             for (int n = 0; n < node.numKeys; ++n)
             {
-                K k = node.kv[n].key;
+                const(K) k = node.kv[n].key;
 
                 // All key of left children must be smaller, right must be larger.
                 const(Node)* left = node.children[n];
