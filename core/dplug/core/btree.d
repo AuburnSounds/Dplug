@@ -32,6 +32,7 @@ debug(btree)
         http://staff.ustc.edu.cn/~csli/graduate/algorithms/book6/chap19.htm
         https://en.wikipedia.org/wiki/B-tree
 */
+// TODO: map over range of keys
 struct BTree(K,                            // type of the keys
              V,                            // type of the values
              alias less = "a < b",         // must be strict inequality
@@ -159,25 +160,40 @@ nothrow:
     /**
         Return forward range of values, over all elements.
     */
-    auto byValue() inout
+    auto byValue()
     {
         return BTreeRange!(RangeType.value)(this);
+    }
+    ///ditto
+    auto byValue() const
+    {
+        return const(BTreeRange!(RangeType.value))(this);
     }
 
     /**
         Return forward range of keys, over all elements.
     */
-    auto byKey() inout
+    auto byKey()
     {
         return BTreeRange!(RangeType.key)(this);
     }
-
+    ///ditto
+    auto byKey() const
+    {
+        return const(BTreeRange!(RangeType.key))(this);
+    }
+    
     /**
         Return forward range of a struct that has .key and .value.
     */
-    auto byKeyValue() inout
+    auto byKeyValue()
     {
         return BTreeRange!(RangeType.keyValue)(this);
+    }
+    ///ditto
+    auto byKeyValue() const
+    {
+        return const(BTreeRange!(RangeType.keyValue))(this);
     }
 
     /**
@@ -853,10 +869,21 @@ public:
     static struct BTreeRange(RangeType type)
     {
     nothrow @nogc:
-        this(ref const(BTree) tree)
+        this(ref BTree tree)
         {
             _current = tree._root;
-            while(_current.isLeaf)
+            if (_current is null)
+                return;
+            while(!_current.isLeaf)
+                _current = _current.children[0];
+        }
+
+        this(ref const(BTree) tree)
+        {
+            _current = cast(Node*)(tree._root); // const_cast here
+            if (_current is null)
+                return;
+            while(!_current.isLeaf)
                 _current = _current.children[0];
         }
 
@@ -877,10 +904,6 @@ public:
 
         void popFront()
         {
-            //  v v  v  v v
-            //       2
-            //     /   \
-            //  0 1     3 4
             // If not a leaf, go inside the next children
             if (!_current.isLeaf)
             {
@@ -893,15 +916,17 @@ public:
                 if (_currentItem >= _current.numKeys)
                 {
                 search_next:
-                    const(Node)* child = _current;
-                    const(Node)* parent = _current.parent;
+                    Node* child = _current;
+                    Node* parent = _current.parent;
 
                     if (parent)
                     {
                         _currentItem = -2;
                         
                         // Find index of child.
-                        // PERF: probably there is a better way to do it.
+                        // Possibly there is a better way to do it with a stack somewhere
+                        // but that would require to know the maximum level.
+                        // That, or change everything to be B+Tree.
                         for (int n = 0; n < parent.numChildren(); ++n)
                         {
                             if (parent.children[n] == child)
@@ -923,12 +948,12 @@ public:
                         _current = null;
                     }
                 }
-            }            
+            }
         }
 
     private:
         // Next item returned by .front
-        const(Node)* _current;
+        Node* _current;
         int _currentItem;
     }
 }
@@ -1021,6 +1046,9 @@ unittest // dupe keys
     {
         m.insert(KEY, 1 << n);
     }
+
+    foreach(k; m.byKey)
+        assert(k == KEY);
 
     int r = 0;
     for (int n = 0; n < 32; ++n)

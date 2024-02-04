@@ -129,12 +129,6 @@ nothrow:
         return _tree.byValue();
     }
 
-    /// ditto
-    auto byValue() immutable
-    {
-        return _tree.byValue();
-    }
-
     // default opSlice is like byValue for builtin associative arrays
     alias opSlice = byValue;
 
@@ -152,12 +146,6 @@ nothrow:
         return _tree.byKey();
     }
 
-    /// ditto
-    auto byKey() immutable
-    {
-        return _tree.byKey();
-    }
-
     // Iterate by key-value
     auto byKeyValue()
     {
@@ -169,13 +157,6 @@ nothrow:
     {
         return _tree.byKeyValue();
     }
-
-    /// ditto
-    auto byKeyValue() immutable
-    {
-        return _tree.byKeyValue();
-    }
-
 
     /+
     // Iterate by single value (return a range where all elements have equal key)
@@ -214,10 +195,6 @@ nothrow:
 
 private:
 
-    //alias Range(MapRangeType type) = MapRange!(RBNode!KeyValue*, type);
-    //alias ConstRange(MapRangeType type) = MapRange!(const(RBNode!KeyValue)*, type); /// Ditto
-    //alias ImmutableRange(MapRangeType type) = MapRange!(immutable(RBNode!KeyValue)*, type); /// Ditto
-
     alias InternalTree = BTree!(K, V, less, allowDuplicates, false);
     InternalTree _tree;
 }
@@ -232,11 +209,11 @@ unittest
     assert(m.empty);
     assert(!m.contains(7));
 
-    /*auto range = m.byKey();
+    auto range = m.byKey();
     assert(range.empty);
     foreach(e; range)
-    {        
-    }*/
+    {
+    }
 
     m[1] = "fun";
 }
@@ -389,12 +366,6 @@ nothrow:
 
     /// ditto
     auto byValue() const
-    {
-        return _tree.byValue();
-    }
-
-    /// ditto
-    auto byValue() immutable
     {
         return _tree.byValue();
     }
