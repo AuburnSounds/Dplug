@@ -36,6 +36,15 @@ debug(btree)
         https://en.wikipedia.org/wiki/B-tree
 */
 // TODO: map over range of keys
+// PERF: tune minDegree vs size of K and V, there must be a sweet spot
+// PERF: allocate nodes in memory pool, to be built in bulk.
+//       How does reclaim works in that case, in a way that doesn't explode 
+//       memory?
+// PERF: first node could be interned in the struct itself (interior pointer)
+//       however that requires first to tweak the branching factor with size 
+//       of item.
+// PERF: (requires: Node memory pool) find a way to deallocate all at once
+// PERF: find how to use duplicateKeyIsUB for Map and Set
 struct BTree(K,                            // type of the keys
              V,                            // type of the values
              alias less = "a < b",         // must be strict inequality
@@ -44,7 +53,7 @@ struct BTree(K,                            // type of the keys
 
              bool duplicateKeyIsUB = false) // user guarantees no duplicates
                                             // for faster inserts 
-                                            // (works when allowDuplicates is false)
+                                            // (works when !allowDuplicates)
 {
 public:
 nothrow:
@@ -53,7 +62,7 @@ nothrow:
     /// Called "t" or "minimum degree" in litterature, can never be < 2.
     /// Make it lower (eg: 2) to test tree algorithms.
     /// See <digression> below to see why this is not B-Tree "order".
-    enum minDegree = 16; // PERF: tune this vs size of K and V
+    enum minDegree = 16;
 
     // Every node must have >= minKeysPerNode and <= maxKeysPerNode.
     // The root node is allowed to have < minKeysPerNode (but not zero).
@@ -85,7 +94,7 @@ nothrow:
     {
         if (_root)
         {
-            _root.reclaimMemory(); // PERF: find a way to deallocate all at once
+            _root.reclaimMemory();
             _root = null;
         }
     }    
@@ -322,14 +331,15 @@ private:
             return &(node.kv[index]);
     }
 
-    // Return containing node + index of value in store, or null of nothing found.
+    // Return containing node + index of value in store, or null if not found.
     inout(Node)* findNode(inout(Node)* x, K key, out int index) inout
     {
         int i = 0;
         while (i < x.numKeys && _less(x.kv[i].key, key))
             i += 1;
 
-        // Like in Phobos Red Black tree, !less(a,b) && !less(b,a) means equality.
+        // Like in Phobos' Red Black tree, use !less(a,b) && !less(b,a) instead
+        // of opEquals.
 
         if (i < x.numKeys && !_less(key, x.kv[i].key))
         {
@@ -395,7 +405,7 @@ private:
     // y = a full node to split
     void splitChild(Node* x, int i, Node* y)
     {
-        // create new child, that will take half the keyvalues and children of 
+        // create new child, that will take half the keyvalues and children of
         // the full y node
         Node* z = allocateNode();
         z.isLeaf = y.isLeaf;
@@ -497,8 +507,8 @@ private:
 
         if (left && left.numKeys > minKeys)
         {
-            // Take largest key from left sibling, it becomes the new pivot in 
-            // parent. Old pivot erase our key (and if non-leaf, gets the left 
+            // Take largest key from left sibling, it becomes the new pivot in
+            // parent. Old pivot erase our key (and if non-leaf, gets the left
             // sibling right subtree + the node one child).
             assert(left.isLeaf == node.isLeaf);
             KeyValue largest = left.kv[left.numKeys - 1];
@@ -527,8 +537,8 @@ private:
         }
         else if (right && right.numKeys > minKeys)
         {
-            // take smallest key from right sibling, it becomes the new pivot in parent
-            // old pivot erase our key
+            // Take smallest key from right sibling, it becomes the new pivot 
+            // in parent. Old pivot erase our key.
             assert(right.isLeaf == node.isLeaf);
             KeyValue smallest = right.kv[0];
             Node* leftMostChild = right.children[0];
@@ -567,7 +577,7 @@ private:
         }
     }
 
-    // merge children nth and nth+1, which must both have min amount of keys
+    // Merge children nth and nth+1, which must both have min amount of keys
     // it makes one node with max amount of keys
     void mergeChild(Node* parent, int nth)
     {
@@ -620,10 +630,12 @@ private:
         }
     }
 
-    void checkNodeInvariant(const(Node)* node, const(Node)* parent, ref int count) const
+    void checkNodeInvariant(const(Node)* node, const(Node)* parent, 
+                            ref int count) const
     {
-        // Each node of the tree except the root must contain at least minDegree − 1 keys 
-        // (and hence must have at least `minDegree` children if it is not a leaf).        
+        // Each node of the tree except the root must contain at least 
+        // `minDegree − 1` keys (and hence must have at least `minDegree` 
+        // children if it is not a leaf).        
         if (parent !is null)
         {
             assert(node.numKeys >= minKeys);
@@ -664,12 +676,14 @@ private:
                 }
             }
 
-            // Check key orderings with children. All keys of child must be inside parent range.
+            // Check key orderings with children. All keys of child must be 
+            // inside parent range.
             for (int n = 0; n < node.numKeys; ++n)
             {
                 const(K) k = node.kv[n].key;
 
-                // All key of left children must be smaller, right must be larger.
+                // All key of left children must be smaller, right must be 
+                // larger.
                 const(Node)* left = node.children[n];
                 const(Node)* right = node.children[n+1];
 
@@ -910,7 +924,7 @@ public:
                             Node* parent = _current.parent;
 
                             // Possibly there is a better way to do it with a 
-                            // stack somewhere. But that would require to know 
+                            // stack somewhere. But that would require to know
                             // the maximum level.
                             // That, or change everything to be B+Tree.
                             for (int n = 0; n < parent.numChildren(); ++n)
@@ -1068,5 +1082,4 @@ unittest
     BTree!(int, int) m;
     m.insert(4, 5);
     m.insert(4, 9);
-
 }
