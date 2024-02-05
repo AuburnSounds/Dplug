@@ -863,49 +863,85 @@ public:
 
         void popFront()
         {
+            // Basically, _current and _currentItem points at a key.
+            //
+            //       3
+            //     /   \
+            //  1-2     4-5
+            //
+            //  Case 1: increment _currentItem
+            //  Case 2: increment _currentItem, see that it's out of bounds.
+            //          go up the parent chain, find position of child
+            //          repeat if needed
+            //          then point at pivot if any, or terminate.
+            //  Case 3: See that you're not in a leaf.
+            //          Go down to the leftmost leaf of the right sub-tree.
+            //          Start at first item. This one always exist.
+            //  Case 4: same as case 1. 
+            //  Case 5: same as case 2.
+
             // If not a leaf, go inside the next children
             if (!_current.isLeaf)
             {
-                _current = _current.children[_currentItem];
+                // Case 3
+                assert(_currentItem + 1 < _current.numChildren);
+                _current = _current.children[_currentItem+1];
+                while (!_current.isLeaf)
+                    _current = _current.children[0];
                 _currentItem = 0;
             }
             else
             {
-                _currentItem++;
+                _currentItem += 1;
                 if (_currentItem >= _current.numKeys)
                 {
-                search_next:
-                    Node* child = _current;
-                    Node* parent = _current.parent;
-
-                    if (parent)
+                    while(true)
                     {
-                        _currentItem = -2;
-                        
-                        // Find index of child.
-                        // Possibly there is a better way to do it with a stack somewhere
-                        // but that would require to know the maximum level.
-                        // That, or change everything to be B+Tree.
-                        for (int n = 0; n < parent.numChildren(); ++n)
+                        if (_current.parent is null)
                         {
-                            if (parent.children[n] == child)
+                            _current = null; // end of iteration
+                            break;
+                        }
+                        else
+                        {
+                            // Find position of child in parent
+                            int posInParent = -2;
+                            Node* child = _current;
+                            Node* parent = _current.parent;
+
+                            // Possibly there is a better way to do it with a 
+                            // stack somewhere. But that would require to know 
+                            // the maximum level.
+                            // That, or change everything to be B+Tree.
+                            for (int n = 0; n < parent.numChildren(); ++n)
                             {
-                                _currentItem = n + 1;
-                                if (_currentItem >= parent.numKeys)
+                                if (parent.children[n] == child)
                                 {
-                                    // Go up one level.
-                                    _current = parent;
-                                    goto search_next;
+                                    posInParent = n;
+                                    break;
                                 }
                             }
+
+                            assert(posInParent != -2); // else tree invalid
+
+                            if (posInParent < parent.numKeys)
+                            {
+                                // Point at pivot
+                                _current = parent;
+                                _currentItem = posInParent;
+                                break;
+                            }
+                            else
+                            {
+                                // continue searching up for a pivot
+                                _current = parent;
+                            }
                         }
-                        assert(_currentItem != -2);
                     }
-                    else
-                    {
-                        // finished iterating the _root, no more items
-                        _current = null;
-                    }
+                }
+                else
+                {
+                    // Case 1, nothing to do.
                 }
             }
         }
