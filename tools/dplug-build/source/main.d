@@ -351,7 +351,7 @@ int main(string[] args)
         if (compiler_x86_64 is null)
             compiler_x86_64 = compiler;
 
-        Plugin plugin = readPluginDescription(rootDir);
+        Plugin plugin = readPluginDescription(rootDir, quiet);
 
         // Get configurations
         string[] configurations;
@@ -1361,7 +1361,7 @@ int main(string[] args)
             if (extension(licensePathReal) == ".md")
             {
                 // Convert license markdown to HTML
-                cwritefln("*** Converting license file to HTML... ");
+                if (!quiet) cwritefln("*** Converting license file to HTML... ");
                 string markdown = cast(string)std.file.read(licensePathReal);
 
                 // Subsitute predefined macros to plugin.json specific values. 
@@ -1377,7 +1377,7 @@ int main(string[] args)
                 // Write a file with macro expanded and converted to HTML, for the Mac installer.
                 string html = convertMarkdownFileToHTML(markdown);
                 std.file.write(licensePath, html);
-                cwritefln(" =&gt; OK\n".lgreen);
+                if (!quiet) cwritefln(" =&gt; OK\n".lgreen);
             }
             else
                 throw new Exception("License file should be a Markdown .md file");
@@ -1466,7 +1466,7 @@ void buildPlugin(OS targetOS,
         // When using the newer LDC and DUB, we need to ensure static linking on Windows.
         // And the ONLY way is now using DFLAGS.
         // This requires LDC 1.28+, but Dplug already required that.
-        info("ldc compiler detected, using a modified DFLAGS for proper Windows druntime static linking");
+        if (!quiet) info("ldc compiler detected, using a modified DFLAGS for proper Windows druntime static linking");
         environment["DFLAGS"] = "-fvisibility=hidden -dllimport=none";
     }
 

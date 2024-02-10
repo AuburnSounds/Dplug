@@ -643,7 +643,7 @@ class DplugBuildBuiltCorrectlyException : Exception
     }
 }
 
-Plugin readPluginDescription(string rootDir)
+Plugin readPluginDescription(string rootDir, bool quiet)
 {
     string dubJsonPath = to!string(buildPath(rootDir, "dub.json").array);
     string dubSDLPath = to!string(buildPath(rootDir, "dub.sdl").array);
@@ -776,7 +776,7 @@ Plugin readPluginDescription(string rootDir)
     }
     catch(Exception e)
     {
-        info("Missing \"pluginName\" in plugin.json (eg: \"My Compressor\")\n        => Using dub.json \"name\" key instead.");
+        if (!quiet) info("Missing \"pluginName\" in plugin.json (eg: \"My Compressor\")\n        => Using dub.json \"name\" key instead.");
         result.pluginName = result.name;
     }
 
@@ -811,7 +811,7 @@ Plugin readPluginDescription(string rootDir)
     }
     catch(Exception e)
     {
-        info("Missing \"licensePath\" in plugin.json (eg: \"license.txt\")");
+        if (!quiet) info("Missing \"licensePath\" in plugin.json (eg: \"license.txt\")");
     }
 
     try
@@ -904,7 +904,7 @@ Plugin readPluginDescription(string rootDir)
     }
     catch(Exception e)
     {
-        info("Missing \"iconPath-windows\" in plugin.json (eg: \"gfx/myIcon.ico\")");
+        if (!quiet) info("Missing \"iconPath-windows\" in plugin.json (eg: \"gfx/myIcon.ico\")");
     }
 
     try
@@ -913,7 +913,7 @@ Plugin readPluginDescription(string rootDir)
     }
     catch(Exception e)
     {
-        info("Missing \"iconPath-osx\" in plugin.json (eg: \"gfx/myIcon.png\")");
+        if (!quiet) info("Missing \"iconPath-osx\" in plugin.json (eg: \"gfx/myIcon.png\")");
     }
 
     // Mandatory keys, but with workarounds
