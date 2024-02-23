@@ -117,7 +117,7 @@ void usage()
     cwriteln("  💠   # Build arm64 Audio Unit plugin for profiling with LDC".lgreen);
     cwriteln("       dplug-build --compiler ldc2 -a arm64 -c AU -b release-debug".lcyan);
     cwriteln;
-    cwriteln("  💠   # Builds an x86 VST3 in given directory".lgreen);
+    cwriteln("  💠   # Build an x86 VST3 in given directory".lgreen);
     cwriteln("       dplug-build --root ../products/my-product -c VST3-CONF -a x86".lcyan);
     cwriteln;
     cwriteln;
@@ -129,7 +129,7 @@ void usage()
     cwriteln("  dplug-build".lcyan ~ " needs a " ~ "plugin.json".lcyan ~ " file and will help write it.");
     cwriteln("  Some information is also gathered from " ~ "dub.json".lcyan ~ " or " ~ "dub.sdl".lcyan ~ ".");
     cwriteln();
-    cwriteln("  Be sure to check the Dplug Wiki!");
+    cwriteln("  Be sure to check the Dplug Wiki!✨");
     cwriteln("  💠  https://github.com/AuburnSounds/Dplug/wiki".lcyan);
     cwriteln();
 }
