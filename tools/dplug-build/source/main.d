@@ -70,72 +70,67 @@ void usage()
 {
     void flag(string arg, string desc, string possibleValues, string defaultDesc)
     {
-        string argStr = format("        %s", arg);
+        string argStr = format("  🔶 %s", arg);
         cwrite(argStr.lcyan);
-        for(size_t i = argStr.length; i < 24; ++i)
+        for(size_t i = argStr.length; i < 21; ++i)
             write(" ");
         cwritefln("%s", desc);
         if (possibleValues)
-            cwritefln("                        Possible values: ".grey ~ "%s".yellow, possibleValues);
+            cwritefln("                   Accepts: ".grey ~ "%s".yellow, possibleValues);
         if (defaultDesc)
-            cwritefln("                        Default: ".grey ~ "%s".lcyan, defaultDesc);
-        cwriteln;
+            cwritefln("                   Default: ".grey ~ "%s", defaultDesc.orange);
+   //     cwriteln;
     }
 
     cwriteln();
     cwriteln( "This is the " ~ "dplug-build".lcyan ~ " tool: plugin bundler and DUB front-end.");
     cwriteln();
-    cwriteln("FLAGS");
+    cwriteln("◻️──────────── <on_red> FLAGS </on_red> ───────────◻️ 😸🚩".white);
     cwriteln();
-    flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | arm64 | all", "Windows =&gt; x86_64   macOS =&gt; all    Linux =&gt; x86_64");
-    flag("-b --build", "Selects build type.", "same ones as dub accepts", "debug");
-    flag("--compiler", "Selects D compiler.", "same ones as dub accepts", "ldc2");
-    flag("-c --config", "Adds a build configuration.", "VST2 | VST3 | AU | AAX | LV2 | name starting with \"VST2\", \"VST3\",\"AU\", \"AAX\", or \"LV2\"", "all");
-    flag("-f --force", "Forces rebuild", null, "no");
-    flag("--combined", "Combined build, important for cross-module inlining with LDC!", null, "no");
-    flag("--os", "Cross-compile to another OS." ~ "(FUTURE)".lred, "linux | macos | windows | autodetect", "build OS");
-    flag("-q --quiet", "Quieter output", null, "no");
-    flag("-v --verbose", "Verbose output", null, "no");
-    flag("--no-color", "Disable colored output", null, null);
-    flag("-sr --skip-registry", " Skip checking the DUB registry\n                        Avoid network, doesn't update dependencies", null, "no");
-    flag("--final", "Shortcut for " ~ "--combined -b release-nobounds".lcyan, null, null);
-    flag("--parallel", "Use dub --parallel".lcyan, null, "no");
-    flag("--root", "Path to operate in instead of the current working dir", null, ".");
-    flag("--installer", "Make an installer " ~ "(Windows and OSX only)".lred, null, "no");
-    flag("--notarize", "Notarize the installer " ~ "(OSX only)".lred, null, "no");
-    flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only)".lred, null, "no");
-    flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only)".lred, null, "no");
-    flag("--rez", "Generate Audio Unit .rsrc file with Rez " ~ "(OSX only)".lred, null, "no");
-    flag("--legacy-pt10", "Allow creation of x86 AAX for Protools 10 support" ~ " (Windows only)".lred, null, "no");
-    flag("--compiler-x86_64", " Force a particular compiler for x86_64 architecture.", null, "Use same binary as --compiler");
+    flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | arm64 | all", "Windows➡️x86_64   macOS➡️all   Linux➡️x86_64");
+    flag("-b --build", "Selects build type, same as DUB.", null, "debug");
+    flag("-c --config", "Selects build configuration. Name must have known prefix.", "VST2x | VST3x | AUx | AAXx | LV2x | FLPx", "first one in dub.json");
+    flag("--compiler", "Selects D compiler, same as DUB.", null, "ldc2");
+    flag("--compiler-x86_64", " Force a particular compiler for x86_64 architecture.", null, "same as --compiler");
+    flag("--combined", "Combined build, important for performance.", null, null);
+    flag("--final", "Release. Shortcut for --combined -b release-nobounds.", null, null);
+    flag("-f --force", "Force rebuild.", null, null);
+    flag("-q --quiet", "Quieter output.", null, null);
+    flag("-v --verbose", "Verbose output.", null, null);
+    flag("--no-color", "Disable colored output.", null, null);
+    flag("--parallel", "Use dub --parallel.", null, null);
+    flag("--root", "Path were plugin.json is.", null, "current working directory");
+    flag("--installer", "Make an installer " ~ "                   (Windows, macOS)".lred, null, null);
+    flag("--notarize", "Notarize the installer " ~ "                       (macOS)".lred, null, null);
+    flag("--publish", "Copy plugin in system directories " ~ "            (macOS)".lred, null, null);
+    flag("--auval", "Audio Unit validation with auval " ~ "             (macOS)".lred, null, null);
+    
+    flag("--os", "Cross-compile to another OS." ~ "          (future)".lred, "linux | macos | windows | autodetect", "build OS");
     flag("-h --help", "Shows this help", null, null);
 
     cwriteln();
-    cwriteln("EXAMPLES");
+    cwriteln("◻️────────── <on_red> EXAMPLES </on_red> ──────────◻️ 😸💡".white);
     cwriteln();
-    cwriteln("        # Releases an optimized VST2/AU plugin for all supported architecture".lgreen);
-    cwriteln("        dplug-build --final -c VST2-CONFIG -c AU-CONFIG -a all".lcyan);
+    cwriteln("  💠   # Make optimized VST2/AU plugin for all supported architectures".lgreen);
+    cwriteln("       dplug-build --final -c VST2-CONF -c AU-CONF -a all".lcyan);
     cwriteln();
-    cwriteln("        # Builds a x86_64 Audio Unit plugin for profiling with DMD".lgreen);
-    cwriteln("        dplug-build --compiler dmd -a x86_64 --config AU -b release-debug".lcyan);
+    cwriteln("  💠   # Build arm64 Audio Unit plugin for profiling with LDC".lgreen);
+    cwriteln("       dplug-build --compiler ldc2 -a arm64 -c AU -b release-debug".lcyan);
     cwriteln;
-    cwriteln("        # Builds an arm64 VST3 in given directory".lgreen);
-    cwriteln("        dplug-build --root ../products/my-product -c VST3-CONFIG -a arm64".lcyan);
+    cwriteln("  💠   # Builds an x86 VST3 in given directory".lgreen);
+    cwriteln("       dplug-build --root ../products/my-product -c VST3-CONF -a x86".lcyan);
+    cwriteln;
+    cwriteln;
+    cwriteln("◻️──────────── <on_red> LORE </on_red> ────────────◻️ 😸📖".white);
+    cwriteln;
+    cwriteln("  dplug-build".lcyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's\n  prefix: " ~ `"VST2" | "VST3" | "AU" | "AAX" | "LV2" | "FLP".`.yellow);
+    cwriteln("  The name used with " ~ "-c --config".lcyan ~ " must exist in your " ~ "dub.json".lcyan ~ " file.");
     cwriteln();
-    cwriteln("        # Shows help".lgreen);
-    cwriteln("        dplug-build -h".lcyan);
-
+    cwriteln("  dplug-build".lcyan ~ " needs a " ~ "plugin.json".lcyan ~ " file and will help write it.");
+    cwriteln("  Some information is also gathered from " ~ "dub.json".lcyan ~ " or " ~ "dub.sdl".lcyan ~ ".");
     cwriteln();
-    cwriteln("NOTES");
-    cwriteln();
-    cwriteln("      The configuration name used with " ~ "--config".lcyan ~ " must exist in your " ~ "dub.json".lcyan ~ " file.");
-    cwriteln("      dplug-build".lcyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's prefix: " ~ `"VST2" | "VST3" | "AU" | "AAX" | "LV2" | "FLP".`.yellow);
-    cwriteln();
-    cwriteln("      --combined".lcyan ~ " has an important effect on code speed, as it can be required for inlining in LDC.".grey);
-    cwriteln();
-    cwriteln("      dplug-build".lcyan ~ " expects a " ~ "plugin.json".lcyan ~ " file for proper bundling and will provide help".grey);
-    cwriteln("      for populating it. For other informations it reads " ~ "dub.json".lcyan ~ " or " ~ "dub.sdl".lcyan ~ " file.".grey);
-    cwriteln();
+    cwriteln("  Be sure to check the Dplug Wiki!");
+    cwriteln("  💠  https://github.com/AuburnSounds/Dplug/wiki".lcyan);
     cwriteln();
 }
 
@@ -143,6 +138,7 @@ int main(string[] args)
 {
     try
     {
+        enableConsoleUTF8();
         string compiler = "ldc2";      // use LDC by default
         string compiler_x86_64 = null; // Default: Use same as --compiler
 
@@ -215,7 +211,7 @@ int main(string[] args)
                 skipRegistry = true;
             else if (arg == "--parallel")
                 parallel = true;
-            else if (arg == "--rez")
+            else if (arg == "--rez")  // this flag left undocumented, noone ever used it
             {
                 if (targetOS == OS.macOS)
                     useRez = true;
@@ -241,7 +237,7 @@ int main(string[] args)
                 else
                     warning("--installer not supported on that OS");
             }
-            else if (arg == "--legacy-pt10")
+            else if (arg == "--legacy-pt10") // this flag left undocumented, noone ever used it
             {
                 if (targetOS == OS.windows)
                     legacyPT10 = true;
@@ -1416,9 +1412,9 @@ int main(string[] args)
     catch(DplugBuildBuiltCorrectlyException e)
     {
         cwriteln;
-        cwriteln("    Congratulations! ".lgreen ~ "dplug-build".lcyan ~ " built successfully.".lgreen);
+        cwriteln("    Congratulations! 🎉 ".lgreen ~ "dplug-build".lcyan ~ " built successfully.".lgreen);
         cwriteln("    Type " ~ "dplug-build --help".lcyan ~ " to know about its usage.");
-        cwriteln("    You'll probably want " ~ "dplug-build".lcyan ~ " to be in your" ~ " PATH".yellow ~ ".");
+        cwriteln("    You'll probably want " ~ "dplug-build".lcyan ~ " to be in your" ~ " PATH".yellow ~ "✨");
         cwriteln;
         return 0;
     }
