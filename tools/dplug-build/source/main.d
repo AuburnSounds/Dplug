@@ -70,7 +70,7 @@ void usage()
 {
     void flag(string arg, string desc, string possibleValues, string defaultDesc)
     {
-        string argStr = format("  🔶 %s", arg);
+        string argStr = format("  %s", arg);
         cwrite(argStr.lcyan);
         for(size_t i = argStr.length; i < 21; ++i)
             write(" ");
@@ -85,9 +85,9 @@ void usage()
     cwriteln();
     cwriteln( "This is the " ~ "dplug-build".lcyan ~ " tool: plugin bundler and DUB front-end.");
     cwriteln();
-    cwriteln("◻️──────────── <on_red> FLAGS </on_red> ───────────◻️ 😸🚩".white);
+    cwriteln("────────── <on_blue> FLAGS </> ────────── 😸🚩".white);
     cwriteln();
-    flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | arm64 | all", "Windows➡️x86_64   macOS➡️all   Linux➡️x86_64");
+    flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | arm64 | all", "Windows=&gt;x86_64   macOS=&gt;all   Linux➡=&gt;x86_64");
     flag("-b --build", "Selects build type, same as DUB.", null, "debug");
     flag("-c --config", "Selects build configuration. Name must have known prefix.", "VST2x | VST3x | AUx | AAXx | LV2x | FLPx", "first one in dub.json");
     flag("--compiler", "Selects D compiler, same as DUB.", null, "ldc2");
@@ -105,11 +105,11 @@ void usage()
     flag("--publish", "Copy plugin in system directories " ~ "            (macOS)".lred, null, null);
     flag("--auval", "Audio Unit validation with auval " ~ "             (macOS)".lred, null, null);
     
-    flag("--os", "Cross-compile to another OS." ~ "          (future)".lred, "linux | macos | windows | autodetect", "build OS");
-    flag("-h --help", "Shows this help", null, null);
+    flag("--os", "Cross-compile to another OS." ~ "                 (future)".lred, "linux | macos | windows | autodetect", "build OS");
+    flag("-h --help", "Show this help.", null, null);
 
     cwriteln();
-    cwriteln("◻️────────── <on_red> EXAMPLES </on_red> ──────────◻️ 😸💡".white);
+    cwriteln("────────── <on_blue> EXAMPLES </> ────────── 😸💡".white);
     cwriteln();
     cwriteln("  💠   # Make optimized VST2/AU plugin for all supported architectures".lgreen);
     cwriteln("       dplug-build --final -c VST2-CONF -c AU-CONF -a all".lcyan);
@@ -121,7 +121,7 @@ void usage()
     cwriteln("       dplug-build --root ../products/my-product -c VST3-CONF -a x86".lcyan);
     cwriteln;
     cwriteln;
-    cwriteln("◻️──────────── <on_red> LORE </on_red> ────────────◻️ 😸📖".white);
+    cwriteln("──────────── <on_blue> LORE </> ──────────── 😸📖".white);
     cwriteln;
     cwriteln("  dplug-build".lcyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's\n  prefix: " ~ `"VST2" | "VST3" | "AU" | "AAX" | "LV2" | "FLP".`.yellow);
     cwriteln("  The name used with " ~ "-c --config".lcyan ~ " must exist in your " ~ "dub.json".lcyan ~ " file.");
