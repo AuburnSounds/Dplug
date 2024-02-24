@@ -130,7 +130,7 @@ void usage()
     cwriteln("  Some information is also gathered from " ~ "dub.json".lcyan ~ " or " ~ "dub.sdl".lcyan ~ ".");
     cwriteln();
     cwriteln("  Be sure to check the Dplug Wiki!✨");
-    cwriteln("  💠  https://github.com/AuburnSounds/Dplug/wiki".lcyan);
+    cwriteln("  💠  <blink>https://github.com/AuburnSounds/Dplug/wiki</blink>".lcyan);
     cwriteln();
 }
 
