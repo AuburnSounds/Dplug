@@ -72,7 +72,7 @@ void usage()
     {
         string argStr = format("  %s", arg);
         cwrite(argStr.lcyan);
-        for(size_t i = argStr.length; i < 21; ++i)
+        for(size_t i = argStr.length; i < 19; ++i)
             write(" ");
         cwritefln("%s", desc);
         if (possibleValues)
@@ -87,10 +87,10 @@ void usage()
     cwriteln();
     cwriteln("────────── <on_blue> FLAGS </> ────────── 😸🚩".white);
     cwriteln();
-    flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | arm64 | all", "Windows=&gt;x86_64   macOS=&gt;all   Linux➡=&gt;x86_64");
-    flag("-b --build", "Selects build type, same as DUB.", null, "debug");
-    flag("-c --config", "Selects build configuration. Name must have known prefix.", "VST2x | VST3x | AUx | AAXx | LV2x | FLPx", "first one in dub.json");
-    flag("--compiler", "Selects D compiler, same as DUB.", null, "ldc2");
+    flag("-a --arch", "Select target architectures.", "x86 | x86_64 | arm64 | all", "Windows=&gt;x86_64   macOS=&gt;all   Linux=&gt;x86_64");
+    flag("-b --build", "Select build type, same as DUB.", null, "debug");
+    flag("-c --config", "Select DUB configs. Names must have known prefix.", "VST2x | VST3x | AUx | AAXx | LV2x | FLPx", "first one in dub.json");
+    flag("--compiler", "Select D compiler, same as DUB.", null, "ldc2");
     flag("--compiler-x86_64", " Force a particular compiler for x86_64 architecture.", null, "same as --compiler");
     flag("--combined", "Combined build, important for performance.", null, null);
     flag("--final", "Release. Shortcut for --combined -b release-nobounds.", null, null);
