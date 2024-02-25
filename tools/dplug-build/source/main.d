@@ -83,30 +83,30 @@ void usage()
     }
 
     cwriteln();
-    cwriteln( "This is the " ~ "dplug-build".lcyan ~ " tool: plugin bundler and DUB front-end.");
+    cwriteln( "This is the <strong><lcyan>dplug-build</lcyan></strong> tool: plugin bundler and DUB front-end.🔧");
     cwriteln();
     cwriteln("────────── <on_blue> FLAGS </> ────────── 😸🚩".white);
     cwriteln();
-    flag("-a --arch", "Select target architectures.", "x86 | x86_64 | arm64 | all", "Windows=&gt;x86_64   macOS=&gt;all   Linux=&gt;x86_64");
-    flag("-b --build", "Select build type, same as DUB.", null, "debug");
-    flag("-c --config", "Select DUB configs. Names must have known prefix.", "VST2x | VST3x | AUx | AAXx | LV2x | FLPx", "first one in dub.json");
-    flag("--compiler", "Select D compiler, same as DUB.", null, "ldc2");
-    flag("--compiler-x86_64", " Force a particular compiler for x86_64 architecture.", null, "same as --compiler");
-    flag("--combined", "Combined build, important for performance.", null, null);
-    flag("--final", "Release. Shortcut for --combined -b release-nobounds.", null, null);
-    flag("-f --force", "Force rebuild.", null, null);
-    flag("-q --quiet", "Quieter output.", null, null);
-    flag("-v --verbose", "Verbose output.", null, null);
-    flag("--no-color", "Disable colored output.", null, null);
-    flag("--parallel", "Use dub --parallel.", null, null);
-    flag("--root", "Path were plugin.json is.", null, "current working directory");
+    flag("-a --arch", "Select target architectures", "x86 | x86_64 | arm64 | all", "Windows=&gt;x86_64   macOS=&gt;all   Linux=&gt;x86_64");
+    flag("-b --build", "Select DUB build type", null, "debug");
+    flag("-c --config", "Select DUB configs. Known prefix needed", "VST2x | VST3x | AUx | AAXx | LV2x | FLPx", "first one in dub.json");
+    flag("--compiler", "Select D compiler", null, "ldc2");
+    flag("--compiler-x86_64", " Force compiler for x86_64 architecture", null, "same as --compiler");
+    flag("--combined", "Combined build", null, null);
+    flag("--final", "Release. Shortcut for --combined -b release-nobounds", null, null);
+    flag("-f --force", "Force rebuild", null, null);
+    flag("-q --quiet", "Quieter output", null, null);
+    flag("-v --verbose", "Verbose output", null, null);
+    flag("--no-color", "Disable colored output", null, null);
+    flag("--parallel", "Use dub --parallel", null, null);
+    flag("--root", "Path where plugin.json is", null, "current working directory");
     flag("--installer", "Make an installer " ~ "                   (Windows, macOS)".lred, null, null);
     flag("--notarize", "Notarize the installer " ~ "                       (macOS)".lred, null, null);
     flag("--publish", "Copy plugin in system directories " ~ "            (macOS)".lred, null, null);
     flag("--auval", "Audio Unit validation with auval " ~ "             (macOS)".lred, null, null);
     
-    flag("--os", "Cross-compile to another OS." ~ "                 (future)".lred, "linux | macos | windows | autodetect", "build OS");
-    flag("-h --help", "Show this help.", null, null);
+    flag("--os", "Cross-compile to another OS" ~ "                  (future)".lred, "linux | macos | windows | autodetect", "build OS");
+    flag("-h --help", "Show this help", null, null);
 
     cwriteln();
     cwriteln("────────── <on_blue> EXAMPLES </> ────────── 😸💡".white);
@@ -124,7 +124,7 @@ void usage()
     cwriteln("──────────── <on_blue> LORE </> ──────────── 😸📖".white);
     cwriteln;
     cwriteln("  dplug-build".lcyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's\n  prefix: " ~ `"VST2" | "VST3" | "AU" | "AAX" | "LV2" | "FLP".`.yellow);
-    cwriteln("  The name used with " ~ "-c --config".lcyan ~ " must exist in your " ~ "dub.json".lcyan ~ " file.");
+    cwriteln("  The name(s) used with " ~ "-c --config".lcyan ~ " must exist in your " ~ "dub.json".lcyan ~ " file.");
     cwriteln();
     cwriteln("  dplug-build".lcyan ~ " needs a " ~ "plugin.json".lcyan ~ " file and will help write it.");
     cwriteln("  Some information is also gathered from " ~ "dub.json".lcyan ~ " or " ~ "dub.sdl".lcyan ~ ".");
