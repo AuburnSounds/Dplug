@@ -1,6 +1,6 @@
 /**
 * Delay-line implementation.
-* Copyright: Guillaume Piolat 2015-2021.
+* Copyright: Guillaume Piolat 2015-2024.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.dsp.delayline;
@@ -10,6 +10,8 @@ import core.stdc.string;
 import dplug.core.nogc;
 import dplug.core.math;
 import dplug.core.vec;
+
+import inteli.emmintrin;
 
 /// Allow to sample signal back in time.
 /// This delay-line has a twin write index, so that the read pointer 
@@ -80,7 +82,8 @@ nothrow:
         // Over-allocate to support POW2 delaylines.
         // This wastes memory but allows delay-line of length 0 without tests.
         // The reason to add +1 here is that fundamentally in a delay line of length = 1
-        // we want to keep track of the current sample (at delay 0) and the former one (at delay 1).
+        // we want to keep track of the current sample (at delay 0) and the former one 
+        // (at delay 1). That's two samples.
 
         int toAllocate = nextPow2HigherOrEqual(numSamples + 1);
         _data.reallocBuffer(toAllocate * 2);
@@ -145,8 +148,8 @@ nothrow:
         {
             if (remain != 0)
             {
-                memcpy( _data.ptr + (_index + 1), incoming.ptr, remain * T.sizeof );
-                memcpy( _data.ptr + (_index + 1) + _half, incoming.ptr, remain * T.sizeof );                
+                memcpy(_data.ptr + (_index+1), incoming.ptr, remain * T.sizeof );
+                memcpy(_data.ptr + (_index+1) + _half, incoming.ptr, remain * T.sizeof);
             }
             size_t numBytes = (N - remain) * T.sizeof;
             memcpy( _data.ptr, incoming.ptr + remain, numBytes);
@@ -161,7 +164,8 @@ nothrow:
     }
 
     /// Returns: A pointer which allow to get delayed values.
-    ///    readPointer()[0] is the last samples fed,  readPointer()[-1] is the penultimate.
+    ///    readPointer()[0] is the last samples fed, 
+    ///    readPointer()[-1] is the penultimate.
     /// Warning: it goes backwards, increasing delay => decreasing addressed.
     const(T)* readPointer() pure const
     {
@@ -178,7 +182,7 @@ nothrow:
 
     /// Random access sampling of the delay-line at integer points, extract a time slice.
     /// Delay 0 = last entered sample with feed().
-    void sampleFullBuffer(int delayOfMostRecentSample, float* outBuffer, int frames) pure
+    void sampleFullBuffer(int delayOfMostRecentSample, T* outBuffer, int frames) pure
     {
         assert(delayOfMostRecentSample >= 0);
         const(T*) p = readPointer();
@@ -258,7 +262,7 @@ nothrow:
                 [ 13.0f / 24, -64.0f / 24, 126.0f / 24, -124.0f / 24,  61.0f / 24, -12.0f / 24, 0.0f, 0.0f ],
                 [ -5.0f / 24,  25.0f / 24, -50.0f / 24,   50.0f / 24, -25.0f / 24,   5.0f / 24, 0.0f, 0.0f ]
             ];
-            import inteli.emmintrin;
+
             __m128 pFactor0_3 = _mm_setr_ps(0.0f, 0.0f, 1.0f, 0.0f);
             __m128 pFactor4_7 = _mm_setzero_ps();
 
@@ -288,7 +292,7 @@ nothrow:
             foreach(n; 0..6)
                 result += pData[iPart-2 + n] * pfactor[n];
             return result;
-        };
+        }
     }
 
 private:
@@ -374,5 +378,190 @@ unittest
         readPtr = d.readPointer() - desiredDelay - frames + 1;
         delayed[0..frames] = readPtr[0..frames];
         assert(delayed == data);
+    }
+}
+
+/// Simplified delay line, mostly there to compensate latency manually.
+/// No interpolation and no delay change while playing.
+struct SimpleDelay(T)
+{
+public:
+nothrow:
+@nogc:
+
+    enum MAX_CHANNELS = 2; // current limitation
+
+    void initialize(int numChans, int maxFrames, int delayInSamples)
+    {
+        assert(numChans <= MAX_CHANNELS);
+        assert(_delayInSamples >= 0);
+        _delayInSamples = delayInSamples;
+        _numChans = numChans;
+        if (_delayInSamples > 0)
+        {
+            for (int chan = 0; chan < _numChans; ++chan)
+            {
+                _delay[chan].initialize(maxFrames + delayInSamples + 1); // not sure if the +1 is still needed, or why. It is part of culture now.
+            }
+        }
+    }
+
+    /// Just a reminder, to compute this processor latency.
+    static int latencySamples(int delayInSamples) pure
+    {
+        return delayInSamples;
+    }   
+
+    /// Process samples, single channel version.
+    void nextBufferMono(const(T)* input, T* output, int frames)
+    {
+        assert(_numChans == 1);
+        const(T)*[1] inputs;
+        T*[1] outputs;
+
+        inputs[0] = input;
+        outputs[0] = output;
+        nextBuffer(inputs.ptr, outputs.ptr, frames);
+    }
+    ///ditto
+    void nextBufferMonoInPlace(T* inoutSamples, int frames)
+    {
+        assert(_numChans == 1);
+        if  (_delayInSamples == 0)
+            return;
+        const(T)*[1] inputs;
+        T*[1] outputs;
+        inputs[0] = inoutSamples;
+        outputs[0] = inoutSamples;
+        nextBuffer(inputs.ptr, outputs.ptr, frames);
+    }
+
+    /// Process samples, multichannel version.
+    /// Note: input and output buffers can overlap, or even be the same.
+    void nextBuffer(const(T*)* inputs, T** output, int frames)
+    {
+        for (int chan = 0; chan < _numChans; ++chan)
+        {
+            if (_delayInSamples == 0)
+            {
+                // Since the two can overlap, use memmove.
+                memmove(output[chan], inputs[chan], frames * T.sizeof);
+            }
+            else
+            {
+                 _delay[chan].feedBuffer(inputs[chan], frames);
+                 const(T)* readPtr = _delay[chan].readPointer() - _delayInSamples - frames + 1;
+                 output[chan][0..frames] = readPtr[0..frames];
+            }
+        }
+    }
+    ///ditto
+    void nextBufferInPlace(T** inoutSamples, int frames)
+    {
+        if  (_delayInSamples == 0)
+            return;
+        nextBuffer(inoutSamples, inoutSamples, frames);
+    }
+
+private:
+    int _numChans;
+    int _delayInSamples;
+    Delayline!T[MAX_CHANNELS] _delay;
+}
+
+/// A delay that resyncs latency of two signals when it's not clear which has 
+/// more latency. This is a building block for internal latency compensation.
+/// 
+/// Input:                                              |         |
+///       A with latency LA, B with latency LB          | A       | B
+///                                                     V         V
+///                                        ____________LatencyResync___________
+///                                       |  Delayline of L1 = max(LB - LA, 0) |
+///                                       |  Delayline of L2 = max(LA - LB, 0) |
+///                                       |____________________________________|
+///                                                     |         |
+/// Output:                                             |         |
+///        Two aligned signal, latency = max(LA, LB)    | A       | B
+///                                                     V         V
+struct LatencyResync(T)
+{
+public:
+nothrow:
+@nogc:
+    void initialize(int numChans, int maxFrames, int latencySamplesA, int latencySamplesB)
+    {
+        int L1 = latencySamplesB - latencySamplesA;
+        int L2 = latencySamplesA - latencySamplesB;
+        if (L1 < 0) L1 = 0;        
+        if (L2 < 0) L2 = 0;
+        _delayA.initialize(numChans, maxFrames, L1);
+        _delayB.initialize(numChans, maxFrames, L2);
+    }
+
+    /// Just a reminder, to compute this processor latency.
+    static int latencySamples(int latencySamplesA, int latencySamplesB)
+    {
+        return latencySamplesA > latencySamplesB ? latencySamplesA : latencySamplesB;
+    }
+
+    /// Process mono inputs, help function.
+    void nextBufferMono(const(T)* inputA, const(T)* inputB, T* outputA, T* outputB, int frames)
+    {
+        _delayA.nextBufferMono(inputA, outputA, frames);
+        _delayB.nextBufferMono(inputB, outputB, frames);
+    }
+    ///ditto
+    void nextBufferMonoInPlace(T* inoutASamples, T* inoutBSamples, int frames)
+    {
+        _delayA.nextBufferMonoInPlace(inoutASamples, frames);
+        _delayB.nextBufferMonoInPlace(inoutBSamples, frames);
+    }
+
+    /// Process buffers. A and B signal gets aligned with regards to their relative latency.
+    void nextBuffer(const(T)** inputsA, const(T)** inputsB, T** outputsA, T** outputsB, int frames)
+    {
+        _delayA.nextBuffer(inputsA, outputsA, frames);
+        _delayB.nextBuffer(inputsB, outputsB, frames);
+    }
+    ///ditto
+    void nextBufferInPlace(T** inoutASamples, T** inoutBSamples, int frames)
+    {
+        _delayA.nextBufferInPlace(inoutASamples, frames);
+        _delayB.nextBufferInPlace(inoutBSamples, frames);
+    }
+
+private:
+    SimpleDelay!T _delayA;
+    SimpleDelay!T _delayB;
+}
+
+unittest
+{
+    {
+        double[4] A = [0.0, 3, 0, 0];
+        double[4] B = [0.0, 0, 2, 0];
+        LatencyResync!double lr;
+        int numChans = 1;
+        int maxFrames = 4;
+        int latencyA = 1;
+        int latencyB = 2;
+        lr.initialize(numChans, maxFrames, latencyA, latencyB);
+        lr.nextBufferMono(A.ptr, B.ptr, A.ptr, B.ptr, 4);
+        assert(A == [0.0, 0, 3, 0]);
+        assert(B == [0.0, 0, 2, 0]);
+    }
+
+    {
+        double[4] A = [0.0, 0, 3, 9];
+        double[4] B = [2.0, 0, 0, 8];
+        LatencyResync!double lr;
+        int numChans = 1;
+        int maxFrames = 4;
+        int latencyA = 2;
+        int latencyB = 0;
+        lr.initialize(numChans, maxFrames, latencyA, latencyB);
+        lr.nextBufferMonoInPlace(A.ptr, B.ptr, 3);
+        assert(A == [0.0, 0, 3, 9]);
+        assert(B == [0.0, 0, 2, 8]);
     }
 }
