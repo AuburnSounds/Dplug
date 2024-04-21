@@ -4,14 +4,22 @@ Cockos WDL License
 Copyright (C) 2005 - 2015 Cockos Incorporated
 Copyright (C) 2015 and later Auburn Sounds
 
-Portions copyright other contributors, see each source file for more information
+Portions copyright other contributors, see each source file for more
+information.
+This software is provided 'as-is', without any express or implied warranty.
+In no event will the authors be held liable for any damages arising from the
+use of this software.
 
-This software is provided 'as-is', without any express or implied warranty.  In no event will the authors be held liable for any damages arising from the use of this software.
+Permission is granted to anyone to use this software for any purpose, including
+commercial applications, and to alter it and redistribute it freely, subject to
+the following restrictions:
 
-Permission is granted to anyone to use this software for any purpose, including commercial applications, and to alter it and redistribute it freely, subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-1. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
+1. The origin of this software must not be misrepresented; you must not claim 
+   that you wrote the original software. If you use this software in a product, 
+   an acknowledgment in the product documentation would be appreciated but is 
+   not required.
+1. Altered source versions must be plainly marked as such, and must not be 
+   misrepresented as being the original software.
 1. This notice may not be removed or altered from any source distribution.
 */
 /**
@@ -32,24 +40,27 @@ import dplug.core.vec;
 import dplug.core.string;
 import dplug.client.client;
 
-
-
-/// Parameter listeners are called whenever a parameter is changed, start being edited,
-/// or stops being edited.
-/// The most common usage being UI controls calling `setDirty()` (directly or through animation)
-///  as a result.
+/// Parameter listeners are called whenever:
+/// - a parameter is changed, 
+/// - a parameter starts/stops being edited,
+/// - a parameter starts/stops being hovered by mouse
+///
+/// Most common use case is for UI controls repaints (the `setDirtyXXX` calls)
 interface IParameterListener
 {
 nothrow:
 @nogc:
 
-    /// Called when a parameter value was changed, from an UI control or through the host (automation).
-    /// You'll probably want to call `setDirtyWhole()` or `setDirty()` in it
-    /// to make the graphics respond to host changing a parameter.
-    /// Note that this WILL be called from the audio thread.
+    /// A parameter value was changed, from the UI or the host (automation).
+    ///
+    /// Suggestion: Maybe call `setDirtyWhole()`/`setDirty()` in it to request
+    ///             a graphic repaint.
+    ///
+    /// WARNING: this WILL be called from any thread, including the audio 
+    ///          thread.
     void onParameterChanged(Parameter sender);
 
-    /// Called when a parameter value _starts_ being changed due to an UI element.
+    /// A parameter value _starts_ being changed due to an UI element.
     void onBeginParameterEdit(Parameter sender);
 
     /// Called when a parameter value _stops_ being changed.
@@ -86,10 +97,13 @@ nothrow:
 ///
 /// Listener patter:
 ///     Every `Parameter` maintain a list of `IParameterListener`.
-///     This is typically used by UI elements to update with parameters changes from all 
+///     This is typically used by UI elements to update with parameters 
+///     changes from all 
 ///     kinds of sources (UI itself, host automation...).
 ///     But they are not necessarily UI elements.
 ///
+/// FUTURE: easier to make widget if every `Parameter` has a 
+///         `setFromGUINormalized` call.
 class Parameter
 {
 public:
@@ -142,16 +156,20 @@ nothrow:
     }
 
     /// From a normalized double [0..1], set the parameter value.
+    /// This is a Dplug internal call, not for plug-in code.
     void setFromHost(double hostValue)
     {
+        // If edited by a widget, REFUSE host changes, since they could be
+        // "in the past" and we know we want newer values anyway.
         if (isEdited())
-            return; // If edited by a widget, REFUSE host changes, since they could be 
-                    // "in the past" and we know we want newer values anyway.
+            return; 
+
         setNormalized(hostValue);
         notifyListeners();
     }
 
-    /// Returns: A normalized double [0..1], represents the parameter value.
+    /// Returns: A normalized double [0..1], represents parameter value.
+    /// This is a Dplug internal call, not for plug-in code.
     double getForHost()
     {
         return getNormalized();
@@ -219,7 +237,9 @@ nothrow:
     abstract double getNormalizedDefault();
 
     /// Returns: A string associated with the normalized value.
-    abstract void stringFromNormalizedValue(double normalizedValue, char* buffer, size_t len);
+    abstract void stringFromNormalizedValue(double normalizedValue, 
+                                            char* buffer, 
+                                            size_t len);
 
     /// Returns: A normalized value associated with the string.
     abstract bool normalizedValueFromString(const(char)[] valueString, out double result);
@@ -406,7 +426,17 @@ public:
         notifyListeners();
     }
 
-    /// Gets current value.
+    /// Sets the value of the parameter from UI, using a normalized value.
+    /// Note: If `normValue` is < 0.5, this is set to false.
+    ///       If `normValue` is >= 0.5, this is set to true.
+    final void setFromGUINormalized(double normValue) nothrow @nogc
+    {
+        assert(!isNaN(normValue));
+        bool val = (normValue >= 0.5);
+        setFromGUI(val);
+    }
+
+    /// Get current value.
     final bool value() nothrow @nogc
     {
         bool v = void;
@@ -416,8 +446,9 @@ public:
         return v;
     }
 
-    /// Same as value but doesn't use locking, and doesn't use ordering.
-    /// Which make it a better fit for the audio thread.
+    /// Get current value but doesn't use locking, using the `raw` memory order.
+    /// Which might make it a better fit for the audio thread.
+    /// The various `readParam!T` functions use that.²
     final bool valueAtomic() nothrow @nogc
     {
         return atomicLoad!(MemoryOrder.raw)(_value);
@@ -526,9 +557,13 @@ public:
         return atomicLoad!(MemoryOrder.raw)(_value);
     }
 
+    /// Sets the parameter value from the UI thread.
+    /// If the parameter is outside [min .. max] inclusive, then it is
+    /// clamped. This is not an error to do so.
     final void setFromGUI(int value) nothrow @nogc
     {
         checkBeingEdited();
+
         if (value < _min)
             value = _min;
         if (value > _max)
@@ -543,10 +578,15 @@ public:
         notifyListeners();
     }
 
-    final void setFromGUINormalized(double normalizedValue) nothrow @nogc
+    /// Sets the value of the parameter from UI, using a normalized value.
+    /// Note: If `normValue` is not inside [0.0 .. 1.0], then it is clamped.
+    ///       This is not an error.
+    final void setFromGUINormalized(double normValue) nothrow @nogc
     {
-        assert(normalizedValue >= 0 && normalizedValue <= 1);
-        setFromGUI(fromNormalized(normalizedValue));
+        assert(!isNaN(normValue));
+        if (normValue < 0.0) normValue = 0.0;
+        if (normValue > 1.0) normValue = 1.0;
+        setFromGUI(fromNormalized(normValue));
     }
 
     /// Returns: minimum possible values.
@@ -713,12 +753,15 @@ public:
         return _defaultValue;
     }
 
-    final void setFromGUINormalized(double normalizedValue) nothrow @nogc
+    /// Sets the value of the parameter from UI, using a normalized value.
+    /// Note: If `normValue` is not inside [0.0 .. 1.0], then it is clamped.
+    ///       This is not an error.
+    final void setFromGUINormalized(double normValue) nothrow @nogc
     {
-        assert(!isNaN(value));
-
-        assert(normalizedValue >= 0 && normalizedValue <= 1);
-        setFromGUI(fromNormalized(normalizedValue));
+        assert(!isNaN(normValue));
+        if (normValue < 0.0) normValue = 0.0;
+        if (normValue > 1.0) normValue = 1.0;
+        setFromGUI(fromNormalized(normValue));
     }
 
     /// Sets the number of decimal digits after the dot to be displayed.
@@ -736,7 +779,10 @@ public:
         return this;
     }
 
-
+    /// Sets the value of the parameter from UI, using a normalized value.
+    /// Note: If `value` is not inside [min .. max], then it is clamped.
+    ///       This is not an error.
+    /// See_also: `setFromGUINormalized`
     final void setFromGUI(double value) nothrow @nogc
     {
         assert(!isNaN(value));
