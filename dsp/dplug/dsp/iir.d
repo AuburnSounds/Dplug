@@ -7,6 +7,11 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 module dplug.dsp.iir;
 
 import std.math: SQRT1_2, PI, pow, sin, cos, sqrt;
+import std.complex: Complex,
+                    complexAbs = abs,
+                    complexExp = exp,
+                    complexsqAbs = sqAbs,
+                    complexFromPolar = fromPolar;
 import dplug.core.math;
 import inteli.emmintrin;
 
@@ -648,6 +653,23 @@ public
         result[4] = 0;
         return result;
     }
+
+    /// Bessel 2-pole lowpass.
+    BiquadCoeff biquadBesselLowPass(double frequency, double sampleRate) nothrow @nogc
+    {
+        double normalGain = 1;
+        double normalW = 0;
+        Complex!double pole0 = Complex!double(-1.5 , 0.8660);
+        Complex!double pole1 = Complex!double(-1.5 , -0.8660);
+        double fc = frequency / sampleRate;
+        double T = fc * 2 * PI;
+        pole0 = complexExp(pole0 * T); // matched Z transform
+        pole1 = complexExp(pole1 * T);
+        Complex!double zero01 = Complex!double(-1.0, 0.0);
+        BiquadCoeff coeff = biquad2Poles(pole0, zero01, pole1, zero01);
+        double scaleFactor = 1.0 / complexAbs( biquadResponse(coeff, 0 ));
+        return biquadApplyScale(coeff, scaleFactor);
+    }
 }
 
 private
@@ -769,7 +791,7 @@ private
         }
 
         BiquadCoeff result;
-        result[0] = cast(float)(b0 / a0);
+        result[0] = cast(float)(b0 / a0);  // FUTURE: this sounds useless and harmful to cast to float???
         result[1] = cast(float)(b1 / a0);
         result[2] = cast(float)(b2 / a0);
         result[3] = cast(float)(a1 / a0);
@@ -779,9 +801,100 @@ private
 }
 
 
+// TODO: deprecated this assembly, sounds useless vs inteli
 version(D_InlineAsm_X86)
-private enum D_InlineAsm_Any = true;
+    private enum D_InlineAsm_Any = true;
 else version(D_InlineAsm_X86_64)
-private enum D_InlineAsm_Any = true;
+    private enum D_InlineAsm_Any = true;
 else
-private enum D_InlineAsm_Any = false;
+    private enum D_InlineAsm_Any = false;
+
+
+private:
+
+
+
+BiquadCoeff biquad2Poles(Complex!double pole1, Complex!double zero1, Complex!double pole2, Complex!double zero2) nothrow @nogc
+{
+    // Note: either it's a double pole, or two pole on the real axis.
+    // Same for zeroes
+
+    assert(complexAbs(pole1) <= 1);
+    assert(complexAbs(pole2) <= 1);
+
+    double a1;
+    double a2;
+    double epsilon = 0;
+
+    if (pole1.im != 0)
+    {
+        assert(pole1.re == pole2.re);
+        assert(pole1.im == -pole2.im);
+        a1 = -2 * pole1.re;
+        a2 = complexsqAbs(pole1);
+    }
+    else
+    {
+        assert(pole2.im == 0);
+        a1 = -(pole1.re + pole2.re);
+        a2 =   pole1.re * pole2.re;
+    }
+
+    const double b0 = 1;
+    double b1;
+    double b2;
+
+    if (zero1.im != 0)
+    {
+        assert(zero2.re == zero2.re);
+        assert(zero2.im == -zero2.im);
+        b1 = -2 * zero1.re;
+        b2 = complexsqAbs(zero1);
+    }
+    else
+    {
+        assert(zero2.im == 0);
+        b1 = -(zero1.re + zero2.re);
+        b2 =   zero1.re * zero2.re;
+    }
+
+    return [b0, b1, b2, a1, a2];
+}
+
+BiquadCoeff biquadApplyScale(BiquadCoeff biquad, double scale) nothrow @nogc
+{
+    biquad[0] *= scale;
+    biquad[1] *= scale;
+    biquad[2] *= scale;
+    return biquad;
+}
+
+// Calculate filter response at the given normalized frequency.
+Complex!double biquadResponse(BiquadCoeff coeff, double normalizedFrequency) nothrow @nogc
+{
+    static Complex!double addmul(Complex!double c, double v, Complex!double c1)
+    {
+        return Complex!double(c.re + v * c1.re, c.im + v * c1.im);
+    }
+
+    double w = 2 * PI * normalizedFrequency;
+    Complex!double czn1 = complexFromPolar (1., -w);
+    Complex!double czn2 = complexFromPolar (1., -2 * w);
+    Complex!double ch = 1.0;
+    Complex!double cbot = 1.0;
+
+    Complex!double cb = 1.0;
+    Complex!double ct = coeff[0]; // b0
+    ct = addmul (ct, coeff[1], czn1); // b1
+    ct = addmul (ct, coeff[2], czn2); // b2
+    cb = addmul (cb, coeff[3], czn1); // a1
+    cb = addmul (cb, coeff[4], czn2); // a2
+    ch   *= ct;
+    cbot *= cb;
+    return ch / cbot;
+}
+
+nothrow @nogc unittest 
+{
+    BiquadCoeff c = biquadBesselLowPass(20000, 44100);
+}
