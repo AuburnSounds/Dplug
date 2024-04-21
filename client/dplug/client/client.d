@@ -769,7 +769,7 @@ nothrow:
 
     /// Boilerplate function to get the value of a `FloatParameter`, for use in `processAudio`.
     final T readParam(T)(int paramIndex) nothrow @nogc
-        if (is(T == float))
+        if (is(T == float) || is(T == double))
     {
         auto p = param(paramIndex);
         assert(cast(FloatParameter)p !is null); // check it's a FloatParameter
