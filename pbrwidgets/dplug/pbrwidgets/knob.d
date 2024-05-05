@@ -77,11 +77,14 @@ nothrow:
 
     @ScriptProperty float animationTimeConstant = 40.0f;
 
+    /// Sensivity: given a mouse movement in 100th of the height of the knob,
+    /// how much should the normalized parameter change.
+    @ScriptProperty float sensivity = defaultSensivity;
+
     this(UIContext context, Parameter param)
     {
         super(context, flagAnimated | flagPBR);
         _param = param;
-        _sensivity = defaultSensivity;
         _param.addListener(this);
         _pushedAnimation = 0;
         clearCrosspoints();
@@ -105,18 +108,6 @@ nothrow:
             _pushedAnimation = newAnimation;
             setDirtyWhole();
         }
-    }
-
-    /// Returns: sensivity.
-    float sensivity()
-    {
-        return _sensivity;
-    }
-
-    /// Sets sensivity.
-    float sensivity(float sensivity)
-    {
-        return _sensivity = sensivity;
     }
 
     override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
@@ -342,7 +333,7 @@ nothrow:
             modifier *= 0.1f;
 
         double oldParamValue = _normalizedValueWhileDragging;
-        double newParamValue = oldParamValue - _displacementInHeightDebt * modifier * _sensivity;
+        double newParamValue = oldParamValue - _displacementInHeightDebt * modifier * sensivity;
         if (mstate.altPressed)
             newParamValue = _param.getNormalizedDefault();
 
@@ -443,10 +434,6 @@ protected:
     Parameter _param;
 
     float _pushedAnimation;
-
-    /// Sensivity: given a mouse movement in 100th of the height of the knob,
-    /// how much should the normalized parameter change.
-    float _sensivity;
 
     bool _shouldBeHighlighted = false;
 
