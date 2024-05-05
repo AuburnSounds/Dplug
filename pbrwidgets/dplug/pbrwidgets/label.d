@@ -19,7 +19,7 @@ nothrow:
 
     /// Sets to true if this is clickable
     @ScriptProperty bool clickable = false;
-    @ScriptProperty string targetURL = "http://example.com";
+    string targetURL = "http://example.com";
 
     this(UIContext context, Font font, string text = "")
     {
