@@ -28,29 +28,33 @@ public:
 nothrow:
 @nogc:
 
-    // Trail customization
-    @ScriptProperty L16 trailDepth = L16(30000);
-    @ScriptProperty RGBA unlitTrailDiffuse = RGBA(130, 90, 45, 5);
-    @ScriptProperty RGBA litTrailDiffuse = RGBA(240, 165, 102, 130);
-    @ScriptProperty float trailWidth = 0.2f;
+    @ScriptProperty
+    {
+        // Trail customization
+        L16 trailDepth          = L16(30000);
+        RGBA unlitTrailDiffuse  = RGBA(130, 90, 45, 5);
+        RGBA litTrailDiffuse    = RGBA(240, 165, 102, 130);
+        float trailWidth        = 0.2f;
 
-    @ScriptProperty RGBA litTrailDiffuseAlt = RGBA(240, 165, 102, 130);
-    @ScriptProperty bool hasAlternateTrail = false;
-    @ScriptProperty float trailBase = 0.0f; // trail is from trailBase to parameter value
+        RGBA litTrailDiffuseAlt = RGBA(240, 165, 102, 130);
+        bool hasAlternateTrail  = false;
+        float trailBase         = 0.0f; // trail is from trailBase to parameter value
 
-    // Handle customization
-    @ScriptProperty HandleStyle handleStyle = HandleStyle.shapeW;
-    @ScriptProperty float handleHeightRatio = 0.25f;
-    @ScriptProperty float handleWidthRatio = 0.7f;
-    @ScriptProperty RGBA handleDiffuse = RGBA(248, 245, 233, 16);
-    @ScriptProperty RGBA handleMaterial = RGBA(0, 255, 128, 255);
+        // Handle customization
+        HandleStyle handleStyle = HandleStyle.shapeW;
+        float handleHeightRatio = 0.25f;
+        float handleWidthRatio  = 0.7f;
+        RGBA handleDiffuse      = RGBA(248, 245, 233, 16);
+        RGBA handleMaterial     = RGBA(0, 255, 128, 255);
+
+        float sensivity = 1.0f; // Note: 0.6 not bad for volumes
+    }
 
     this(UIContext context, Parameter param)
     {
         super(context, flagAnimated | flagPBR);
         _param = param;
         _param.addListener(this);
-        _sensivity = 1.0f;
          _pushedAnimation = 0;
         clearCrosspoints();
         setCursorWhenDragged(MouseCursor.drag);
@@ -60,18 +64,6 @@ nothrow:
     ~this()
     {
         _param.removeListener(this);
-    }
-
-    /// Returns: sensivity.
-    float sensivity()
-    {
-        return _sensivity;
-    }
-
-    /// Sets sensivity.
-    float sensivity(float sensivity)
-    {
-        return _sensivity = sensivity;
     }
 
     override void onAnimate(double dt, double time) nothrow @nogc
@@ -265,7 +257,7 @@ nothrow:
             modifier *= 0.1f;
 
         double oldParamValue = _param.getNormalized() + _draggingDebt;
-        double newParamValue = oldParamValue - displacementInHeight * modifier * _sensivity;
+        double newParamValue = oldParamValue - displacementInHeight * modifier * sensivity;
         if (mstate.altPressed)
             newParamValue = _param.getNormalizedDefault();
 
@@ -359,10 +351,6 @@ protected:
 
     /// The parameter this switch is linked with.
     Parameter _param;
-
-    /// Sensivity: given a mouse movement in 100th of the height of the knob,
-    /// how much should the normalized parameter change.
-    float _sensivity;
 
     float  _pushedAnimation;
 
