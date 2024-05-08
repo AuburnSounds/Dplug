@@ -99,6 +99,7 @@ void usage()
     flag("-v --verbose", "Verbose output", null, null);
     flag("--no-color", "Disable colored output", null, null);
     flag("--parallel", "Use dub --parallel", null, null);
+    flag("--redub", "Use redub instead of dub", null, null);
     flag("--root", "Path where plugin.json is", null, "current working directory");
     flag("--installer", "Make an installer " ~ "                   (Windows, macOS)".lred, null, null);
     flag("--notarize", "Notarize the installer " ~ "                       (macOS)".lred, null, null);
@@ -159,6 +160,7 @@ int main(string[] args)
         bool useRez = false;
         bool skipRegistry = false;
         bool parallel = false;
+        bool redub = false;
         bool legacyPT10 = false;
         bool finalFlag = false;
         string prettyName = null;
@@ -293,6 +295,8 @@ int main(string[] args)
                 force = true;
             else if (arg == "--publish")
                 publish = true;
+            else if (arg == "--redub")
+                redub = true;
             else if (arg == "--auval")
             {
                 publish = true; // Need publishing to use auval
@@ -583,7 +587,7 @@ int main(string[] args)
                         pathOverriden = false;
                     }
 
-                    buildPlugin(targetOS, compilerPath, pathOverriden, config, build, arch, rootDir, verbose, force, combined, quiet, skipRegistry, parallel);
+                    buildPlugin(targetOS, compilerPath, pathOverriden, config, build, arch, rootDir, verbose, force, combined, quiet, skipRegistry, parallel, redub);
                     double bytes = getSize(plugin.dubOutputFileName()) / (1024.0 * 1024.0);
                     cwritefln("    =&gt; Build OK, binary size = %0.1f mb, available in %s".lgreen, bytes, normalizedPath("./" ~ path));
                     cwriteln();
@@ -1439,7 +1443,7 @@ void buildPlugin(OS targetOS,
                  string compiler, bool pathOverriden, string config, string build, Arch arch, 
                  string rootDir,
                  bool verbose, bool force, bool combined, bool quiet, 
-                 bool skipRegistry, bool parallel)
+                 bool skipRegistry, bool parallel,  bool useRedub)
 {
     cwritefln("*** Building configuration %s with %s%s, %s arch...", 
               config, 
@@ -1449,7 +1453,7 @@ void buildPlugin(OS targetOS,
 
     // If we want to support Notarization, we can't target earlier than 10.11
     // Note: it seems it is overriden at some point and when notarizing you can't target lower
-    // If you want Universal Binary 2, can't targer earlier than 10.12
+    // If you want Universal Binary 2, can't target earlier than 10.12
     version(OSX)
     {
         environment["MACOSX_DEPLOYMENT_TARGET"] = "10.10";
@@ -1466,7 +1470,10 @@ void buildPlugin(OS targetOS,
         environment["DFLAGS"] = "-fvisibility=hidden -dllimport=none";
     }
 
-    string cmd = format("dub build --build=%s %s--compiler=%s%s%s%s%s%s%s%s%s",
+    string dubBinary = useRedub ? "redub" : "dub";
+
+    string cmd = format("%s build --build=%s %s--compiler=%s%s%s%s%s%s%s%s%s",
+        dubBinary,
         build, 
         convertArchToDUBFlag(arch, targetOS),
         compiler,
