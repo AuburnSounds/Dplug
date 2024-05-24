@@ -135,10 +135,12 @@ nothrow:
                 if (drawHole)
                     cDepth.fillAll(L16(holeDepth));
 
+                box2i slopeRect = switchRect.translate(-dirtyRect.min.x, -dirtyRect.min.y);
+
                 if (orientation == Orientation.vertical)
-                    verticalSlope(cDepth, switchRect, depthA, depthB);
+                    verticalSlope(cDepth, slopeRect, depthA, depthB);
                 else
-                    horizontalSlope(cDepth, switchRect, depthA, depthB);
+                    horizontalSlope(cDepth, slopeRect, depthA, depthB);
             }
         }
     }
