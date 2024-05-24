@@ -966,10 +966,7 @@ void blendWithAlpha(SRC, DST)(auto ref SRC srcView, auto ref DST dstView, auto r
                 continue;
             static if (is(COLOR == RGBA))
             {
-                dstScan[x].r = blendByte(srcScan[x].r, dstScan[x].r, alpha);
-                dstScan[x].g = blendByte(srcScan[x].g, dstScan[x].g, alpha);
-                dstScan[x].b = blendByte(srcScan[x].b, dstScan[x].b, alpha);
-                dstScan[x].a = blendByte(srcScan[x].a, dstScan[x].a, alpha);
+                dstScan[x] = blendColor(srcScan[x], dstScan[x], alpha);
             }
             else static if (is(COLOR == L16))
                 dstScan[x].l = blendShort(srcScan[x].l, dstScan[x].l, alpha);
