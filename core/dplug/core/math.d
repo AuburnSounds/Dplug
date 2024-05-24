@@ -44,43 +44,63 @@ T hermite(T)(T frac_pos, T xm1, T x0, T x1, T x2) pure nothrow @nogc
 }
 
 /// Converts from dB to linear gain.
-/// Precision: This uses fast_exp which under normal conditions has a peak error under -135dB over the useful range.
-T convertDecibelToLinearGain(T)(T dB) pure nothrow @nogc
+/// Precision: This uses fast_exp which under normal conditions has a peak 
+/// error under -135dB over the useful range.
+float convertDecibelToLinearGain(float dB) pure nothrow @nogc
 {
-    static immutable T ln10_20 = cast(T)LN10 / 20;
+    static immutable float ln10_20 = cast(float)LN10 / 20;
+    return fast_exp(dB * ln10_20);
+}
+///ditto
+double convertDecibelToLinearGain(double dB) pure nothrow @nogc
+{
+    static immutable double ln10_20 = cast(double)LN10 / 20;
     return fast_exp(dB * ln10_20);
 }
 unittest
 {
-    assert(convertDecibelToLinearGain!float(-float.infinity) == 0);
-    assert(convertDecibelToLinearGain!double(-double.infinity) == 0);
+    assert(convertDecibelToLinearGain(-float.infinity) == 0);
+    assert(convertDecibelToLinearGain(-double.infinity) == 0);
 }
 
 /// Converts from linear gain to dB.
-/// Precision: This uses fast_exp which under normal conditions has a peak error under -135dB over the useful range.
-T convertLinearGainToDecibel(T)(T x) pure nothrow @nogc
+/// Precision: This uses fast_exp which under normal conditions has a peak 
+/// error under -135dB over the useful range.
+float convertLinearGainToDecibel(float x) pure nothrow @nogc
 {
-    static immutable T f20_ln10 = 20 / cast(T)LN10;
+    static immutable float f20_ln10 = 20 / cast(float)LN10;
+    return fast_log(x) * f20_ln10;
+}
+///ditto
+double convertLinearGainToDecibel(double x) pure nothrow @nogc
+{
+    static immutable double f20_ln10 = 20 / cast(double)LN10;
     return fast_log(x) * f20_ln10;
 }
 unittest
 {
-    assert(convertLinearGainToDecibel!float(0) == -float.infinity);
-    assert(convertLinearGainToDecibel!double(0) == -double.infinity);
+    assert(convertLinearGainToDecibel(0.0f) == -float.infinity);
+    assert(convertLinearGainToDecibel(0.0) == -double.infinity);
 }
 
 /// Converts from power to dB. 
 /// Instantaneous power is the squared amplitude of a signal, and can be a 
 /// nice domain to work in at times.
 /// Precision: This uses fast_exp which under normal conditions has a peak error under -135dB over the useful range.
-T convertPowerToDecibel(T)(T x) pure nothrow @nogc
+float convertPowerToDecibel(float x) pure nothrow @nogc
 {
     // Explanation:
     //   20.log10(amplitude) 
     // = 20.log10(sqrt(power)) 
     // = 20.log10( 10^(0.5 * log10(power) )
     // = 10.log10(power)
-    static immutable T f10_ln10 = 10 / cast(T)LN10;
+    static immutable float f10_ln10 = 10 / cast(float)LN10;
+    return fast_log(x) * f10_ln10;
+}
+///ditto
+double convertPowerToDecibel(double x) pure nothrow @nogc
+{
+    static immutable double f10_ln10 = 10 / cast(double)LN10;
     return fast_log(x) * f10_ln10;
 }
 
