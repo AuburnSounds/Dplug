@@ -164,13 +164,13 @@ void fillRect(bool CHECKED=true, V, COLOR)(auto ref V v, int x1, int y1, int x2,
 }
 
 /// Unchecked! Make sure area is bounded.
-void uncheckedFloodFill(V, COLOR)(auto ref V v, int x, int y, COLOR c)
+deprecated void uncheckedFloodFill(V, COLOR)(auto ref V v, int x, int y, COLOR c)
     if (isDirectView!V && is(COLOR : ViewColor!V))
 {
     v.floodFillPtr(&v[x, y], c, v[x, y]);
 }
 
-private void floodFillPtr(V, COLOR)(auto ref V v, COLOR* pp, COLOR c, COLOR f)
+deprecated private void floodFillPtr(V, COLOR)(auto ref V v, COLOR* pp, COLOR c, COLOR f)
     if (isDirectView!V && is(COLOR : ViewColor!V))
 {
     COLOR* p0 = pp; while (*p0==f) p0--; p0++;
@@ -498,7 +498,6 @@ unittest
     i.fillSector(10, 10, 10, 10, 0.0, (2 * PI), c);
     i.softRing(50, 50, 10, 15, 20, c);
     i.softCircle(50, 50, 10, 15, c);
-    i.uncheckedFloodFill(15, 15, RGB(4, 5, 6));
 }
 
 
@@ -641,7 +640,7 @@ void horizontalSlope(float curvature = 1.0f, V, COLOR)(auto ref V v,
             fAlpha = fAlpha ^^ curvature;
         Type alpha = cast(Type)( 0.5f + Type.max * fAlpha );
         COLOR c = blendColor(c1, c0, alpha);
-        vline(v, px, inter.min.y, inter.max.y, c);
+        vline!false(v, px, inter.min.y, inter.max.y, c);
     }
 }
 
@@ -677,7 +676,7 @@ void verticalSlope(float curvature = 1.0f, V, COLOR)(auto ref V v, box2i rect, C
             fAlpha = fAlpha ^^ curvature;
         Type alpha = cast(Type)( 0.5f + Type.max * fAlpha );
         COLOR c = blendColor(c1, c0, alpha);
-        hline(v, inter.min.x, inter.max.x, py, c);
+        hline!false(v, inter.min.x, inter.max.x, py, c);
     }
 }
 
@@ -931,24 +930,13 @@ void aaPutPixelFloat(bool CHECKED=true, V, COLOR, A)(auto ref V v, int x, int y,
 /// Blits a view onto another.
 /// The views must have the same size.
 /// PERF: optimize that
-void blendWithAlpha(SRC, DST)(auto ref SRC srcView, auto ref DST dstView, auto ref ImageRef!L8 alphaView)
+void blendWithAlpha(SRC, DST)(auto ref SRC srcView, 
+                              auto ref DST dstView, 
+                              auto ref ImageRef!L8 alphaView)
 {
     static assert(isDirectView!SRC);
     static assert(isDirectView!DST);
     static assert(isWritableView!DST);
-
-    static ubyte blendByte(ubyte a, ubyte b, ubyte f) nothrow @nogc
-    {
-        int sum = ( f * a + b * (cast(ubyte)(~cast(int)f)) ) + 127;
-        return cast(ubyte)(sum / 255 );// ((sum+1)*257) >> 16 ); // integer divide by 255
-    }
-
-    static ushort blendShort(ushort a, ushort b, ubyte f) nothrow @nogc
-    {
-        ushort ff = (f << 8) | f;
-        int sum = ( ff * a + b * (cast(ushort)(~cast(int)ff)) ) + 32768;
-        return cast(ushort)( sum >> 16 ); // MAYDO: this doesn't map to the full range
-    }
 
     alias COLOR = ViewColor!DST;
     assert(srcView.w == dstView.w && srcView.h == dstView.h, "View size mismatch");
@@ -969,7 +957,10 @@ void blendWithAlpha(SRC, DST)(auto ref SRC srcView, auto ref DST dstView, auto r
                 dstScan[x] = blendColor(srcScan[x], dstScan[x], alpha);
             }
             else static if (is(COLOR == L16))
-                dstScan[x].l = blendShort(srcScan[x].l, dstScan[x].l, alpha);
+            {
+                ushort alpha16 = (alpha << 8) | alpha;
+                dstScan[x] = blendColor(srcScan[x], dstScan[x], alpha16);
+            }
             else
                 static assert(false);
         }
