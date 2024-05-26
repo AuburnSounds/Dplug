@@ -628,6 +628,8 @@ void horizontalSlope(float curvature = 1.0f, V, COLOR)(auto ref V v,
     alias Type = COLOR.ChannelType;
 
     box2i inter = box2i(0, 0, v.w, v.h).intersection(rect);
+    if (inter.empty)
+        return;
 
     int x0 = rect.min.x;
     int x1 = rect.max.x;
@@ -661,6 +663,8 @@ void verticalSlope(float curvature = 1.0f, V, COLOR)(auto ref V v, box2i rect, C
     alias Type = COLOR.ChannelType;
 
     box2i inter = box2i(0, 0, v.w, v.h).intersection(rect);
+    if (inter.empty)
+        return;
 
     int x0 = rect.min.x;
     int y0 = rect.min.y;
