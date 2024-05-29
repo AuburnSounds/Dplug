@@ -44,7 +44,6 @@
 - [Lens](https://www.auburnsounds.com/products/Lens.html) by Auburn Sounds
 - [M4 Multiband Compressor](https://www.cutthroughrecordings.com/product/M4_Multiband_Compressor) by Cut Through Recordings
 - [Nu:Cat](https://lunafoxgirlvt.itch.io/nucat) by Kitsunebi Games
-- [OneTrick Simian](https://punklabs.com/ot-simian) by Punk Labs 
 - [Panagement](https://www.auburnsounds.com/products/Panagement.html) by Auburn Sounds
 - [Renegate](https://www.auburnsounds.com/products/Renegate.html) by Auburn Sounds
 - [Tarabia MK II](https://smaolab.org/product/tarabiamk2/) by SMAOLAB
