@@ -494,7 +494,6 @@ public:
 
     override double getNormalized()
     {
-        int v = value();
         double normalized = toNormalized(value());
         return normalized;
     }
