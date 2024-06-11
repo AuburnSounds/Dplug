@@ -95,25 +95,6 @@ nothrow:
         _data[] = 0;
     }
 
-    /// Combined feed + sampleFull.
-    /// Uses the delay line as a fixed delay of count samples.
-    T nextSample(T incoming) pure
-    {
-        feedSample(incoming);
-        return sampleFull(_numSamples);
-    }
-
-    /// Combined feed + sampleFull.
-    /// Uses the delay line as a fixed delay of count samples.
-    ///
-    /// Note: input and output may overlap. 
-    ///       If this was ever optimized, this should preserve that property.
-    void nextBuffer(const(T)* input, T* output, int frames) pure
-    {
-        for(int i = 0; i < frames; ++i)
-            output[i] = nextSample(input[i]);
-    }
-
     /// Adds a new sample at end of delay.
     void feedSample(T incoming) pure
     {
@@ -122,55 +103,7 @@ nothrow:
         _data.ptr[_index + _half] = incoming;
     }
 
-    /// Adds several samples at end of delay.
-    void feedBuffer(const(T)[] incoming) pure
-    {
-        int N = cast(int)(incoming.length);
 
-        // this buffer must be smaller than the delay line, 
-        // else we may risk dropping samples immediately
-        assert(N <=_numSamples);
-
-        // remaining samples before end of delayline
-        int remain = _indexMask - _index;
-
-        if (N == 0)
-        {
-            return;
-        }
-        else if (N <= remain)
-        {
-            memcpy( &_data[_index + 1], incoming.ptr, N * T.sizeof );
-            memcpy( &_data[_index + 1 + _half], incoming.ptr, N * T.sizeof );
-            _index += N;
-        }
-        else
-        {
-            if (remain != 0)
-            {
-                memcpy(_data.ptr + (_index+1), incoming.ptr, remain * T.sizeof );
-                memcpy(_data.ptr + (_index+1) + _half, incoming.ptr, remain * T.sizeof);
-            }
-            size_t numBytes = (N - remain) * T.sizeof;
-            memcpy( _data.ptr, incoming.ptr + remain, numBytes);
-            memcpy( _data.ptr + _half, incoming.ptr + remain, numBytes);
-            _index = (_index + N) & _indexMask;
-        }
-    }
-    ///ditto
-    void feedBuffer(const(T)* incoming, size_t count) pure
-    {
-        feedBuffer(incoming[0..count]);
-    }
-
-    /// Returns: A pointer which allow to get delayed values.
-    ///    readPointer()[0] is the last samples fed, 
-    ///    readPointer()[-1] is the penultimate.
-    /// Warning: it goes backwards, increasing delay => decreasing addressed.
-    const(T)* readPointer() pure const
-    {
-        return _data.ptr + _index + _half;
-    }
 
     /// Random access sampling of the delay-line at integer points.
     /// Delay 0 = last entered sample with feed().
@@ -194,6 +127,8 @@ nothrow:
     static if (is(T == float) || is(T == double))
     {
         /// Random access sampling of the delay-line with linear interpolation.
+        /// Note that will the HF rollout of linear interpolation, it can 
+        /// often sound quite good in 44.1 kHz
         T sampleLinear(float delay) pure const
         {
             assert(delay > 0);
@@ -295,6 +230,87 @@ nothrow:
         }
     }
 
+    /// Adds several samples at end of delay.
+    void feedBuffer(const(T)[] incoming) pure
+    {
+        int N = cast(int)(incoming.length);
+
+        // Note: it is legal to overfeed the delayline, in case of large 
+        // maxFrames for example. Though this is normally unexpected, but it's
+        // useful when using silence detection.
+
+        if (N > _numSamples)
+        {
+            N = _numSamples;
+            incoming = incoming[$-N .. $];
+        }
+
+        // remaining samples before end of delayline
+        int remain = _indexMask - _index;
+
+        if (N == 0)
+        {
+            return;
+        }
+        else if (N <= remain)
+        {
+            memcpy( &_data[_index + 1], incoming.ptr, N * T.sizeof );
+            memcpy( &_data[_index + 1 + _half], incoming.ptr, N * T.sizeof );
+            _index += N;
+        }
+        else
+        {
+            if (remain != 0)
+            {
+                memcpy(_data.ptr + (_index+1), incoming.ptr, remain * T.sizeof );
+                memcpy(_data.ptr + (_index+1) + _half, incoming.ptr, remain * T.sizeof);
+            }
+            size_t numBytes = (N - remain) * T.sizeof;
+            memcpy( _data.ptr, incoming.ptr + remain, numBytes);
+            memcpy( _data.ptr + _half, incoming.ptr + remain, numBytes);
+            _index = (_index + N) & _indexMask;
+        }
+    }
+    ///ditto
+    void feedBuffer(const(T)* incoming, size_t count) pure
+    {
+        feedBuffer(incoming[0..count]);
+    }
+
+    /// Returns: A pointer which allow to get delayed values.
+    ///    readPointer()[0] is the last samples fed, 
+    ///    readPointer()[-1] is the penultimate.
+    /// Warning: it goes backwards, increasing delay => decreasing addressed.
+    const(T)* readPointer() pure const
+    {
+        return _data.ptr + _index + _half;
+    }
+
+    /// Combined feed + sampleFull.
+    /// Uses the delay line as a fixed delay of count samples.
+    ///
+    /// This is normally very rare to need this vs separate `sampleXXX` and
+    /// `feedSample`.
+    T nextSample(T incoming) pure
+    {
+        feedSample(incoming);
+        return sampleFull(_numSamples);
+    }
+
+    /// Combined feed + sampleFull.
+    /// Uses the delay line as a fixed delay of count samples.
+    ///
+    /// Note: input and output may overlap. 
+    ///       If this was ever optimized, this should preserve that property.
+    ///
+    /// This is normally very rare to need this vs separate `sampleXXX` and
+    /// `feedBuffer`.
+    void nextBuffer(const(T)* input, T* output, int frames) pure
+    {
+        for(int i = 0; i < frames; ++i)
+            output[i] = nextSample(input[i]);
+    }
+
 private:
     T[] _data;
     int _index;
@@ -306,8 +322,8 @@ private:
                                   out int outIntegerPart, 
                                   out float outFloatPart) pure const
     {
-        // Because float index can yield suprising low precision with interpolation  
-        // So we up the precision to double in order to have a precise fractional part          
+        // Because float index can yield suprising low precision with interpolation
+        // So we up the precision to double in order to have a precise fractional part
         int offset = cast(int)(_data.length);
         double doubleDelayMinus = cast(double)(-delay);
         int iPart = cast(int)(doubleDelayMinus + offset);
@@ -325,7 +341,6 @@ unittest
     Delayline!float line;
     line.initialize(0); // should be possible
     assert(line.nextSample(1) == 1);
-
     Delayline!double line2;
 
     Delayline!float line3;
@@ -334,7 +349,6 @@ unittest
     assert(line3.nextSample(2) == 0);
     assert(line3.nextSample(3) == 1);
     assert(line3.nextSample(42) == 2);
-
     assert(line3.sampleFull(0) == 42);
     assert(line3.sampleFull(1) == 3);
     assert(line3.sampleLinear(0.5f) == (3.0f + 42.0f) * 0.5f);
@@ -343,7 +357,6 @@ unittest
 // See Issue #607, usability of feedBuffer.
 unittest
 {
-    
     float[256] zeroes;
     float[256] data;
     float[256] delayed;
@@ -379,6 +392,21 @@ unittest
         delayed[0..frames] = readPtr[0..frames];
         assert(delayed == data);
     }
+}
+
+// Issue 846, feeding a buffer larger than the delay line length.
+// It's useful for testing effects in isolation, in a way that may
+// have large maxFrames.
+unittest
+{
+    int[256] data;
+    for (int n = 0; n < 256; ++n)
+        data[n] = n;
+    Delayline!int d;
+    d.initialize(128);
+    d.feedBuffer(data[0..256]); // now work, only data[128..256] considered
+    for (int n = 0; n < 128; ++n)
+        assert(d.sampleFull(n) == 255 - n);
 }
 
 /// Simplified delay line, mostly there to compensate latency manually.
