@@ -47,7 +47,10 @@ nothrow:
     /// Cannot be > 0.5f
     @ScriptProperty float borderVert = 0.1f;
 
-    this(UIContext context, BoolParameter param)
+    /// Note: Can take a BoolParameter or IntegerParameter, in which 
+    /// case enabled means 1 and disabled means 0. 
+    /// So it also takes `EnumParameter`.
+    this(UIContext context, Parameter param)
     {
         super(context, flagAnimated | flagPBR);
         _param = param;
@@ -62,7 +65,17 @@ nothrow:
 
     override void onAnimate(double dt, double time) nothrow @nogc
     {
-        float target = _param.valueAtomic() ? 1 : 0;
+        float target;
+        if (auto bp = cast(BoolParameter)_param)
+        {
+            target = bp.valueAtomic() ? 1 : 0;
+        }
+        else if (auto ip = cast(IntegerParameter)_param)
+        {
+            target = (ip.valueAtomic() != 0) ? 1 : 0;
+        }
+        else
+            assert(false);
 
         float newAnimation = lerp(_animation, target, 1.0 - exp(-dt * animationTimeConstant));
 
@@ -158,14 +171,36 @@ nothrow:
         if (mstate.altPressed) // reset on ALT + click
         {
             _param.beginParamEdit();
-            _param.setFromGUI(_param.defaultValue());
+
+            if (auto bp = cast(BoolParameter)_param)
+            {
+                bp.setFromGUI(bp.defaultValue());
+            }
+            else if (auto ip = cast(IntegerParameter)_param)
+            {
+                ip.setFromGUI(ip.defaultValue()); // possibly not 0 and 1
+            }
+            else
+                assert(false);
         }
         else
         {
             // Any click => invert
             // Note: double-click doesn't reset to default, would be annoying
             _param.beginParamEdit();
-            _param.setFromGUI(!_param.value());
+            if (auto bp = cast(BoolParameter)_param)
+            {
+                bp.setFromGUI(!bp.value());
+            }
+            else if (auto ip = cast(IntegerParameter)_param)
+            {
+                // any => 0
+                // 0   => 1
+                bool value = ip.value() != 0;
+                ip.setFromGUI(value ? 0 : 1);
+            }
+            else
+                assert(false);
         }
         _canBeDragged = false;
         return Click.startDrag;
@@ -216,7 +251,7 @@ nothrow:
 protected:
 
     /// The parameter this switch is linked with.
-    BoolParameter _param;
+    Parameter _param;
 
     /// To prevent multiple-clicks having an adverse effect on automation.
     bool _canBeDragged = true;
