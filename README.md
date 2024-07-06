@@ -23,13 +23,12 @@
 
 
 ⚙️ Automated Mac and Windows installers, signing, notarization.  
-⚙️ Build plug-ins with Dlang, a powerful, easy and fast native [language](https://dlang.org/orgs-using-d.html) with serious build times improvements over C++.  
+⚙️ Build plug-ins with D, a powerful, easy and fast native [language](https://dlang.org/orgs-using-d.html). Expect serious improvements over C++ when it comes to learnability, build times, and morale.
 ⚙️ Package-based dependency management with DUB. Build any Dplug tool with the `$ dub` command.  
-⚙️ With [PBR rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html), you can have video-game like skeuomorphism with a small distribution size.  
+⚙️ With [PBR rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html), you can have video-game like skeuomorphism with a small RAM and disk usage.  
 ⚙️ DAW support list [here](https://github.com/AuburnSounds/Dplug/wiki/Host-Support).  
-⚙️ Ask your question on the Discord!  
-⚙️ Join the secretive Dplug Wasteland club for exclusive audio knowledge!  
-⚙️ Free of charge!  
+⚙️ Free of charge, however you'll find it's actively debugged and maintained with very low bug density.
+⚙️ Ask your question on the Discord!
 
 
 ### Made with Dplug
