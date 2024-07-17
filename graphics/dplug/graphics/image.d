@@ -444,6 +444,31 @@ nothrow:
         }
     }
 
+    /// Premultiply by alpha
+    static if (is(COLOR == RGBA))
+    {
+        void premultiply() 
+        {
+
+            static RGBA premultiplyColor(RGBA c) pure nothrow @nogc
+            {
+                c.r = (c.r * c.a + 128) / 255;
+                c.g = (c.g * c.a + 128) / 255;
+                c.b = (c.b * c.a + 128) / 255;
+                return c;
+            }
+
+            for (int y = 0; y < h; ++y)
+            {
+                COLOR* scan = unsafeScanlinePtr(y);
+                for (int x = 0; x < w; ++x)
+                {
+                    scan[x] = premultiplyColor(scan[x]);
+                }
+            }
+        }
+    }
+
     /// Fill the borders by taking the nearest existing pixel in the meaningful area.
     void replicateBorders()
     {
