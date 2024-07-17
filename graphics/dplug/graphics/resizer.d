@@ -153,6 +153,19 @@ nothrow:
     }
 
     ///ditto
+    void resizeImage_sRGBWithAlphaPremul(ImageRef!RGBA input, ImageRef!RGBA output)
+    {
+        if (sameSizeResize(input, output))
+            return;
+        stbir_filter filter = STBIR_FILTER_MKS_2013_86;
+        int flags = STBIR_FLAG_ALPHA_PREMULTIPLIED;
+        int res = stbir_resize_uint8_srgb(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
+                                          cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch,
+                                          4, 3, flags, &alloc_context, filter);
+        assert(res);
+    }
+
+    ///ditto
     void resizeImageDiffuseWithAlphaPremul(ImageRef!RGBA16 input, ImageRef!RGBA16 output)
     {
         // Intended for 16-bit image in sRGB, with premultipled alpha.
