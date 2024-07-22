@@ -57,11 +57,11 @@ void generateWindowsInstaller(string outputDir,
     string sectionDescription(WindowsPackage pack) pure
     {
         if (pack.format == "VST")
-            return "For VST 2.4 hosts like FL Studio, Live, Bitwig, Studio One, etc. Includes both 32bit and 64bit components.";
+            return "For hosts like Live and Studio One.";
         else if(pack.format == "VST3")
-            return "For VST 3 hosts like Cubase, Digital Performer, Wavelab., etc. Includes both 32bit and 64bit components.";
+            return "Most compatible format: FL Studio, Cubase, etc.";
         else if(pack.format == "AAX")
-            return "For Pro Tools 11 or later.";
+            return "For Pro Tools support.";
         else if(pack.format == "LV2")
             return "For LV2 hosts like REAPER, Mixbus, and Ardour.";
         else if(pack.format == "FLP")

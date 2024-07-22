@@ -869,9 +869,12 @@ int main(string[] args)
                             // Note: some vendors don't put an icon
                             //       some vendors don't put a binary in binary folders
                             //       some vendors don't put a moduleinfo.json
-                            // This will be one area where actual practice matters.
+                            // it's all optional, as it seems.
+                            //
+                            // In particular moduleinfo.json is optional according to the SDK
+                            // and could be created with VST3 SDK (moduleinfotool)
 
-                            pluginDirectory = path ~ "/" ~ plugin.pluginName ~ ".vst3";
+                            pluginDirectory = path ~ "/" ~ plugin.prettyName ~ ".vst3";
 
                             string binaryFolder    = pluginDirectory ~ "/Contents/" ~  convertArchToVST3WindowsDirectoryName(arch);
                             string resourcesFolder = pluginDirectory ~ "/Contents/Resources";
@@ -880,14 +883,12 @@ int main(string[] args)
                             mkdirRecurse(binaryFolder);
 
                             // Copy binary
-                            string pluginFinalPath = binaryFolder ~ "/" ~ plugin.pluginName ~ ".vst3";
+                            string pluginFinalPath = binaryFolder ~ "/" ~ plugin.prettyName ~ ".vst3";
                             fileMove(plugin.dubOutputFileName, pluginFinalPath);
+                            if (SIGN_WINDOWS_PLUGINS) 
+                                signExecutableWindows(plugin, pluginFinalPath);
 
-                            // Note: moduleinfo.json is optional!
-                            // We haven't implemented it
-                            // Can be created with VST3 SDK (moduleinfotool)
-
-                            // TODO: icon support
+                            // FUTURE: icon support
                             //string INIcontent = "[.ShellClassInfo]\nIconResource=Plugin.ico,0";
                             //std.file.write(pluginDirectory ~ "/desktop.ini", INIcontent);                               
                         }
@@ -910,10 +911,9 @@ int main(string[] args)
 
                             pluginDirectory = path ~ "/" ~ appendBitnessVST3(plugin.prettyName, plugin.dubOutputFileName);
                             fileMove(plugin.dubOutputFileName, pluginDirectory);
-                        }
-
-                        if (SIGN_WINDOWS_PLUGINS) 
-                            signExecutableWindows(plugin, pluginDirectory);
+                            if (SIGN_WINDOWS_PLUGINS) 
+                                signExecutableWindows(plugin, pluginDirectory);
+                        }                        
                     }
                     else
                     {
