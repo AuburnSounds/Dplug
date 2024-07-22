@@ -210,6 +210,8 @@ struct Plugin
     bool sendsMIDI;
     bool isSynth;
 
+    bool hasFutureVST3FolderWindows;
+
     PluginCategory category;
 
     string prettyName() pure const nothrow
@@ -692,6 +694,40 @@ Plugin readPluginDescription(string rootDir, bool quiet)
     {
         throw new Exception("Missing \"name\" in dub.json (eg: \"myplugin\")");
     }
+
+    // Try to find if the project has the version identifier "futureVST3FolderWindows"
+    try
+    {
+        if (JSONexists)
+        {
+            result.name = dubFile["name"].str;
+
+            foreach(e; dubFile["versions"].array)
+            {
+                if (e.str == "futureVST3FolderWindows")
+                    result.hasFutureVST3FolderWindows = true;
+            }
+        }
+        if (SDLexists) 
+        {
+            // I really hate the fact that SDLang exists and we had to 
+            // adopt it in D, never choose that one. Both formats
+            // manage to be worse than XML in practice.
+            // And look, this parsing code compares defavorable to std.json
+
+            result.name = sdlFile.getTagValue!string("name");
+            foreach(e; sdlFile.getTag("versions").values)
+            {
+                if (e.get!string() == "futureVST3FolderWindows")
+                    result.hasFutureVST3FolderWindows = true;
+            }
+        }
+    }
+    catch(Exception e)
+    {
+        throw new Exception("Missing \"name\" in dub.json (eg: \"myplugin\")");
+    }
+
 
     // We simply launched `dub` to build dplug-build. So we're not building a plugin.
     // avoid the embarassment of having a red message that confuses new users.
