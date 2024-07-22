@@ -40,6 +40,19 @@ string convertArchToPrettyString(Arch arch) pure
     }
 }
 
+string convertArchToVST3WindowsDirectoryName(Arch arch) pure
+{
+    final switch(arch) with (Arch)
+    {
+        case x86:    return "x86-win";
+        case x86_64: return "x86_64-win";
+        case arm32:  return "arm-win";
+        case arm64:  return "arm64-win";
+        case universalBinary: throw new Exception("No universal Binary on Windows");
+        case all:    assert(false);
+    }
+}
+
 string convertArchToDUBFlag(Arch arch, OS targetOS) pure
 {
     final switch(arch) with (Arch)

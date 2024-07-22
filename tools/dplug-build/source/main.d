@@ -89,7 +89,7 @@ void usage()
     cwriteln();
     flag("-a --arch", "Select target architectures", "x86 | x86_64 | arm64 | all", "Windows=&gt;x86_64   macOS=&gt;all   Linux=&gt;x86_64");
     flag("-b --build", "Select DUB build type", null, "debug");
-    flag("-c --config", "Select DUB configs. Known prefix needed", "VST2x | VST3x | AUx | AAXx | LV2x | FLPx", "first one in dub.json");
+    flag("-c --config", "Select DUB configs. Known prefix needed", "VST2x | VST3x | AUx | AAXx | LV2x | FLPx", "first one found");
     flag("--compiler", "Select D compiler", null, "ldc2");
     flag("--compiler-x86_64", " Force compiler for x86_64 architecture", null, "same as --compiler");
     flag("--combined", "Combined build", null, null);
@@ -864,21 +864,53 @@ int main(string[] args)
                     }
                     else if (configIsVST3(config)) // VST3 special case, needs to be named .vst3 (but can't be _linked_ as .vst3)
                     {
-                        string appendBitnessVST3(string prettyName, string originalPath)
+                        if (plugin.hasFutureVST3FolderWindows)
                         {
-                            if (arch == Arch.x86_64)
-                            {
-                                // Issue #84
-                                // Rename 64-bit binary on Windows to get Reaper to list both 32-bit and 64-bit plugins if in the same directory
-                                // Note: I don't think that's necessary...
-                                return prettyName ~ "-64.vst3";
-                            }
-                            else
-                                return prettyName ~ ".vst3";
+                            // Note: some vendors don't put an icon
+                            //       some vendors don't put a binary in binary folders
+                            //       some vendors don't put a moduleinfo.json
+                            // This will be one area where actual practice matters.
+
+                            pluginDirectory = path ~ "/" ~ plugin.pluginName ~ ".vst3";
+
+                            string binaryFolder    = pluginDirectory ~ "/Contents/" ~  convertArchToVST3WindowsDirectoryName(arch);
+                            string resourcesFolder = pluginDirectory ~ "/Contents/Resources";
+                            mkdirRecurse(pluginDirectory);
+                            mkdirRecurse(resourcesFolder);
+                            mkdirRecurse(binaryFolder);
+
+                            // Copy binary
+                            string pluginFinalPath = binaryFolder ~ "/" ~ plugin.pluginName ~ ".vst3";
+                            fileMove(plugin.dubOutputFileName, pluginFinalPath);
+
+                            // Note: moduleinfo.json is optional!
+                            // We haven't implemented it
+                            // Can be created with VST3 SDK (moduleinfotool)
+
+                            // TODO: icon support
+                            //string INIcontent = "[.ShellClassInfo]\nIconResource=Plugin.ico,0";
+                            //std.file.write(pluginDirectory ~ "/desktop.ini", INIcontent);                               
                         }
-                        // Simply copy the file
-                        pluginDirectory = path ~ "/" ~ appendBitnessVST3(plugin.prettyName, plugin.dubOutputFileName);
-                        fileMove(plugin.dubOutputFileName, pluginDirectory);
+                        else
+                        {
+                            // Simply copy the file, single file .vst3
+                            // which is deprecated normally and on the way out
+                            string appendBitnessVST3(string prettyName, string originalPath)
+                            {
+                                if (arch == Arch.x86_64)
+                                {
+                                    // Issue #84
+                                    // Rename 64-bit binary on Windows to get Reaper to list both 32-bit and 64-bit plugins if in the same directory
+                                    // Note: I don't think that's necessary...
+                                    return prettyName ~ "-64.vst3";
+                                }
+                                else
+                                    return prettyName ~ ".vst3";
+                            }
+
+                            pluginDirectory = path ~ "/" ~ appendBitnessVST3(plugin.prettyName, plugin.dubOutputFileName);
+                            fileMove(plugin.dubOutputFileName, pluginDirectory);
+                        }
 
                         if (SIGN_WINDOWS_PLUGINS) 
                             signExecutableWindows(plugin, pluginDirectory);

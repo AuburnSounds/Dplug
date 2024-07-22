@@ -659,6 +659,12 @@ Plugin readPluginDescription(string rootDir, bool quiet)
                                "File " ~ escapeCCL(dubJsonPath).yellow ~ ` doesn't exist.`);
     }
 
+    if (JSONexists && SDLexists)
+    {
+        warning("Both dub.json and dub.sdl found, ignoring dub.sdl.");
+        SDLexists = false;
+    }
+
     Plugin result;
     result.rootDir = rootDir;
 
@@ -700,8 +706,6 @@ Plugin readPluginDescription(string rootDir, bool quiet)
     {
         if (JSONexists)
         {
-            result.name = dubFile["name"].str;
-
             foreach(e; dubFile["versions"].array)
             {
                 if (e.str == "futureVST3FolderWindows")
@@ -714,8 +718,6 @@ Plugin readPluginDescription(string rootDir, bool quiet)
             // adopt it in D, never choose that one. Both formats
             // manage to be worse than XML in practice.
             // And look, this parsing code compares defavorable to std.json
-
-            result.name = sdlFile.getTagValue!string("name");
             foreach(e; sdlFile.getTag("versions").values)
             {
                 if (e.get!string() == "futureVST3FolderWindows")
@@ -725,14 +727,12 @@ Plugin readPluginDescription(string rootDir, bool quiet)
     }
     catch(Exception e)
     {
-        throw new Exception("Missing \"name\" in dub.json (eg: \"myplugin\")");
     }
-
 
     // We simply launched `dub` to build dplug-build. So we're not building a plugin.
     // avoid the embarassment of having a red message that confuses new users.
-    // You've read correctly: you can't name your plugin "build" or "dplug-build" as a consequence.
-    if (result.name == "dplug-build" || result.name == "build")
+    // You've read correctly: you can't name your plugin "dplug-build" as a consequence.
+    if (result.name == "dplug-build")
     {
         throw new DplugBuildBuiltCorrectlyException("");
     }
