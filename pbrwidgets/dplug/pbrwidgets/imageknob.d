@@ -109,7 +109,7 @@ KnobImage loadKnobImage(in void[] data)
     // If the input image is 8-bit, this is assumed to be in ABDME_8 format.
     // Else this is assumed to be in BADAMA_16 format.
     KnobImage res = mallocNew!KnobImage;
-    res.image.loadFromMemory(data, LOAD_RGB | LOAD_ALPHA); // Force RGB and Alpha channel.
+    res.image.loadFromMemory(data, LOAD_RGB | LOAD_ALPHA | LOAD_NO_PREMUL); // Force RGB and Alpha channel.
     if (res.image.isError)
     {
         return null;

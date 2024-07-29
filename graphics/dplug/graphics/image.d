@@ -720,7 +720,23 @@ OwnedImage!RGBA loadOwnedImage(in void[] imageData)
 {
     Image image;
     image.loadFromMemory(cast(const(ubyte[])) imageData, 
-                         LOAD_RGB | LOAD_8BIT | LOAD_ALPHA | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
+                         LOAD_RGB | LOAD_8BIT | LOAD_ALPHA | LOAD_NO_PREMUL | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
+    if (image.isError)
+    {
+        assert(false, "Decoding failed"); // FUTURE: could do something more sensible maybe
+    }
+
+    return convertImageToOwnedImage_rgba8(image);
+}
+
+/// Loads an image from compressed data and ensure the alpha is premultiplied.
+/// The returned `OwnedImage!RGBA` should be destroyed with `destroyFree`.
+/// Throws: $(D ImageIOException) on error.
+OwnedImage!RGBA loadOwnedImagePremul(in void[] imageData)
+{
+    Image image;
+    image.loadFromMemory(cast(const(ubyte[])) imageData, 
+                         LOAD_RGB | LOAD_8BIT | LOAD_ALPHA | LOAD_PREMUL | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
     if (image.isError)
     {
         assert(false, "Decoding failed"); // FUTURE: could do something more sensible maybe
@@ -737,7 +753,7 @@ OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDa
 {
     Image alpha;
     alpha.loadFromMemory(cast(const(ubyte[])) imageDataAlpha, 
-                         LOAD_GREYSCALE | LOAD_8BIT | LOAD_NO_ALPHA | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
+                         LOAD_GREYSCALE | LOAD_8BIT | LOAD_NO_ALPHA | LOAD_NO_PREMUL | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
     if (alpha.isError)
     {
         assert(false, "Decoding failed"); // same remark as above
@@ -745,7 +761,7 @@ OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDa
 
     Image rgb;
     rgb.loadFromMemory(cast(const(ubyte[])) imageDataRGB, 
-                       LOAD_RGB | LOAD_8BIT | LOAD_ALPHA | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
+                       LOAD_RGB | LOAD_8BIT | LOAD_ALPHA | LOAD_NO_PREMUL | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
     if (rgb.isError)
     {
         assert(false, "Decoding failed"); // same remark as above
@@ -781,7 +797,7 @@ OwnedImage!RGBA loadImageWithFilledAlpha(in void[] imageDataRGB, ubyte alphaValu
 {
     Image rgb;
     rgb.loadFromMemory(cast(const(ubyte[])) imageDataRGB, 
-                       LOAD_RGB | LOAD_8BIT | LOAD_ALPHA | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
+                       LOAD_RGB | LOAD_8BIT | LOAD_ALPHA | LOAD_NO_PREMUL | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
     if (rgb.isError)
     {
         assert(false, "Decoding failed"); // same remark as above
