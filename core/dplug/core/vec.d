@@ -401,8 +401,24 @@ nothrow:
         {
             return _size;
         }
+        ///ditto
+        alias size = length;
 
-        /// Return: Allocated size of the underlying array.
+        /// Returns: Length of buffer in elements, as signed.
+        ptrdiff_t slength() pure const @safe
+        {
+            return _size;
+        }
+        ///ditto
+        alias ssize = length;
+
+        /// Returns: `true` if length is zero.
+        bool isEmpty() pure const @safe
+        {
+            return _size == 0;
+        }
+
+        /// Returns: Allocated size of the underlying array.
         size_t capacity() pure const @safe
         {
             return _allocated;
@@ -492,6 +508,18 @@ nothrow:
             assert(index < _size);
             for (; index + 1 < _size; ++index)
                 _data[index] = _data[index+1];
+            --_size;
+        }
+
+        /// Removes a range of items and shift the rest of the array to front.
+        /// Warning: O(N) complexity.
+        void removeAndShiftRestOfArray(size_t first, size_t last) @trusted
+        {
+            assert(first <= last && first <= _size && (last <= _size));
+            size_t remain = _size - last;
+            for (size_t n = 0; n < remain; ++n)
+                _data[first + n] = _data[last + n];
+            _size -= (last - first);
         }
 
         /// Appends another buffer to this buffer.
@@ -733,6 +761,9 @@ unittest
     }
 
     assert(vec.length == 0);
+    assert(vec.size == 0);
+    assert(vec.slength == 0);
+    assert(vec.ssize == 0);
     vec.clearContents();
     vec.resize(0);
     assert(vec == vec.init);
@@ -753,6 +784,32 @@ unittest
     vec ~= a;
     vec[0].x = 42; // vec[0] needs to return a ref
     assert(vec[0].x == 42);
+}
+unittest // removeAndShiftRestOfArray was wrong
+{
+    Vec!int v;
+    v.pushBack(14);
+    v.pushBack(27);
+    v.pushBack(38);
+    assert(v.length == 3);
+    v.removeAndShiftRestOfArray(1);
+    assert(v.length == 2);    
+    assert(v[] == [14, 38]);
+}
+unittest // removeAndShiftRestOfArray with slice
+{
+    Vec!int v;
+    v.pushBack([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    v.removeAndShiftRestOfArray(3, 5);
+    assert(v[] == [0, 1, 2, 5, 6, 7, 8, 9]);
+    v.removeAndShiftRestOfArray(0, 4);
+    assert(v[] == [6, 7, 8, 9]);
+    v.removeAndShiftRestOfArray(2, 4);
+    assert(v[] == [6, 7]);
+    v.removeAndShiftRestOfArray(2, 2);
+    v.removeAndShiftRestOfArray(0, 0);
+    v.removeAndShiftRestOfArray(1, 1);
+    assert(v[] == [6, 7]);
 }
 
 
