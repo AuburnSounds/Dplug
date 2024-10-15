@@ -9,7 +9,18 @@ import gui;
 import core.atomic;
 import dplug.core;
 import dplug.gui;
-import dplug.canvas;
+
+enum useCanvasity = false;
+
+static if (useCanvasity)
+{
+    import gamut;
+    import canvasity;
+}
+else
+    import dplug.canvas;
+
+
 
 /// This widgets demonstrates how to:
 /// - do a custom widget
@@ -107,7 +118,18 @@ nothrow:
         foreach(dirtyRect; dirtyRects)
         {
             auto cRaw = rawMap.cropImageRef(dirtyRect);
-            canvas.initialize(cRaw);
+
+            static if (useCanvasity)
+            {
+                Image img;
+                createViewFromImageRef(img, cRaw);
+                canvas.initialize(img);
+            }
+            else
+            {
+                canvas.initialize(cRaw);
+            }
+
             canvas.translate(-dirtyRect.min.x, -dirtyRect.min.y);
 
             // Fill with dark color
@@ -146,7 +168,10 @@ nothrow:
 
 private:
     float _B, _S;
-    Canvas canvas;
+    static if (useCanvasity)
+        Canvasity canvas;
+    else
+        Canvas canvas;
     TimedFIFO!float _timedFIFO;
     float[READ_OVERSAMPLING] _stateToDisplay; // samples, integrated for drawing
     float[] _storeTemp; // used for gathering input

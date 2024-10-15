@@ -25,6 +25,7 @@
         "dplug:gui": { "path": "../.." },
         "dplug:pbr-widgets": { "path": "../.." },
         "dplug:flat-widgets": { "path": "../.." },
+        "canvasity": "~>0.0",
         "dplug:wren-support": { "path": "../.." }
     },
 
