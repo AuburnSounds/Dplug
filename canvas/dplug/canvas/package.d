@@ -35,13 +35,13 @@ import dplug.core.math;
 import dplug.graphics.color;
 import dplug.graphics.image;
 
-import dplug.canvas.htmlcolors;
 import dplug.canvas.gradient;
 import dplug.canvas.colorblit;
 import dplug.canvas.linearblit;
 import dplug.canvas.ellipticalblit;
 import dplug.canvas.rasterizer;
 
+import colors;
 
 // dplug:canvas whole public API should live here.
 
@@ -50,6 +50,21 @@ public import dplug.math.box;
 
 /// `dplug:canvas` operates on RGBA 8-bit buffers.
 alias ImageDest = ImageRef!RGBA;
+
+/// dplug:canvas used to have CSS color parsing, now it's in 
+/// `colors` package
+deprecated("Use parseCSSColor and package colors instead") 
+bool parseHTMLColor(const(char)[] htmlColorString, 
+                    out RGBA outColor, 
+                    out string error) pure nothrow @nogc @safe
+{
+    Color c;
+    if (!parseCSSColor(htmlColorString, c, error))
+        return false;
+    RGBA8 c8 = c.toRGBA8();
+    outColor = RGBA(c8.r, c8.g, c8.b, c8.a);
+    return true;
+}
 
 /// How to fill pixels.
 enum FillRule
@@ -146,16 +161,24 @@ nothrow:
         _blitType = BlitType.color;
     }
     ///ditto
+    void fillStyle(Color col)
+    {
+        RGBA8 c = col.toRGBA8();
+        fillStyle(RGBA(c.r, c.g, c.b, c.a));
+    }
+    ///ditto
     void fillStyle(const(char)[] htmlColorString)
     {
         string error;
-        RGBA rgba;
-        if (parseHTMLColor(htmlColorString, rgba, error))
+        Color c;
+        if (parseCSSColor(htmlColorString, c, error))
         {
-            fillStyle(rgba);
+            fillStyle(c);
         }
         else
-            assert(false);
+        {
+            // "Invalid values are ignored."
+        }
     }
     ///ditto
     void fillStyle(CanvasGradient gradient)
@@ -797,6 +820,12 @@ nothrow:
     {
         uint color_as_uint = *cast(uint*)(&color);
         _gradient.addStop(offset, color_as_uint);
+    }
+    ///ditto
+    void addColorStop(float offset, Color color)
+    {
+        RGBA8 c = color.toRGBA8();
+        addColorStop(offset, RGBA(c.r, c.g, c.b, c.a));
     }
 
 package:

@@ -66,6 +66,7 @@
             "dependencies": {
                 "dplug:core": "*",
                 "dplug:graphics": "*",
+                "colors": "~>0.0",
                 "dplug:math": "*",
                 "intel-intrinsics": "~>1.0"
             }
