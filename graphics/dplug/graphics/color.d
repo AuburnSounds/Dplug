@@ -151,7 +151,7 @@ static assert(valueBits!double == 53);
 //   - ReplaceType can't copy methods
 //   - even if we move out all conventional methods, that still leaves operator overloading
 
-struct Color(FieldTuple...)
+struct DefColor(FieldTuple...)
 {
 	alias Spec = FieldTuple;
 	mixin FieldList!FieldTuple;
@@ -304,17 +304,17 @@ struct Color(FieldTuple...)
 }
 
 // The "x" has the special meaning of "padding" and is ignored in some circumstances
-alias Color!(ubyte  , "r", "g", "b"     ) RGB    ;
-alias Color!(ubyte  , "r", "g", "b", "a") RGBA   ;
-alias Color!(ushort , "r", "g", "b", "a") RGBA16 ;
+alias DefColor!(ubyte  , "r", "g", "b"     ) RGB    ;
+alias DefColor!(ubyte  , "r", "g", "b", "a") RGBA   ;
+alias DefColor!(ushort , "r", "g", "b", "a") RGBA16 ;
 
 
-alias Color!(ubyte  , "l"               ) L8     ;
-alias Color!(ushort , "l"               ) L16    ;
-alias Color!(float ,  "l"               ) L32f   ;
+alias DefColor!(ubyte  , "l"               ) L8     ;
+alias DefColor!(ushort , "l"               ) L16    ;
+alias DefColor!(float ,  "l"               ) L32f   ;
 
-alias Color!(float  , "r", "g", "b"     ) RGBf   ;
-alias Color!(float  , "r", "g", "b", "a") RGBAf  ;
+alias DefColor!(float  , "r", "g", "b"     ) RGBf   ;
+alias DefColor!(float  , "r", "g", "b", "a") RGBAf  ;
 
 static assert(L32f.sizeof == 4);
 static assert(RGBf.sizeof == 12);
@@ -351,7 +351,7 @@ unittest
 
 unittest
 {
-	Color!(real, "r", "g", "b") c;
+	DefColor!(real, "r", "g", "b") c;
 }
 
 /// Obtains the type of each channel for homogenous colors.
@@ -372,10 +372,10 @@ template ChangeChannelType(COLOR, T)
 
 /// ditto
 template ChangeChannelType(COLOR, T)
-	if (is(COLOR : Color!Spec, Spec...))
+	if (is(COLOR : DefColor!Spec, Spec...))
 {
 	static assert(COLOR.homogenous, "Can't change ChannelType of non-homogenous Color");
-	alias ChangeChannelType = Color!(T, COLOR.Spec[1..$]);
+	alias ChangeChannelType = DefColor!(T, COLOR.Spec[1..$]);
 }
 
 static assert(is(ChangeChannelType!(int, ushort) == ushort));
