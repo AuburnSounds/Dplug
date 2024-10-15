@@ -10,7 +10,7 @@ import core.atomic;
 import dplug.core;
 import dplug.gui;
 
-enum useCanvasity = false;
+enum useCanvasity = true;
 
 static if (useCanvasity)
 {
