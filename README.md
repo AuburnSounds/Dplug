@@ -9,7 +9,7 @@
 
 ## Features
 
-|  Format | macOS arm64 | macOS amd64  | Windows 32-bit | Windows 64-bit | Linux x86-64 | 
+|  Format | macOS arm64 | macOS x86-64  | Windows x86-32 | Windows x86-64 | Linux x86-64 | 
 |---------|-------------|--------------|----------------|----------------|--------------|
 | VST2    | ✅         | ✅          | ✅            | ✅            | ✅          | 
 | VST3    | ✅         | ✅          | ✅            | ✅            | ✅          | 
