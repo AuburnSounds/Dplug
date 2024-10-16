@@ -76,7 +76,7 @@ Being stable and relatively bug-free is deemed more important to us than impleme
 
   - No interaction needed with `Xcode`, `CMake`, `C++`, `Obj-C` or `MSVC`.
   - Lovable D language, suitable from prototyping to production.
-  - Same features for `VST2` / `VST3` / `AUv2` / `AAX` / `LV2` plug-in formats.
+  - Same features for `VST2` / `VST3` / `AUv2` / `AAX` / `LV2` / `FLP` plug-in formats.
   - Same features for desktop OS: Windows / macOS / Linux.
   - [Faust](https://github.com/ctrecordings/dplug-faust-example) language integration.
   - Easy SIMD compatible with both `x86`, `x86_64`, and `arm64` with same codebase.
