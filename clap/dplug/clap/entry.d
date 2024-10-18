@@ -28,66 +28,31 @@ nothrow @nogc:
 
 import core.stdc.string;
 import dplug.core.runtime;
+import dplug.core.nogc;
 
 
 // version.h
 
 import dplug.clap;
+import dplug.clap.clapversion;
 
-enum uint CLAP_VERSION_MAJOR = 1;
-enum uint CLAP_VERSION_MINOR = 2;
-enum uint CLAP_VERSION_REVISION = 2;
-/*
-clap_version_t CLAP_VERSION_INIT(uint major, uint minor, uint rev) 
-{
-    return clap_version(major, minor, rev);
-}*/
-
-bool CLAP_VERSION_LT(uint maj, uint min, uint rev)
-{
-    if (CLAP_VERSION_MAJOR < maj) return true;
-    if ((maj == CLAP_VERSION_MAJOR) && (CLAP_VERSION_MINOR < min)) return true;
-    if ((maj == CLAP_VERSION_MAJOR) && (min == CLAP_VERSION_MINOR) 
-        && (CLAP_VERSION_REVISION < rev))
-        return true;
-    return false;
-}
-
-bool CLAP_VERSION_EQ(uint maj, uint min, uint rev)
-{
-    return maj == CLAP_VERSION_MAJOR
-        && min == CLAP_VERSION_MINOR
-        && rev == CLAP_VERSION_REVISION;
-}
-
-bool CLAP_VERSION_GE(uint maj, uint min, uint rev)
-{
-    return ! CLAP_VERSION_LT(maj, min, rev);
-}
-
-bool clap_version_is_compatible(T)(T v) 
-{
-   // versions 0.x.y were used during development stage and aren't compatible
-   return v.major >= 1;
-}
 import core.stdc.stdio;
 // Get the pointer to a factory. See factory/plugin-factory.h for an example.
 //
 // Returns null if the factory is not provided.
 // The returned pointer must *not* be freed by the caller.
-const(void)* clap_factory_templated(ClientCLass)(const(char)* factory_id) 
+const(void)* clap_factory_templated(ClientClass)(const(char)* factory_id) 
 {
     ScopedForeignCallback!(false, true) scopedCallback;
     scopedCallback.enter();
-
-    printf("Hey\n");
 
     if (!strcmp(factory_id, "clap.plugin-factory"))
     {
         __gshared clap_plugin_factory_t g_factory;
         g_factory.get_plugin_count = &factory_get_plugin_count;
-        g_factory.get_plugin_descriptor = &factory_get_plugin_descriptor;
+        g_factory.get_plugin_descriptor = &factory_get_plugin_descriptor!ClientClass;
         g_factory.create_plugin = &factory_create_plugin;
+           printf("Hey\n");
         return &g_factory;
     }
     return null;
@@ -101,16 +66,36 @@ extern(C)
         return 1;
     }
 
-    clap_plugin_descriptor_t* factory_get_plugin_descriptor(const(clap_plugin_factory_t)* factory, uint index)
+    clap_plugin_descriptor_t* factory_get_plugin_descriptor(ClientClass)(const(clap_plugin_factory_t)* factory, uint index)
     {
+        if (index != 0)
+            return null;
+
+        // Fill with information from PluginClass
         __gshared clap_plugin_descriptor_t desc;
-        return null;//&desc;
+
+        // Create a client just for the purpose of describing the plug-in
+        ClientClass client = mallocNew!ClientClass();
+        scope(exit) client.destroyFree();
+
+        desc.id = "com.wittyaudio.msencode"; // TODO persistent stringZ instead
+        desc.name = "MSEncodator"; // TODO persistent stringZ instead
+        desc.vendor = "Witty Audio"; // TODO persistent stringZ instead
+        desc.url = "https://wittyaudio.com/msencode"; // TODO persistent stringZ instead
+        desc.manual_url = "https://wittyaudio.com/msencode/manual.pdf"; // TODO persistent stringZ instead
+        desc.support_url = "https://example.com"; // TODO
+        desc.version_ = "1.0.0"; // TODO
+        desc.description = "My Description"; // TODO
+        desc.features = ["mono".ptr].ptr;
+        printf("Whatyado\n");
+        return &desc;
     }
 
     void* factory_create_plugin(const(clap_plugin_factory_t)*factory,
         const(void)* host,
         const(char)* plugin_id)
     {
+        // TODO
         return null;
     }
 }
@@ -127,7 +112,35 @@ nothrow @nogc extern(C):
 }
 
 
-struct clap_plugin_descriptor_t
+// plugin.h
+
+struct clap_plugin_descriptor_t 
 {
-    // TODO
+    clap_version_t clap_version; // initialized to CLAP_VERSION
+
+    // Mandatory fields must be set and must not be blank.
+    // Otherwise the fields can be null or blank, though it is safer to make them blank.
+    //
+    // Some indications regarding id and version
+    // - id is an arbitrary string which should be unique to your plugin,
+    //   we encourage you to use a reverse URI eg: "com.u-he.diva"
+    // - version is an arbitrary string which describes a plugin,
+    //   it is useful for the host to understand and be able to compare two different
+    //   version strings, so here is a regex like expression which is likely to be
+    //   understood by most hosts: MAJOR(.MINOR(.REVISION)?)?( (Alpha|Beta) XREV)?
+    const(char)* id;          // eg: "com.u-he.diva", mandatory
+    const(char)* name;        // eg: "Diva", mandatory
+    const(char)* vendor;      // eg: "u-he"
+    const(char)* url;         // eg: "https://u-he.com/products/diva/"
+    const(char)* manual_url;  // eg: "https://dl.u-he.com/manuals/plugins/diva/Diva-user-guide.pdf"
+    const(char)* support_url; // eg: "https://u-he.com/support/"
+    const(char)* version_;     // eg: "1.4.4"
+    const(char)* description; // eg: "The spirit of analogue"
+
+    // Arbitrary list of keywords.
+    // They can be matched by the host indexer and used to classify the plugin.
+    // The array of pointers must be null terminated.
+    // For some standard features see plugin-features.h
+    const(char)** features;
 }
+

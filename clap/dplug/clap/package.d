@@ -35,21 +35,12 @@ import dplug.core.nogc;
 import dplug.core.runtime;
 
 import dplug.clap.entry;
+import dplug.clap.clapversion;
 
 
 // parts of entry.h and version.h here
 
-struct clap_version_t 
-{
-   // This is the major ABI and API design
-   // Version 0.X.Y correspond to the development stage, API and ABI are not stable
-   // Version 1.X.Y correspond to the release stage, API and ABI are stable
-   uint major;
-   uint minor;
-   uint revision;
-}
 
-enum CLAP_VERSION = clap_version_t(1, 2, 2);
 
 extern(C)
 {
@@ -82,7 +73,7 @@ template CLAPEntryPoint(alias ClientClass)
     `extern(C) void clap_entry_deinit() nothrow @nogc { }`;
 
     static immutable enum plugin_entry = 
-    `export extern(C) __gshared clap_plugin_entry_t clap_entry = clap_plugin_entry_t(CLAP_VERSION, &clap_entry_init, &clap_entry_deinit, &clap_factory_entry);`;
+    `import dplug.clap.clapversion; export extern(C) __gshared clap_plugin_entry_t clap_entry = clap_plugin_entry_t(CLAP_VERSION, &clap_entry_init, &clap_entry_deinit, &clap_factory_entry);`;
 
     const char[] CLAPEntryPoint = init_entry ~ deinit_entry ~ factory_entry ~ plugin_entry;
 }
