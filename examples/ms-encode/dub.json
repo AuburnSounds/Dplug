@@ -16,7 +16,8 @@
     "dependencies":
     {
         "dplug:vst2": { "path": "../.." },
-        "dplug:vst3": { "path": "../.." }
+        "dplug:vst3": { "path": "../.." },
+        "dplug:clap": { "path": "../.." }
     },
 
     "configurations": [
@@ -28,6 +29,11 @@
         {
             "name": "VST2",
             "versions": ["VST2"],
+            "targetType": "dynamicLibrary"
+        },
+        {
+            "name": "CLAP",
+            "versions": ["CLAP"],
             "targetType": "dynamicLibrary"
         }
     ]

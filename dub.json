@@ -21,6 +21,7 @@
         "dplug:canvas": "*",
         "dplug:client": "*",
         "dplug:core": "*",
+        "dplug:clap": "*",
         "dplug:dsp": "*",
         "dplug:fft": "*",
         "dplug:flp": "*",
@@ -69,6 +70,14 @@
                 "colors": "~>0.0",
                 "dplug:math": "*",
                 "intel-intrinsics": "~>1.0"
+            }
+        },
+        {
+            "name": "clap",
+            "sourcePaths": [ "clap/dplug/clap" ],
+            "importPaths": [ "clap" ],
+            "dependencies": {
+                "dplug:client": "*"
             }
         },
         {
