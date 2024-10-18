@@ -26,7 +26,9 @@ module dplug.clap.entry;
 
 nothrow @nogc:
 
+import core.stdc.string;
 import dplug.core.runtime;
+
 
 // version.h
 
@@ -68,23 +70,64 @@ bool clap_version_is_compatible(T)(T v)
    // versions 0.x.y were used during development stage and aren't compatible
    return v.major >= 1;
 }
-
-
-
-// entry.h
-
-
-
-/* Entry point */
-//CLAP_EXPORT extern const clap_plugin_entry_t clap_entry;
-
-
+import core.stdc.stdio;
+// Get the pointer to a factory. See factory/plugin-factory.h for an example.
+//
+// Returns null if the factory is not provided.
+// The returned pointer must *not* be freed by the caller.
 const(void)* clap_factory_templated(ClientCLass)(const(char)* factory_id) 
 {
     ScopedForeignCallback!(false, true) scopedCallback;
     scopedCallback.enter();
 
-    import dplug.core;
-    debugLogf("Hey from factory");
-    return null; // TODO
+    printf("Hey\n");
+
+    if (!strcmp(factory_id, "clap.plugin-factory"))
+    {
+        __gshared clap_plugin_factory_t g_factory;
+        g_factory.get_plugin_count = &factory_get_plugin_count;
+        g_factory.get_plugin_descriptor = &factory_get_plugin_descriptor;
+        g_factory.create_plugin = &factory_create_plugin;
+        return &g_factory;
+    }
+    return null;
+}
+
+extern(C)
+{
+    // Get the number of plugins available.
+    uint factory_get_plugin_count(const(clap_plugin_factory_t)* factory)
+    {
+        return 1;
+    }
+
+    clap_plugin_descriptor_t* factory_get_plugin_descriptor(const(clap_plugin_factory_t)* factory, uint index)
+    {
+        __gshared clap_plugin_descriptor_t desc;
+        return null;//&desc;
+    }
+
+    void* factory_create_plugin(const(clap_plugin_factory_t)*factory,
+        const(void)* host,
+        const(char)* plugin_id)
+    {
+        return null;
+    }
+}
+
+// factory.h
+
+struct clap_plugin_factory_t 
+{
+nothrow @nogc extern(C):
+
+   uint function(const(clap_plugin_factory_t)*) get_plugin_count;
+   clap_plugin_descriptor_t* function(const(clap_plugin_factory_t)*,uint) get_plugin_descriptor;
+   void* function(const(clap_plugin_factory_t)*, const(void)*, const(char)*) create_plugin;
+}
+
+
+struct clap_plugin_descriptor_t
+{
+    // TODO
 }

@@ -36,6 +36,9 @@ import dplug.core.runtime;
 
 import dplug.clap.entry;
 
+
+// parts of entry.h and version.h here
+
 struct clap_version_t 
 {
    // This is the major ABI and API design
