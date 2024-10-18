@@ -44,6 +44,12 @@ string pluginEntryPoints(ClientClass)()
             mixin(LV2EntryPoint!` ~ ClientClass.stringof ~ `);
         }
 
+        version(CLAP)
+        {
+            import dplug.clap;
+            mixin(CLAPEntryPoint!` ~ ClientClass.stringof ~ `);
+        }
+
         version(FLP)
         {
             import dplug.flp;
