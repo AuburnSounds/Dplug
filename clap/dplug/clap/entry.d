@@ -63,10 +63,7 @@ bool CLAP_VERSION_GE(uint maj, uint min, uint rev)
     return ! CLAP_VERSION_LT(maj, min, rev);
 }
 
-
-
-
-bool clap_version_is_compatible(const(clap_version_t) v) 
+bool clap_version_is_compatible(T)(T v) 
 {
    // versions 0.x.y were used during development stage and aren't compatible
    return v.major >= 1;

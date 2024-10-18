@@ -79,7 +79,7 @@ template CLAPEntryPoint(alias ClientClass)
     `extern(C) void clap_entry_deinit() nothrow @nogc { }`;
 
     static immutable enum plugin_entry = 
-    `export extern(C) static immutable clap_plugin_entry_t clap_entry = clap_plugin_entry_t(CLAP_VERSION, &clap_entry_init, &clap_entry_deinit, &clap_factory_entry);`;
+    `export extern(C) __gshared clap_plugin_entry_t clap_entry = clap_plugin_entry_t(CLAP_VERSION, &clap_entry_init, &clap_entry_deinit, &clap_factory_entry);`;
 
     const char[] CLAPEntryPoint = init_entry ~ deinit_entry ~ factory_entry ~ plugin_entry;
 }
