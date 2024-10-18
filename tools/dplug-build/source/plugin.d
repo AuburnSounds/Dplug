@@ -112,6 +112,8 @@ string stripConfig(string config) pure nothrow @nogc
         return config[4..$];
     if (config.length >= 4 && config[0..4] == "FLP-")
         return config[4..$];
+    if (config.length >= 5 && config[0..5] == "CLAP-")
+        return config[5..$];
     return null;
 }
 
@@ -145,6 +147,10 @@ bool configIsFLP(string config) pure nothrow @nogc
     return config.length >= 3 && config[0..3] == "FLP";
 }
 
+bool configIsCLAP(string config) pure nothrow @nogc
+{
+    return config.length >= 4 && config[0..4] == "CLAP";
+}
 
 
 struct Plugin
@@ -745,9 +751,10 @@ Plugin readPluginDescription(string rootDir, bool quiet)
             &&!configIsVST3(cname)
             &&!configIsAU(cname)
             &&!configIsLV2(cname)
+            &&!configIsCLAP(cname)
             &&!configIsFLP(cname)
             )
-            throw new Exception(format("Configuration name should start with \"VST2\", \"VST3\", \"AU\", \"AAX\", \"LV2\", or \"FLP\". '%s' is not a valid configuration name.", cname));
+            throw new Exception(format("Configuration name should start with \"VST2\", \"VST3\", \"AU\", \"AAX\", \"LV2\", \"CLAP\" or \"FLP\". '%s' is not a valid configuration name.", cname));
     }
 
     try
