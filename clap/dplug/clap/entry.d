@@ -32,6 +32,37 @@ import dplug.core.nogc;
 import dplug.client.client;
 
 
+// plugin-features.h
+
+
+// Plugin category 
+
+// Add this feature if your plugin can process note events and then produce audio
+static immutable CLAP_PLUGIN_FEATURE_INSTRUMENT = "instrument";
+
+// Add this feature if your plugin is an audio effect
+static immutable CLAP_PLUGIN_FEATURE_AUDIO_EFFECT = "audio-effect";
+
+// Add this feature if your plugin is a note effect or a note generator/sequencer
+static immutable CLAP_PLUGIN_FEATURE_NOTE_EFFECT = "note-effect";
+
+// Add this feature if your plugin converts audio to notes
+static immutable CLAP_PLUGIN_FEATURE_NOTE_DETECTOR = "note-detector";
+
+// Add this feature if your plugin is an analyzer
+static immutable CLAP_PLUGIN_FEATURE_ANALYZER = "analyzer";
+
+// Audio Capabilities
+
+static immutable CLAP_PLUGIN_FEATURE_MONO = "mono";
+static immutable CLAP_PLUGIN_FEATURE_STEREO = "stereo";
+static immutable CLAP_PLUGIN_FEATURE_SURROUND = "surround";
+static immutable CLAP_PLUGIN_FEATURE_AMBISONIC = "ambisonic";
+
+
+
+// Plugin 
+
 // version.h
 
 import dplug.clap;
@@ -68,7 +99,7 @@ extern(C)
 
     clap_plugin_descriptor_t* factory_get_plugin_descriptor(ClientClass)(const(clap_plugin_factory_t)* factory, uint index)
     {
-        printf("LOL\n");
+        // Only one plug-in supported by CLAP wrapper in Dplug.
         if (index != 0)
             return null;
 
@@ -97,7 +128,26 @@ extern(C)
         ver.toCLAPVersionString(versionBuf.ptr, 64);
         desc.version_ = versionBuf.ptr;
         desc.description = "No description.".ptr;
-        desc.features = null;//["mono".ptr].ptr;
+        
+
+        // Build a global array of features.
+        enum MAX_FEATURES = 8;
+        int nFeatures = 0;
+        __gshared const(char)*[MAX_FEATURES] g_features;
+        void addFeature(immutable(char)[] feature)
+        {
+            g_features[nFeatures++] = feature.ptr;
+        }
+        bool isSynth  =  client.isSynth;
+        bool isEffect = !client.isSynth;        
+        if (isSynth) addFeature(CLAP_PLUGIN_FEATURE_INSTRUMENT);
+        if (isSynth && client.isLegalIO(0, 1)) addFeature( CLAP_PLUGIN_FEATURE_MONO );
+        if (isSynth && client.isLegalIO(0, 2)) addFeature( CLAP_PLUGIN_FEATURE_STEREO );
+        if (isEffect) addFeature(CLAP_PLUGIN_FEATURE_AUDIO_EFFECT);
+        if (isEffect && client.isLegalIO(1, 1)) addFeature( CLAP_PLUGIN_FEATURE_MONO );
+        if (isEffect && client.isLegalIO(2, 2)) addFeature( CLAP_PLUGIN_FEATURE_STEREO );
+        addFeature(null);
+        desc.features = g_features.ptr;
         return &desc;
     }
 
@@ -151,6 +201,7 @@ struct clap_plugin_descriptor_t
     // They can be matched by the host indexer and used to classify the plugin.
     // The array of pointers must be null terminated.
     // For some standard features see plugin-features.h
+    // Dlang Note: this is a null-terminated array of null-terminated strings.
     const(char)** features;
 }
 
