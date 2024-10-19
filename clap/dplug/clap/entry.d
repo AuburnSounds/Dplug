@@ -29,6 +29,7 @@ nothrow @nogc:
 import core.stdc.string;
 import dplug.core.runtime;
 import dplug.core.nogc;
+import dplug.client.client;
 
 
 // version.h
@@ -46,13 +47,12 @@ const(void)* clap_factory_templated(ClientClass)(const(char)* factory_id)
     ScopedForeignCallback!(false, true) scopedCallback;
     scopedCallback.enter();
 
-    if (!strcmp(factory_id, "clap.plugin-factory"))
+    if (strcmp(factory_id, "clap.plugin-factory") == 0)
     {
         __gshared clap_plugin_factory_t g_factory;
         g_factory.get_plugin_count = &factory_get_plugin_count;
         g_factory.get_plugin_descriptor = &factory_get_plugin_descriptor!ClientClass;
         g_factory.create_plugin = &factory_create_plugin;
-           printf("Hey\n");
         return &g_factory;
     }
     return null;
@@ -68,6 +68,7 @@ extern(C)
 
     clap_plugin_descriptor_t* factory_get_plugin_descriptor(ClientClass)(const(clap_plugin_factory_t)* factory, uint index)
     {
+        printf("LOL\n");
         if (index != 0)
             return null;
 
@@ -78,16 +79,25 @@ extern(C)
         ClientClass client = mallocNew!ClientClass();
         scope(exit) client.destroyFree();
 
-        desc.id = "com.wittyaudio.msencode"; // TODO persistent stringZ instead
-        desc.name = "MSEncodator"; // TODO persistent stringZ instead
-        desc.vendor = "Witty Audio"; // TODO persistent stringZ instead
-        desc.url = "https://wittyaudio.com/msencode"; // TODO persistent stringZ instead
-        desc.manual_url = "https://wittyaudio.com/msencode/manual.pdf"; // TODO persistent stringZ instead
-        desc.support_url = "https://example.com"; // TODO
-        desc.version_ = "1.0.0"; // TODO
-        desc.description = "My Description"; // TODO
-        desc.features = ["mono".ptr].ptr;
-        printf("Whatyado\n");
+        desc.id   = assumeZeroTerminated(client.CLAPIdentifier);
+        desc.name = assumeZeroTerminated(client.pluginName);
+        desc.vendor = assumeZeroTerminated(client.vendorName);
+        desc.url = assumeZeroTerminated(client.pluginHomepage);
+
+        // FUTURE: Dplug doesn't have that, same URL as homepage
+        desc.manual_url = desc.url; 
+
+        // FUTURE: provide that support URL
+        desc.support_url = desc.url; // Weird crash in Windows debug with in ms-encode assumeZeroTerminated(client.getVendorSupportEmail); 
+
+        // Can be __shared, since there is a single plugin in our CLAP client,
+        // with a single version.
+        __gshared char[64] versionBuf;
+        PluginVersion ver = client.getPublicVersion();
+        ver.toCLAPVersionString(versionBuf.ptr, 64);
+        desc.version_ = versionBuf.ptr;
+        desc.description = "No description.".ptr;
+        desc.features = null;//["mono".ptr].ptr;
         return &desc;
     }
 
@@ -95,6 +105,7 @@ extern(C)
         const(void)* host,
         const(char)* plugin_id)
     {
+        printf("Create plugin\n");
         // TODO
         return null;
     }
@@ -105,7 +116,6 @@ extern(C)
 struct clap_plugin_factory_t 
 {
 nothrow @nogc extern(C):
-
    uint function(const(clap_plugin_factory_t)*) get_plugin_count;
    clap_plugin_descriptor_t* function(const(clap_plugin_factory_t)*,uint) get_plugin_descriptor;
    void* function(const(clap_plugin_factory_t)*, const(void)*, const(char)*) create_plugin;
@@ -144,3 +154,91 @@ struct clap_plugin_descriptor_t
     const(char)** features;
 }
 
+
+struct clap_plugin_t 
+{
+nothrow @nogc extern(C):
+
+    const(clap_plugin_descriptor_t)* desc;
+
+    void *plugin_data; // reserved pointer for the plugin
+
+    // Must be called after creating the plugin.
+    // If init returns false, the host must destroy the plugin instance.
+    // If init returns true, then the plugin is initialized and in the deactivated state.
+    // Unlike in `plugin-factory::create_plugin`, in init you have complete access to the host 
+    // and host extensions, so clap related setup activities should be done here rather than in
+    // create_plugin.
+    // [main-thread]
+    bool function(const(clap_plugin_t)* plugin) init;
+
+    // Free the plugin and its resources.
+    // It is required to deactivate the plugin prior to this call.
+    // [main-thread & !active]
+    void function(const(clap_plugin_t)* plugin) destroy;
+
+    // Activate and deactivate the plugin.
+    // In this call the plugin may allocate memory and prepare everything needed for the process
+    // call. The process's sample rate will be constant and process's frame count will included in
+    // the [min, max] range, which is bounded by [1, INT32_MAX].
+    // Once activated the latency and port configuration must remain constant, until deactivation.
+    // Returns true on success.
+    // [main-thread & !active]
+    bool function(const(clap_plugin_t)* plugin,
+                  double                    sample_rate,
+                  uint                  min_frames_count,
+                  uint                  max_frames_count) activate;
+
+    // [main-thread & active]
+    void function(const(clap_plugin_t)*plugin) deactivate;
+
+    // Call start processing before processing.
+    // Returns true on success.
+    // [audio-thread & active & !processing]
+    bool function(const(clap_plugin_t)*plugin) start_processing;
+
+    // Call stop processing before sending the plugin to sleep.
+    // [audio-thread & active & processing]
+    void function(const(clap_plugin_t)* plugin) stop_processing;
+
+    // - Clears all buffers, performs a full reset of the processing state (filters, oscillators,
+    //   envelopes, lfo, ...) and kills all voices.
+    // - The parameter's value remain unchanged.
+    // - clap_process.steady_time may jump backward.
+    //
+    // [audio-thread & active]
+    void function(const(clap_plugin_t)* plugin) reset;
+
+    // process audio, events, ...
+    // All the pointers coming from clap_process_t and its nested attributes,
+    // are valid until process() returns.
+    // [audio-thread & active & processing]
+    clap_process_status function(const(clap_plugin_t)*plugin,
+                                 const(/*clap_process_t*/void)* processParams) process;
+
+    // Query an extension.
+    // The returned pointer is owned by the plugin.
+    // It is forbidden to call it before plugin->init().
+    // You can call it within plugin->init() call, and after.
+    // [thread-safe]
+    const(void)* function(const(clap_plugin_t)*plugin, const char *id) get_extension;
+
+    // Called by the host on the main thread in response to a previous call to:
+    //   host->request_callback(host);
+    // [main-thread]
+    void function(const(clap_plugin_t)*plugin) on_main_thread;
+}
+
+
+// color.h
+
+struct clap_color 
+{
+    ubyte alpha;
+    ubyte red;
+    ubyte green;
+    ubyte blue;
+}
+
+
+alias clap_process_status = int;//TODO wrong

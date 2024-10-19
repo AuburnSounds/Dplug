@@ -123,6 +123,8 @@ nothrow:
         if (bufLength > 0)
             outBuffer[bufLength-1] = '\0';
     }
+
+    alias toCLAPVersionString = toVST3VersionString;
 }
 
 
@@ -186,6 +188,9 @@ struct PluginInfo
 
     /// Used as name of the bundle in AAX.
     string AAXBundleIdentifier;
+
+    /// Used as CLAP identifier ("com.wittyaudio.Destructatorizer")
+    string CLAPIdentifier;
 }
 
 /// This allows to write things life tempo-synced LFO.
@@ -728,6 +733,11 @@ nothrow:
         return _info.AAXBundleIdentifier;
     }
 
+    final string CLAPIdentifier() pure const nothrow @nogc
+    {
+        return _info.CLAPIdentifier;
+    }
+
     /// Returns: Plugin "unique" ID.
     final char[4] getPluginUniqueID() pure const nothrow @nogc
     {
@@ -1235,6 +1245,7 @@ PluginInfo parsePluginInfo(string json)
     info.VSTBundleIdentifier = CFBundleIdentifierPrefix ~ ".vst." ~ sanitizedName;
     info.AUBundleIdentifier = CFBundleIdentifierPrefix ~ ".audiounit." ~ sanitizedName;
     info.AAXBundleIdentifier = CFBundleIdentifierPrefix ~ ".aax." ~ sanitizedName;
+    info.CLAPIdentifier = CFBundleIdentifierPrefix ~ "." ~ sanitizedName;
 
     PluginCategory category = parsePluginCategory(j["category"].str);
     if (category == PluginCategory.invalid)
