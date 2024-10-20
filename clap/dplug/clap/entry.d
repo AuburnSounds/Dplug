@@ -30,6 +30,8 @@ import core.stdc.string;
 import dplug.core.runtime;
 import dplug.core.nogc;
 import dplug.client.client;
+import dplug.client.daw;
+import dplug.clap.client;
 
 
 // plugin-features.h
@@ -138,6 +140,28 @@ extern(C)
         if (isEffect) addFeature(CLAP_PLUGIN_FEATURE_AUDIO_EFFECT);
         if (isEffect && client.isLegalIO(1, 1)) addFeature( CLAP_PLUGIN_FEATURE_MONO );
         if (isEffect && client.isLegalIO(2, 2)) addFeature( CLAP_PLUGIN_FEATURE_STEREO );
+
+
+        string clapCategory;
+        final switch(client.pluginCategory()) with (PluginCategory)
+        {
+            case effectAnalysisAndMetering: clapCategory = "analyzer"; break;
+            case effectDelay:               clapCategory = "delay"; break;
+            case effectDistortion:          clapCategory = "distortion"; break;
+            case effectDynamics:            clapCategory = "compressor"; break; // Note: CLAP has 3: compressor, expander, transient shaper
+            case effectEQ:                  clapCategory = "equalizer"; break;
+            case effectImaging:             clapCategory = "utility"; break; // No imaging categiry in CLAP
+            case effectModulation:          clapCategory = "chorus"; break; // Note: CLAP has chorus and flanger
+            case effectPitch:               clapCategory = "pitch-correction"; break;
+            case effectReverb:              clapCategory = "reverb"; break;
+            case effectOther:               clapCategory = null; break;
+            case instrumentDrums:           clapCategory = "drum-machine"; break;
+            case instrumentSampler:         clapCategory = "sampler"; break;
+            case instrumentSynthesizer:     clapCategory = "synthesizer"; break;
+            case instrumentOther:           clapCategory = null; break;
+            case invalid:                   assert(false);
+        }
+        addFeature(clapCategory);
         addFeature(null);
         desc.features = g_features.ptr;
         return &desc;
@@ -165,9 +189,6 @@ extern(C)
         ScopedForeignCallback!(false, true) sfc;
         sfc.enter();
 
-        // Create a clap_plugin_t, to be owned by the client
-        clap_plugin_t* plugin = cast(clap_plugin_t*) malloc(clap_plugin_t.sizeof);
-
         // Create a Client and a CLAPClient, who hold that and the CLAP structure        
         ClientClass client = mallocNew!ClientClass();
         CLAPClient clapClient = mallocNew!CLAPClient(client, host);
@@ -182,7 +203,7 @@ struct clap_plugin_factory_t
 {
 nothrow @nogc extern(C):
    uint function(const(clap_plugin_factory_t)*) get_plugin_count;
-   clap_plugin_descriptor_t* function(const(clap_plugin_factory_t)*,uint) get_plugin_descriptor;
+   const(clap_plugin_descriptor_t)* function(const(clap_plugin_factory_t)*,uint) get_plugin_descriptor;
    const(clap_plugin_t)* function(const(clap_plugin_factory_t)*, const(void)*, const(char)*) create_plugin;
 }
 

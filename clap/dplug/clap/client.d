@@ -42,7 +42,7 @@ public:
 nothrow:
 @nogc:
 
-    this(Client client)
+    this(Client client, const(void)* host)
     {
         _client = client;
 
@@ -59,13 +59,11 @@ nothrow:
         _plugin.reset            = &plugin_reset;
         _plugin.process          = &plugin_process;
         _plugin.get_extension    = &plugin_get_extension;
-        _plugin.on_main_thread   = &plugin_on_main_thread;
-        
+        _plugin.on_main_thread   = &plugin_on_main_thread;        
     }
 
     ~this()
     {
-        // destroy client
         destroyFree(_client);
     }
 
@@ -80,55 +78,70 @@ private:
 
     // Implement methods of clap_plugin_t using the C trampolines
 
+    // Must be called after creating the plugin.
+    // If init returns false, the host must destroy the plugin instance.
+    // If init returns true, then the plugin is initialized and in the deactivated state.
+    // Unlike in `plugin-factory::create_plugin`, in init you have complete access to the host 
+    // and host extensions, so clap related setup activities should be done here rather than in
+    // create_plugin.
+    // [main-thread]
     bool initFun()
     {
-        // TODO
+        // First place where we can query the host completely.
+        // However, I don't see what we could do here anyway.
         return true;
     }
 
+    // Free the plugin and its resources.
+    // It is required to deactivate the plugin prior to this call.
+    // [main-thread & !active]
     void destroyFun()
     {
-        // TODO
+        destroyFree(this);
     }
 
     bool activate(double                    sample_rate,
                   uint                  min_frames_count,
                   uint                  max_frames_count)
     {
-        // TODO
-        return true;
+        assert(false);
+        //return true;
     }
 
     void deactivate()
     {
         // TODO
+        assert(false);
     }
 
     bool start_processing()
     {
         // TODO
-        return true;
+        assert(false);
+       // return true;
     }
 
     void stop_processing()
     {
         // TODO
+        assert(false);
     }
 
     void reset()
     {
         // TODO
+        assert(false);
     }
 
     clap_process_status process(const(/*clap_process_t*/void)* processParams)
     {
-        // TODO
+        assert(false);
         return 0;
     }
 
     void* get_extension(const(char)* name)
     {
-        // TODO
+        assert(false);
         return null;
     }
 }
