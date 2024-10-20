@@ -83,7 +83,7 @@ const(void)* clap_factory_templated(ClientClass)(const(char)* factory_id)
         __gshared clap_plugin_factory_t g_factory;
         g_factory.get_plugin_count = &factory_get_plugin_count;
         g_factory.get_plugin_descriptor = &factory_get_plugin_descriptor!ClientClass;
-        g_factory.create_plugin = &factory_create_plugin;
+        g_factory.create_plugin = &factory_create_plugin!ClientClass;
         return &g_factory;
     }
     return null;
@@ -97,18 +97,11 @@ extern(C)
         return 1;
     }
 
-    clap_plugin_descriptor_t* factory_get_plugin_descriptor(ClientClass)(const(clap_plugin_factory_t)* factory, uint index)
+    // help function to be used by both factory_get_plugin_descriptor and create_plugin
+    const(clap_plugin_descriptor_t)* get_descriptor_from_client(Client client)
     {
-        // Only one plug-in supported by CLAP wrapper in Dplug.
-        if (index != 0)
-            return null;
-
         // Fill with information from PluginClass
         __gshared clap_plugin_descriptor_t desc;
-
-        // Create a client just for the purpose of describing the plug-in
-        ClientClass client = mallocNew!ClientClass();
-        scope(exit) client.destroyFree();
 
         desc.id   = assumeZeroTerminated(client.CLAPIdentifier);
         desc.name = assumeZeroTerminated(client.pluginName);
@@ -128,7 +121,6 @@ extern(C)
         ver.toCLAPVersionString(versionBuf.ptr, 64);
         desc.version_ = versionBuf.ptr;
         desc.description = "No description.".ptr;
-        
 
         // Build a global array of features.
         enum MAX_FEATURES = 8;
@@ -151,13 +143,36 @@ extern(C)
         return &desc;
     }
 
-    void* factory_create_plugin(const(clap_plugin_factory_t)*factory,
-        const(void)* host,
-        const(char)* plugin_id)
+    const(clap_plugin_descriptor_t)* factory_get_plugin_descriptor(ClientClass)(const(clap_plugin_factory_t)* factory, uint index)
     {
-        printf("Create plugin\n");
-        // TODO
-        return null;
+        ScopedForeignCallback!(false, true) sfc;
+        sfc.enter();
+
+        // Only one plug-in supported by CLAP wrapper in Dplug.
+        if (index != 0)
+            return null;
+
+        // Create a client just for the purpose of describing the plug-in
+        ClientClass client = mallocNew!ClientClass();
+        scope(exit) client.destroyFree();
+        return get_descriptor_from_client(client);
+    }
+
+    const(clap_plugin_t)* factory_create_plugin(ClientClass)(const(clap_plugin_factory_t)*factory,
+                                const(void)* host, //TODO IHostCommand
+                                const(char)* plugin_id)
+    {
+        ScopedForeignCallback!(false, true) sfc;
+        sfc.enter();
+
+        // Create a clap_plugin_t, to be owned by the client
+        clap_plugin_t* plugin = cast(clap_plugin_t*) malloc(clap_plugin_t.sizeof);
+
+        // Create a Client and a CLAPClient, who hold that and the CLAP structure        
+        ClientClass client = mallocNew!ClientClass();
+        CLAPClient clapClient = mallocNew!CLAPClient(client, host);
+
+        return clapClient.get_clap_plugin();
     }
 }
 
@@ -168,7 +183,7 @@ struct clap_plugin_factory_t
 nothrow @nogc extern(C):
    uint function(const(clap_plugin_factory_t)*) get_plugin_count;
    clap_plugin_descriptor_t* function(const(clap_plugin_factory_t)*,uint) get_plugin_descriptor;
-   void* function(const(clap_plugin_factory_t)*, const(void)*, const(char)*) create_plugin;
+   const(clap_plugin_t)* function(const(clap_plugin_factory_t)*, const(void)*, const(char)*) create_plugin;
 }
 
 
