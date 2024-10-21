@@ -214,8 +214,17 @@ extern(C)
         ScopedForeignCallback!(false, true) sfc;
         sfc.enter();
 
-        // Create a Client and a CLAPClient, who hold that and the CLAP structure        
+        // Create a Client and a CLAPClient, who hold that and the CLAP structure
         ClientClass client = mallocNew!ClientClass();
+
+        // Verify that ID match, this is a clap-validator check.
+        const(clap_plugin_descriptor_t)* desc = get_descriptor_from_client(client);
+        if (strcmp(desc.id, plugin_id) != 0)
+        {
+            destroyFree(client);
+            return null;
+        }
+
         CLAPClient clapClient = mallocNew!CLAPClient(client, host);
 
         return clapClient.get_clap_plugin();
