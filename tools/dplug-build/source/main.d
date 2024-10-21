@@ -26,7 +26,7 @@ string MAC_VST_DIR      = "/Library/Audio/Plug-Ins/VST";
 string MAC_AU_DIR       = "/Library/Audio/Plug-Ins/Components";
 string MAC_AAX_DIR      = "/Library/Application Support/Avid/Audio/Plug-Ins";
 string MAC_LV2_DIR      = "/Library/Audio/Plug-Ins/LV2";
-
+string MAC_CLAP_DIR      = "/Library/Audio/Plug-Ins/CLAP";
 string MAC_FLP_DIR      = "/Library/Audio/Plug-Ins/FL"; // Note: this one is fictional, there is no such FL directory.
 
 
@@ -34,10 +34,12 @@ string WIN_VST3_DIR     = "$PROGRAMFILES64\\Common Files\\VST3";
 string WIN_VST_DIR      = "$PROGRAMFILES64\\VSTPlugins";
 string WIN_LV2_DIR      = "$PROGRAMFILES64\\Common Files\\LV2";
 string WIN_AAX_DIR      = "$PROGRAMFILES64\\Common Files\\Avid\\Audio\\Plug-Ins";
+string WIN_CLAP_DIR     = "$PROGRAMFILES64\\Common Files\\CLAP";
 string WIN_VST3_DIR_X86 = "$PROGRAMFILES\\Common Files\\VST3";
 string WIN_VST_DIR_X86  = "$PROGRAMFILES\\VSTPlugins";
 string WIN_LV2_DIR_X86  = "$PROGRAMFILES\\Common Files\\LV2";
 string WIN_AAX_DIR_X86  = "$PROGRAMFILES\\Common Files\\Avid\\Audio\\Plug-Ins";
+string WIN_CLAP_DIR_X86 = "$PROGRAMFILES\\Common Files\\CLAP";
 // Note: FLP installation dir default is dynamically discovered by the installer.
 
 version(linux)
@@ -861,6 +863,13 @@ int main(string[] args)
 
                         if (SIGN_WINDOWS_PLUGINS) 
                             signExecutableWindows(plugin, pluginFinalPath);
+                    }
+                    else if (configIsCLAP(config)) // CLAP special case, needs to be named .clap
+                    {
+                        pluginDirectory = path ~ "/" ~ plugin.prettyName ~ ".clap";
+                        fileMove(plugin.dubOutputFileName, pluginDirectory);
+                        if (SIGN_WINDOWS_PLUGINS) 
+                            signExecutableWindows(plugin, pluginDirectory);
                     }
                     else if (configIsVST3(config)) // VST3 special case, needs to be named .vst3 (but can't be _linked_ as .vst3)
                     {

@@ -391,6 +391,11 @@ struct Plugin
         return CFBundleIdentifierPrefix ~ ".lv2." ~ sanitizeBundleString(pluginName);
     }
 
+    string getCLAPBundleIdentifier() pure const
+    {
+        return CFBundleIdentifierPrefix ~ ".clap." ~ sanitizeBundleString(pluginName);
+    }
+
     string getFLPBundleIdentifier() pure const
     {
         return CFBundleIdentifierPrefix ~ ".flp." ~ sanitizeBundleString(pluginName);
@@ -437,6 +442,11 @@ struct Plugin
         return sanitizeFilenameString(pluginName) ~ "-lv2.pkg";
     }
 
+    string pkgFilenameCLAP() pure const
+    {
+        return sanitizeFilenameString(pluginName) ~ "-clap.pkg";
+    }
+
     string pkgFilenameFLP() pure const
     {
         return sanitizeFilenameString(pluginName) ~ "-fl.pkg";
@@ -465,6 +475,11 @@ struct Plugin
     string pkgBundleLV2() pure const
     {
         return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameLV2());
+    }
+
+    string pkgBundleCLAP() pure const
+    {
+        return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameCLAP());
     }
 
     string pkgBundleFLP() pure const
