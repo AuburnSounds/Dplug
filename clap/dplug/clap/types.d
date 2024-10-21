@@ -890,3 +890,84 @@ struct clap_output_events_t
     bool function(const(clap_output_events_t)* list,
                   const(clap_event_header_t)* event) try_push;
 }
+
+
+// audio-ports
+// another name for "buses"
+
+//
+// This extension provides a way for the plugin to describe its current audio ports.
+//
+// If the plugin does not implement this extension, it won't have audio ports.
+//
+// 32 bits support is required for both host and plugins. 64 bits audio is optional.
+//
+// The plugin is only allowed to change its ports configuration while it is deactivated.
+
+static immutable string CLAP_EXT_AUDIO_PORTS = "clap.audio-ports";
+static immutable string CLAP_PORT_MONO = "mono";
+static immutable string CLAP_PORT_STEREO = "stereo";
+
+enum 
+{
+    // This port is the main audio input or output.
+    // There can be only one main input and main output.
+    // Main port must be at index 0.
+    CLAP_AUDIO_PORT_IS_MAIN = 1 << 0,
+
+    // This port can be used with 64 bits audio
+    CLAP_AUDIO_PORT_SUPPORTS_64BITS = 1 << 1,
+
+    // 64 bits audio is preferred with this port
+    CLAP_AUDIO_PORT_PREFERS_64BITS = 1 << 2,
+
+    // This port must be used with the same sample size as all the other ports which have this flag.
+    // In other words if all ports have this flag then the plugin may either be used entirely with
+    // 64 bits audio or 32 bits audio, but it can't be mixed.
+    CLAP_AUDIO_PORT_REQUIRES_COMMON_SAMPLE_SIZE = 1 << 3,
+}
+
+struct clap_audio_port_info_t 
+{
+    // id identifies a port and must be stable.
+    // id may overlap between input and output ports.
+    clap_id id;
+    char[CLAP_NAME_SIZE] name; // displayable name
+
+    uint flags;
+    uint channel_count;
+
+    // If null or empty then it is unspecified (arbitrary audio).
+    // This field can be compared against:
+    // - CLAP_PORT_MONO
+    // - CLAP_PORT_STEREO
+    // - CLAP_PORT_SURROUND (defined in the surround extension)
+    // - CLAP_PORT_AMBISONIC (defined in the ambisonic extension)
+    //
+    // An extension can provide its own port type and way to inspect the channels.
+    const(char)* port_type;
+
+    // in-place processing: allow the host to use the same buffer for input and output
+    // if supported set the pair port id.
+    // if not supported set to CLAP_INVALID_ID
+    clap_id in_place_pair;
+}
+
+// The audio ports scan has to be done while the plugin is deactivated.
+struct clap_plugin_audio_ports_t 
+{
+extern(C) nothrow @nogc:
+
+    // Number of ports, for either input or output
+    // [main-thread]
+    uint function(const(clap_plugin_t)* plugin, bool is_input) count;
+
+    // Get info about an audio port.
+    // Returns true on success and stores the result into info.
+    // [main-thread]
+    bool function(const(clap_plugin_t)* plugin,
+                        uint index,
+                        bool is_input,
+                        clap_audio_port_info_t *info) get;
+}
+

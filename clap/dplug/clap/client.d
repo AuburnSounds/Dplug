@@ -29,6 +29,7 @@ import core.stdc.stdio: snprintf;
 
 import dplug.core.nogc;
 import dplug.core.runtime;
+import dplug.core.vec;
 
 import dplug.client.client;
 import dplug.client.params;
@@ -40,7 +41,7 @@ import dplug.client.midi;
 import dplug.clap.types;
 
 debug = clap;
-
+debug(clap) import core.stdc.stdio;
 
 nothrow @nogc:
 
@@ -113,8 +114,34 @@ private:
     // [main-thread]
     bool initFun()
     {
-        // First place where we can query the host completely.
-        // However, I don't see what we could do here anyway.
+        // Create the bus configuration.
+        int maxInputs = _client.maxInputs();
+        int maxOutputs = _client.maxOutputs();
+        bool receivesMIDI = _client.receivesMIDI();
+        bool sendsMIDI = _client.sendsMIDI();
+
+        // Note: extrapolate buses from just channel count (:
+
+        if (maxInputs)
+        {
+            Bus b;
+            b.isMain = true;
+            b.isActive = true;
+            b.name = "Input";
+            b.currentChannelCount = maxInputs;
+            audioInputs.pushBack(b);
+        }
+
+        if (maxOutputs)
+        {
+            Bus b;
+            b.isMain = true;
+            b.isActive = true;
+            b.name = "Output";
+            b.currentChannelCount = maxOutputs;
+            audioOutputs.pushBack(b);
+        }
+
         return true;
     }
 
@@ -220,8 +247,16 @@ private:
             api.flush         = &plugin_params_flush;
             return &api;
         }
+
+        if (strcmp(name, "clap.audio-ports") == 0)
+        {
+            __gshared clap_plugin_audio_ports_t api;
+            api.count = &plugin_audio_ports_count;
+            api.get = &plugin_audio_ports_get;
+            return &api;
+        }
         
-        debug(clap) debugLogf("get_extension %s\n", name);
+        debug(clap) printf("get_extension %s\n", name);
         
         // no extension support
         return null;
@@ -406,6 +441,71 @@ private:
     {
         debug(clap) debugLog("FLUSH");
     }
+
+
+    // clap.audio-ports implementation
+    static struct Bus
+    {
+        bool isMain;
+        bool isActive;
+        string name;
+        int currentChannelCount;
+    }
+    Vec!Bus audioInputs;
+    Vec!Bus audioOutputs;
+    Bus* getBus(bool is_input, uint index)
+    {
+        if (is_input)
+        {
+            if (index >= audioInputs.length) return null;
+            return &audioInputs[index];
+        }
+        else
+        {
+            if (index >= audioOutputs.length) return null;
+            return &audioOutputs[index];
+        }
+    }
+
+    uint convertBusIndexToBusID(uint index) { return index; }
+    uint convertBusIDToBusIndex(uint id) { return id; }    
+
+    uint audio_ports_count(bool is_input)
+    {
+        if (is_input)
+            return cast(uint) audioInputs.length;
+        else
+            return cast(uint) audioOutputs.length;
+    }
+
+    bool audio_ports_get(uint index,
+                         bool is_input,
+                         clap_audio_port_info_t *info)
+    {
+        Bus* b = getBus(is_input, index);
+        if (!b)
+            return false;
+
+        info.id = convertBusIndexToBusID(index);
+        snprintf(info.name.ptr, CLAP_NAME_SIZE, "%.*s", 
+                 cast(int)(b.name.length), b.name.ptr);
+        
+        info.flags = 0;
+        if (b.isMain)
+            info.flags |= CLAP_AUDIO_PORT_IS_MAIN;
+        info.channel_count = b.currentChannelCount;
+
+        // This field can be compared against:
+        // - CLAP_PORT_MONO
+        // - CLAP_PORT_STEREO
+        // - CLAP_PORT_SURROUND (defined in the surround extension)
+        // - CLAP_PORT_AMBISONIC (defined in the ambisonic extension)
+     
+        // not sure what this implies TODO derive that from current channels?
+        info.port_type = null;
+        info.in_place_pair = CLAP_INVALID_ID; // true luxury is letting the host deal with that
+        return true;
+    }
 }
 
 extern(C) static
@@ -526,6 +626,21 @@ extern(C) static
     {
         mixin(ClientCallback);
         return client.params_flush(in_, out_);
+    }
+
+    uint plugin_audio_ports_count(const(clap_plugin_t)* plugin, bool is_input)
+    {
+        mixin(ClientCallback);
+        return client.audio_ports_count(is_input);
+    }
+
+    bool plugin_audio_ports_get(const(clap_plugin_t)* plugin,
+                  uint index,
+                  bool is_input,
+                  clap_audio_port_info_t *info)
+    {
+        mixin(ClientCallback);
+        return client.audio_ports_get(index, is_input, info);
     }
 }
 
