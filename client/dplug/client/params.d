@@ -136,6 +136,18 @@ nothrow:
         return _label;
     }
 
+    /// Output name as a zero-terminated C string, truncate if needed.
+    final void toNameN(char* p, int bufLength) const nothrow @nogc
+    {
+        snprintf(p, bufLength, "%.*s", cast(int)(_name.length), _name.ptr);
+    }
+
+    /// Output label as a zero-terminated C string, truncate if needed.
+    final void toLabelN(char* p, int bufLength) const nothrow @nogc
+    {
+        snprintf(p, bufLength, "%.*s", cast(int)(_label.length), _label.ptr);
+    }
+
     /// Returns: Index of parameter in the parameter list.
     int index() pure const
     {

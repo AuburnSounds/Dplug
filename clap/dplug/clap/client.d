@@ -24,7 +24,8 @@ SOFTWARE.
 */
 module dplug.clap.client;
 
-import core.stdc.string: strcmp;
+import core.stdc.string: strcmp, strlen;
+import core.stdc.stdio: snprintf;
 
 import dplug.core.nogc;
 import dplug.core.runtime;
@@ -37,6 +38,9 @@ import dplug.client.midi;
 
 
 import dplug.clap.types;
+
+debug = clap;
+
 
 nothrow @nogc:
 
@@ -194,6 +198,7 @@ private:
         }
 
         //TODO: processing
+        debugLog("TODO processing");
 
 
         // Note: CLAP can expose more internal state, such as tail, process only non-silence etc.
@@ -216,8 +221,7 @@ private:
             return &api;
         }
         
-        //import core.stdc.stdio;
-        //printf("get_extension(%s)\n", name);
+        debug(clap) debugLogf("get_extension %s\n", name);
         
         // no extension support
         return null;
@@ -225,6 +229,15 @@ private:
 
     // clap.params interface implementation
 
+    uint convertParamIndexToParamID(uint param_index)
+    {
+        return param_index;
+    }
+
+    uint convertParamIDToParamIndex(uint param_id)
+    {
+        return param_id;
+    }
 
     uint params_count()
     {
@@ -233,14 +246,85 @@ private:
 
     bool params_get_info(uint param_index, clap_param_info_t* param_info)
     {
-        // TODO
-        return false;
+        // DPlug note about parameter IDs.
+        // Clap parameters IDs are defined as indexes in uint form.
+        // To have better IDs, would need Dplug support for custom parameters IDs,
+        // that would still be `uint`. Could then have somekind of map.
+        // I don't see too much value spending time choosing those IDs, unfortunately.
+
+        Parameter p = _client.param(param_index);
+        if (!p)
+            return false;
+
+        param_info.id = convertParamIndexToParamID(param_index);
+
+        int flags = 0;
+        double min, max, def;
+
+        if (BoolParameter bp = cast(BoolParameter)p)
+        {
+            flags |= CLAP_PARAM_IS_STEPPED;
+            min = 0;
+            max = 1;
+            def = bp.defaultValue() ? 1 : 0;
+        }
+        else if (IntegerParameter ip = cast(IntegerParameter)p)
+        {
+            if (EnumParameter ep = cast(EnumParameter)p)
+                flags |= CLAP_PARAM_IS_ENUM;
+            flags |= CLAP_PARAM_IS_STEPPED; // truncate called
+            min = ip.minValue();
+            max = ip.maxValue();
+            def = ip.defaultValue();
+        }
+        else if (FloatParameter fp = cast(FloatParameter)p)
+        {
+            flags |= 0;
+            min = fp.minValue();
+            max = fp.maxValue();
+            def = fp.defaultValue();
+        }
+        else
+            assert(false);
+
+        if (p.isAutomatable) flags |= CLAP_PARAM_IS_AUTOMATABLE;
+
+        // Note: all Dplug parameters supposed to requires process.
+        flags |= CLAP_PARAM_REQUIRES_PROCESS;
+
+        param_info.flags = flags;
+        param_info.min_value = min;
+        param_info.max_value = max;
+        param_info.default_value = def;
+        param_info.cookie = cast(void*) p; // fast access cookie
+
+        p.toNameN(param_info.name.ptr, CLAP_NAME_SIZE);
+
+        // "" string for module name, as Dplug has a flag parameter structure :/
+        param_info.module_[0] = 0;
+
+        return true;
     }
 
     bool params_get_value(clap_id param_id, double *out_value)
     {
-        // TODO
-        return false;
+        // Note: this wants a non-normalized value, so we have to cast the Parameter to its subtype
+
+        uint idx = convertParamIDToParamIndex(param_id);
+        Parameter p = _client.param(idx);
+        if (!p)
+            return false;
+
+        if (BoolParameter bp = cast(BoolParameter)p)
+            *out_value = bp.value() ? 1.0 : 0.0;
+        else if (IntegerParameter ip = cast(IntegerParameter)p)
+            *out_value = ip.value();
+        else if (FloatParameter fp = cast(FloatParameter)p)
+            *out_value = fp.value();
+        else
+            assert(false);
+
+        return true;
     }
 
     // eg: "2.3 kHz"
@@ -250,8 +334,32 @@ private:
                        char                *out_buffer,
                        uint                out_buffer_capacity)
     {
-        // TODO
-        return false;
+        uint idx = convertParamIDToParamIndex(param_id);
+        Parameter p = _client.param(idx);
+        if (!p)
+            return false;
+
+        // 1. Find corresponding normalized value
+        double normalized;
+        if (BoolParameter bp = cast(BoolParameter)p)
+            normalized = value;
+        else if (IntegerParameter ip = cast(IntegerParameter)p)
+            normalized = ip.toNormalized(cast(int)value); 
+        else if (FloatParameter fp = cast(FloatParameter)p)
+            normalized = fp.toNormalized(value);
+        else
+            assert(false);
+
+        // 2. Find text corresponding to that
+
+        char[CLAP_NAME_SIZE] str;
+        char[CLAP_NAME_SIZE] label;
+
+        p.stringFromNormalizedValue(normalized, str.ptr, CLAP_NAME_SIZE);
+        
+        p.toLabelN(label.ptr, CLAP_NAME_SIZE);
+        snprintf(out_buffer, out_buffer_capacity, "%s %s", str.ptr, label.ptr);
+        return true;
     }
 
     bool params_text_to_value(
@@ -259,8 +367,29 @@ private:
                   const(char)         *param_value_text,
                   double              *out_value)
     {
-        //TODO
-        return false;
+        uint idx = convertParamIDToParamIndex(param_id);
+        Parameter p = _client.param(idx);
+        if (!p)
+            return false;
+
+        size_t len = strlen(param_value_text);
+
+        double normalized;
+        if (p.normalizedValueFromString(param_value_text[0..len], normalized))
+        {
+            if (BoolParameter bp = cast(BoolParameter)p)
+                *out_value = normalized;
+            else if (IntegerParameter ip = cast(IntegerParameter)p)
+                // in a better Dplug timeline, normalized value wouldn't exist in generic client
+                *out_value = ip.fromNormalized(normalized); 
+            else if (FloatParameter fp = cast(FloatParameter)p)
+                *out_value = fp.fromNormalized(normalized);
+            else
+                assert(false);
+            return true;
+        }
+        else
+            return false;
     }
 
     // Flushes a set of parameter changes.
@@ -275,6 +404,7 @@ private:
     void params_flush(const(clap_input_events_t)  *in_,
                       const(clap_output_events_t) *out_)
     {
+        debug(clap) debugLog("FLUSH");
     }
 }
 
