@@ -34,8 +34,9 @@ nothrow @nogc:
 import dplug.core.nogc;
 import dplug.core.runtime;
 
-import dplug.clap.entry;
 import dplug.clap.clapversion;
+import dplug.clap.types;
+
 
 
 // parts of entry.h and version.h here
@@ -62,7 +63,7 @@ template CLAPEntryPoint(alias ClientClass)
     static immutable enum factory_entry =
     "extern(C) const(void)* clap_factory_entry(const(char)* factory_id) nothrow @nogc" ~
     "{" ~
-    "    import dplug.clap.entry;" ~
+    "    import dplug.clap.types;" ~
     "    return clap_factory_templated!" ~ ClientClass.stringof ~ "(factory_id);" ~
     "}\n";
 

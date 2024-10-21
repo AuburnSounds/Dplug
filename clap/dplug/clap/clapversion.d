@@ -26,10 +26,6 @@ module dplug.clap.clapversion;
 
 nothrow @nogc:
 
-import core.stdc.string;
-import dplug.core.runtime;
-
-
 // version.h
 enum uint CLAP_VERSION_MAJOR = 1;
 enum uint CLAP_VERSION_MINOR = 2;
