@@ -22,6 +22,7 @@
         "dplug:au": { "path": "../.." },
         "dplug:vst3": { "path": "../.." },
         "dplug:flp": { "path": "../.." },
+        "dplug:clap": { "path": "../.." },
         "dplug:gui": { "path": "../.." },
         "dplug:canvas": { "path": "../.." },
         "dplug:flat-widgets": { "path": "../.." }
@@ -62,6 +63,13 @@
             "versions": ["FLP"],
             "targetType": "dynamicLibrary",
             "lflags-osx-ldc": [ "-exported_symbols_list", "$PACKAGE_DIR/module-flp.lst", "-dead_strip" ],
+        },
+        {
+            "name": "CLAP",
+            "versions": ["CLAP"],
+            "targetType": "dynamicLibrary",
+            "lflags-osx-ldc": [ "-exported_symbols_list", "$PACKAGE_DIR/module-clap.lst", "-dead_strip" ],
+            "lflags-linux-ldc": [ "--version-script=$PACKAGE_DIR/module-clap.ver" ]
         }
     ]
 }
