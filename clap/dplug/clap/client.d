@@ -60,7 +60,7 @@ nothrow:
         // fill _plugin
 
         _plugin.desc = get_descriptor_from_client(client);
-        _plugin.plugin_data = cast(void*)(cast(Object)this);        
+        _plugin.plugin_data = cast(void*)(cast(Object)this);
         _plugin.init             = &plugin_init;
         _plugin.destroy          = &plugin_destroy;
         _plugin.activate         = &plugin_activate;
@@ -134,6 +134,8 @@ private:
     // [main-thread]
     bool initFun()
     {
+        _client.setHostCommand(_hostCommand);
+
         // Detect DAW here
         _daw = _hostCommand.getDAW();
 
@@ -258,9 +260,7 @@ private:
         }
 
         //TODO: processing
-        debugLog("TODO processing\n");
-
-
+ 
         // Note: CLAP can expose more internal state, such as tail, process only non-silence etc.
         // However a realistic plug-in will implment silence detection for the other formats as well.
         return CLAP_PROCESS_CONTINUE;
@@ -309,9 +309,6 @@ private:
             api.hide = &plugin_gui_hide;
             return &api;
         }
-        
-        debug(clap) printf("get_extension %s\n", name);
-        
         // no extension support
         return null;
     }
@@ -374,7 +371,9 @@ private:
             if (min == -double.infinity && _daw == DAW.Reaper)
             {
                 REAPER_inf_param_workaround[param_index] = true;
-                min = -320; // replace -inf by very low value
+
+                // TODO: report this to REAPER
+                min = -320; // replace -inf by low value (asuming dB)
             }
 
             max = fp.maxValue();
@@ -458,7 +457,6 @@ private:
         double normalized = normalizeParamValue(p, value);
 
         // 2. Find text corresponding to that
-
         char[CLAP_NAME_SIZE] str;
         char[CLAP_NAME_SIZE] label;
 
@@ -512,7 +510,6 @@ private:
                       const(clap_output_events_t) *out_)
     {
         processInputEvents(in_);
-
         // TODO output events
     }
 
@@ -655,84 +652,143 @@ private:
         return true;
     }
 
-
     // gui implementation
-
     bool gui_is_api_supported(const(char)*api, bool is_floating)
     {
-        debugLog("TODO gui_is_api_supported");
+        if (is_floating) return false;
+        version(Windows) return (strcmp(api, CLAP_WINDOW_API_WIN32.ptr) == 0);
+        version(OSX)     return (strcmp(api, CLAP_WINDOW_API_COCOA.ptr) == 0);
+        version(linux)   return (strcmp(api, CLAP_WINDOW_API_X11.ptr)   == 0);
         return false;
     }
 
     bool gui_get_preferred_api(const(char)** api, bool* is_floating) 
     {
-        debugLog("TODO gui_get_preferred_api");
+        *is_floating = false;
+        version(Windows) { *api = CLAP_WINDOW_API_WIN32.ptr; return true; }
+        version(OSX)     { *api = CLAP_WINDOW_API_COCOA.ptr; return true; }
+        version(linux)   { *api = CLAP_WINDOW_API_X11.ptr;   return true; }
         return false;
     }
 
+    GraphicsBackend gui_backend       = GraphicsBackend.autodetect;
+    bool gui_apiWorksInPhysicalPixels = false;
+    double gui_scale                  = 1.0;
+    void* gui_parent_handle           = null;
+
     bool gui_create(const(char)* api, bool is_floating)
     {
-        assert(false, "TODO");
+        // This doesn't allocate things, we wait for full information and
+        // will only create the window on first open.
+
+        version(Windows)
+            if (strcmp(api, CLAP_WINDOW_API_WIN32.ptr) == 0)
+            {
+                gui_backend = GraphicsBackend.win32;
+                gui_apiWorksInPhysicalPixels = true;
+                return true;
+            }
+
+        version(OSX)
+            if (strcmp(api, CLAP_WINDOW_API_COCOA.ptr) == 0)
+            {
+                gui_backend = GraphicsBackend.cocoa;
+                gui_apiWorksInPhysicalPixels = false;
+                return true;
+            }
+
+        version(linux)
+            if (strcmp(api, CLAP_WINDOW_API_X11.ptr) == 0)
+            {
+                gui_backend = GraphicsBackend.x11;
+                gui_apiWorksInPhysicalPixels = true;
+                return true;
+            }
+        return false;
     }
 
     void gui_destroy()
     {
-        assert(false, "TODO");
+        _client.closeGUI();
     }
 
     bool gui_set_scale(double scale)
     {
-        assert(false, "TODO");
+        gui_scale = scale; // Note: we currently do nothing with that information.
+        return true;
     }
 
     bool gui_get_size(uint *width, uint *height)
     {
-        assert(false, "TODO");
+        // FUTURE: physical vs logical?
+        int widthLogical, heightLogical;
+        
+        if (!_client.getGUISize(&widthLogical, &heightLogical))
+            return false;
+
+        if (widthLogical < 0 || heightLogical < 0)
+            return false;
+
+        *width = widthLogical;
+        *height = heightLogical;
+        return true;
     }
 
     bool gui_can_resize()
     {
-assert(false, "TODO");
+        return _client.getGraphics().isResizeable();
     }
 
     bool gui_get_resize_hints(clap_gui_resize_hints_t *hints)
     {
-assert(false, "TODO");
+        return false; // TODO: have GUIGraphics gives those important hints...
     }
 
     bool gui_adjust_size(uint *width, uint *height)
     {
-assert(false, "TODO");
+        // FUTURE: physical vs logical?
+        int w = *width;
+        int h = *height;
+        if (w < 0 || h < 0) return false;
+        _client.getGraphics().getMaxSmallerValidSize(&w, &h);
+        if (w < 0 || h < 0) return false;
+        *width  = w;
+        *height = h;
+        return true;
     }
 
     bool gui_set_size(uint width, uint height)
     {
-assert(false, "TODO");
+        // FUTURE: physical vs logical?
+        return _client.getGraphics().nativeWindowResize(width, height);
     }
 
     bool gui_set_parent(const(clap_window_t)* window)
     {
-assert(false, "TODO");
+        gui_parent_handle = cast(void*)(window.ptr);
+        return true;
     }
 
     bool gui_set_transient(const(clap_window_t)* window)
     {
-assert(false, "TODO");
+        // no support
+        return false;
     }
 
     void gui_suggest_title(const(char)* title)
     {
-assert(false, "TODO");
     }
 
     bool gui_show()
     {
-assert(false, "TODO");
+        _client.openGUI(gui_parent_handle, null, gui_backend);
+        return true;
     }
 
     bool gui_hide()
     {
-        assert(false, "TODO");
+        _client.closeGUI();
+        return true;
     }
 }
 

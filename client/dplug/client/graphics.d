@@ -26,7 +26,7 @@ nothrow:
 @nogc:
     /// Create an UI, return a system-specific handle for the window/view
     abstract void* openUI(void* parentInfo, 
-                          void* controlInfo, 
+                          void* controlInfo, // must be null, was a Carbon thing
                           IClient client,
                           GraphicsBackend backend);
 
@@ -36,12 +36,12 @@ nothrow:
     /// Get the current plugin UI size in logical pixels.
     abstract void getGUISize(int* widthLogicalPixels, int* heightLogicalPixels);
 
-    /// Used by VST3.
+    /// Used by CLAP and VST3.
     /// Returns: `true` if this is resizeable in terms of logical pixels.
     /// This should succeed even if the UI is closed.
     abstract bool isResizeable();
 
-    /// Used by VST3.
+    /// Used by CLAP and VST3.
     /// Returns: Maximum valid size that still fits into a `inoutWidth x inoutHeight` rectangle.
     ///          When one of the criterion is impossible to satisfy, returning a valid size is preferred.
     /// This should work even if the UI is closed.
@@ -53,7 +53,7 @@ nothrow:
     /// Hack: Used by FLP format to find minimum and maximum size of window in logical pixels.
     abstract void getNearestValidSize(int* inoutWidth, int* inoutHeight);
 
-    /// Used by VST3.
+    /// Used by CLAP and VST3.
     /// Tells the native window to resize itself.
     /// Called by the host when it's one resizing the parent window, and wants our window to follow suit.
     /// This is to be forwarded to IWindow.

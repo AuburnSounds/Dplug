@@ -30,13 +30,12 @@ import core.stdc.string;
 import core.stdc.config;
 import dplug.core.runtime;
 import dplug.core.nogc;
+import dplug.core.sync;
 import dplug.client.client;
 import dplug.client.daw;
 import dplug.clap.client;
 import dplug.clap;
 import dplug.clap.clapversion;
-
-// TODO: racey things in factory and plugin creation, read original docs
 
 // id.h
 
@@ -108,6 +107,8 @@ static immutable CLAP_PLUGIN_FEATURE_AMBISONIC = "ambisonic";
 
 // version.h
 
+__gshared UncheckedMutex g_factoryMutex;
+
 // Get the pointer to a factory. See factory/plugin-factory.h for an example.
 //
 // Returns null if the factory is not provided.
@@ -116,13 +117,12 @@ const(void)* clap_factory_templated(ClientClass)(const(char)* factory_id)
 {
     ScopedForeignCallback!(false, true) scopedCallback;
     scopedCallback.enter();
-
     if (strcmp(factory_id, "clap.plugin-factory") == 0)
     {
-        __gshared clap_plugin_factory_t g_factory;
-        g_factory.get_plugin_count = &factory_get_plugin_count;
-        g_factory.get_plugin_descriptor = &factory_get_plugin_descriptor!ClientClass;
-        g_factory.create_plugin = &factory_create_plugin!ClientClass;
+        static immutable __gshared clap_plugin_factory_t g_factory
+            = clap_plugin_factory_t(&factory_get_plugin_count, 
+                                    &factory_get_plugin_descriptor!ClientClass,
+                                    &factory_create_plugin!ClientClass);
         return &g_factory;
     }
     return null;
@@ -211,6 +211,9 @@ extern(C)
         if (index != 0)
             return null;
 
+        g_factoryMutex.lockLazy();
+        scope(exit) g_factoryMutex.unlock();
+
         // Create a client just for the purpose of describing the plug-in
         ClientClass client = mallocNew!ClientClass();
         scope(exit) client.destroyFree();
@@ -223,6 +226,8 @@ extern(C)
     {
         ScopedForeignCallback!(false, true) sfc;
         sfc.enter();
+
+        // Note: I don't see what would NOT be thread-safe here.
 
         // Create a Client and a CLAPClient, who hold that and the CLAP structure
         ClientClass client = mallocNew!ClientClass();
@@ -243,17 +248,32 @@ extern(C)
 
 // factory.h
 
+// Every method must be thread-safe.
+// It is very important to be able to scan the plugin as quickly as possible.
+//
+// The host may use clap_plugin_invalidation_factory to detect filesystem changes
+// which may change the factory's content.
 struct clap_plugin_factory_t 
 {
 nothrow @nogc extern(C):
 
     // Get the number of plugins available.
+    // [thread-safe]
     uint function(const(clap_plugin_factory_t)*) get_plugin_count;
 
-    // help function to be used by both factory_get_plugin_descriptor and create_plugin
-    const(clap_plugin_descriptor_t)* function(const(clap_plugin_factory_t)*,uint) get_plugin_descriptor;
+    // Retrieves a plugin descriptor by its index.
+    // Returns null in case of error.
+    // The descriptor must not be freed.
+    // [thread-safe]
+    const(clap_plugin_descriptor_t)* function(const(clap_plugin_factory_t)*, uint) get_plugin_descriptor;
+
+    // Create a clap_plugin by its plugin_id.
+    // The returned pointer must be freed by calling plugin->destroy(plugin);
+    // The plugin is not allowed to use the host callbacks in the create method.
+    // Returns null in case of error.
+    // [thread-safe]
     const(clap_plugin_t)* function(const(clap_plugin_factory_t)*, 
-                                   const(clap_host_t)* , const(char)*) create_plugin;
+                                   const(clap_host_t)*, const(char)*) create_plugin;
 }
 
 
@@ -1078,7 +1098,7 @@ struct clap_gui_resize_hints_t
     bool can_resize_vertically;
 
     // only if can resize horizontally and vertically
-    bool     preserve_aspect_ratio;
+    bool preserve_aspect_ratio;
     uint aspect_ratio_width;
     uint aspect_ratio_height;
 }
