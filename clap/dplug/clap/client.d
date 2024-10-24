@@ -51,9 +51,10 @@ public:
 nothrow:
 @nogc:
 
-    this(Client client, const(void)* host)
+    this(Client client, const(clap_host_t)* host)
     {
         _client = client;
+        _hostCommand = mallocNew!CLAPHost(host);
 
         // fill _plugin
 
@@ -77,6 +78,7 @@ nothrow:
     ~this()
     {
         destroyFree(_client);
+        destroyFree(_hostCommand);
     }
 
     const(clap_plugin_t)* get_clap_plugin()
@@ -86,6 +88,7 @@ nothrow:
 
 private:
     Client _client;
+    CLAPHost _hostCommand;
     clap_plugin_t _plugin;
 
     // plugin is "activated" (status of activate / deactivate sequence)
@@ -254,6 +257,11 @@ private:
             api.count = &plugin_audio_ports_count;
             api.get = &plugin_audio_ports_get;
             return &api;
+        }
+
+        if (strcmp(name, "clap.gui") == 0)
+        {
+
         }
         
         debug(clap) printf("get_extension %s\n", name);
@@ -644,4 +652,65 @@ extern(C) static
     }
 }
 
+// CLAP host commands
+
+class CLAPHost : IHostCommand
+{
+nothrow @nogc:
+    this(const(clap_host_t)* host)
+    {
+        _host = host;
+    }
+
+    /// Notifies the host that editing of a parameter has begun from UI side.
+    override void beginParamEdit(int paramIndex)
+    {
+        // TODO
+    }
+
+    /// Notifies the host that a parameter was edited from the UI side.
+    /// This enables the host to record automation.
+    /// It is illegal to call `paramAutomate` outside of a `beginParamEdit`/`endParamEdit` pair.
+    override void paramAutomate(int paramIndex, float value)
+    {
+        // TODO
+    }
+
+    /// Notifies the host that editing of a parameter has finished from UI side.
+    override void endParamEdit(int paramIndex)
+    {
+        // TODO
+    }
+
+    /// Requests to the host a resize of the plugin window's PARENT window, given logical pixels of plugin window.
+    ///
+    /// Note: UI widgets and plugin format clients have different coordinate systems.
+    ///
+    /// Params:
+    ///     width New width of the plugin, in logical pixels.
+    ///     height New height of the plugin, in logical pixels.
+    /// Returns: `true` if the host parent window has been resized.
+    override bool requestResize(int widthLogicalPixels, int heightLogicalPixels)
+    {
+        // TODO
+        return false;
+    }
+
+    override bool notifyResized()
+    {
+        return false;
+    }
+
+    DAW getDAW()
+    {
+        return identifyDAW(_host.name);
+    }
+
+    PluginFormat getPluginFormat()
+    {
+        return PluginFormat.clap;
+    }
+
+    const(clap_host_t)* _host;
+}
 

@@ -42,6 +42,7 @@ enum PluginFormat
     aax,  // Avid Audio eXtension
     auv2, // Audio Unit v2
     lv2,  // LADSPA Version 2 
+    clap, // CLever Audio Plug-in
     flp,  // Fruity Loops Plug-in, aka FP, aka FL
 }
 

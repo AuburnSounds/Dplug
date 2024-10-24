@@ -27,6 +27,7 @@ module dplug.clap.types;
 nothrow @nogc:
 
 import core.stdc.string;
+import core.stdc.config;
 import dplug.core.runtime;
 import dplug.core.nogc;
 import dplug.client.client;
@@ -35,6 +36,7 @@ import dplug.clap.client;
 import dplug.clap;
 import dplug.clap.clapversion;
 
+// TODO: racey things in factory and plugin creation, read original docs
 
 // id.h
 
@@ -119,13 +121,11 @@ const(void)* clap_factory_templated(ClientClass)(const(char)* factory_id)
 
 extern(C)
 {
-    // Get the number of plugins available.
     uint factory_get_plugin_count(const(clap_plugin_factory_t)* factory)
     {
         return 1;
     }
 
-    // help function to be used by both factory_get_plugin_descriptor and create_plugin
     const(clap_plugin_descriptor_t)* get_descriptor_from_client(Client client)
     {
         // Fill with information from PluginClass
@@ -208,7 +208,7 @@ extern(C)
     }
 
     const(clap_plugin_t)* factory_create_plugin(ClientClass)(const(clap_plugin_factory_t)*factory,
-                                const(void)* host, //TODO IHostCommand
+                                const(clap_host_t)* host,
                                 const(char)* plugin_id)
     {
         ScopedForeignCallback!(false, true) sfc;
@@ -236,9 +236,14 @@ extern(C)
 struct clap_plugin_factory_t 
 {
 nothrow @nogc extern(C):
+
+    // Get the number of plugins available.
     uint function(const(clap_plugin_factory_t)*) get_plugin_count;
+
+    // help function to be used by both factory_get_plugin_descriptor and create_plugin
     const(clap_plugin_descriptor_t)* function(const(clap_plugin_factory_t)*,uint) get_plugin_descriptor;
-    const(clap_plugin_t)* function(const(clap_plugin_factory_t)*, const(void)*, const(char)*) create_plugin;
+    const(clap_plugin_t)* function(const(clap_plugin_factory_t)*, 
+                                   const(clap_host_t)* , const(char)*) create_plugin;
 }
 
 
@@ -980,3 +985,268 @@ extern(C) nothrow @nogc:
                         clap_audio_port_info_t *info) get;
 }
 
+// gui.h
+
+/// @page GUI
+///
+/// This extension defines how the plugin will present its GUI.
+///
+/// There are two approaches:
+/// 1. the plugin creates a window and embeds it into the host's window
+/// 2. the plugin creates a floating window
+///
+/// Embedding the window gives more control to the host, and feels more integrated.
+/// Floating window are sometimes the only option due to technical limitations.
+///
+/// Showing the GUI works as follow:
+///  1. clap_plugin_gui->is_api_supported(), check what can work
+///  2. clap_plugin_gui->create(), allocates gui resources
+///  3. if the plugin window is floating
+///  4.    -> clap_plugin_gui->set_transient()
+///  5.    -> clap_plugin_gui->suggest_title()
+///  6. else
+///  7.    -> clap_plugin_gui->set_scale()
+///  8.    -> clap_plugin_gui->can_resize()
+///  9.    -> if resizable and has known size from previous session, clap_plugin_gui->set_size()
+/// 10.    -> else clap_plugin_gui->get_size(), gets initial size
+/// 11.    -> clap_plugin_gui->set_parent()
+/// 12. clap_plugin_gui->show()
+/// 13. clap_plugin_gui->hide()/show() ...
+/// 14. clap_plugin_gui->destroy() when done with the gui
+///
+/// Resizing the window (initiated by the plugin, if embedded):
+/// 1. Plugins calls clap_host_gui->request_resize()
+/// 2. If the host returns true the new size is accepted,
+///    the host doesn't have to call clap_plugin_gui->set_size().
+///    If the host returns false, the new size is rejected.
+///
+/// Resizing the window (drag, if embedded)):
+/// 1. Only possible if clap_plugin_gui->can_resize() returns true
+/// 2. Mouse drag -> new_size
+/// 3. clap_plugin_gui->adjust_size(new_size) -> working_size
+/// 4. clap_plugin_gui->set_size(working_size)
+
+// If your windowing API is not listed here, please open an issue and we'll figure it out.
+// https://github.com/free-audio/clap/issues/new
+
+// uses physical size
+// embed using https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setparent
+static immutable string CLAP_WINDOW_API_WIN32 = "win32";
+
+// uses logical size, don't call clap_plugin_gui->set_scale()
+static immutable string CLAP_WINDOW_API_COCOA = "cocoa";
+
+// uses physical size
+// embed using https://specifications.freedesktop.org/xembed-spec/xembed-spec-latest.html
+static immutable string CLAP_WINDOW_API_X11 = "x11";
+
+// uses physical size
+// embed is currently not supported, use floating windows
+static immutable string CLAP_WINDOW_API_WAYLAND = "wayland";
+
+alias clap_hwnd = void*;
+alias clap_nsview = void*;
+
+alias clap_xwnd = c_ulong;
+
+// Represent a window reference.
+struct clap_window_t {
+    const(char) *api; // one of CLAP_WINDOW_API_XXX
+    union {
+        clap_nsview cocoa;
+        clap_xwnd   x11;
+        clap_hwnd   win32;
+        void       *ptr; // for anything defined outside of clap
+    }
+}
+
+// Information to improve window resizing when initiated by the host or window manager.
+struct clap_gui_resize_hints_t 
+{
+    bool can_resize_horizontally;
+    bool can_resize_vertically;
+
+    // only if can resize horizontally and vertically
+    bool     preserve_aspect_ratio;
+    uint aspect_ratio_width;
+    uint aspect_ratio_height;
+}
+
+// Size (width, height) is in pixels; the corresponding windowing system extension is
+// responsible for defining if it is physical pixels or logical pixels.
+struct clap_plugin_gui_t 
+{
+    // Returns true if the requested gui api is supported
+    // [main-thread]
+    bool function(const clap_plugin_t *plugin, const char *api, bool is_floating) is_api_supported;
+
+    // Returns true if the plugin has a preferred api.
+    // The host has no obligation to honor the plugin preference, this is just a hint.
+    // The const char **api variable should be explicitly assigned as a pointer to
+    // one of the CLAP_WINDOW_API_ constants defined above, not strcopied.
+    // [main-thread]
+    bool function(const clap_plugin_t *plugin,
+                                        const char         **api,
+                                        bool                *is_floating) get_preferred_api;
+
+    // Create and allocate all resources necessary for the gui.
+    //
+    // If is_floating is true, then the window will not be managed by the host. The plugin
+    // can set its window to stays above the parent window, see set_transient().
+    // api may be null or blank for floating window.
+    //
+    // If is_floating is false, then the plugin has to embed its window into the parent window, see
+    // set_parent().
+    //
+    // After this call, the GUI may not be visible yet; don't forget to call show().
+    //
+    // Returns true if the GUI is successfully created.
+    // [main-thread]
+    bool function(const clap_plugin_t *plugin, const char *api, bool is_floating) create;
+
+    // Free all resources associated with the gui.
+    // [main-thread]
+    void function(const clap_plugin_t *plugin) destroy;
+
+    // Set the absolute GUI scaling factor, and override any OS info.
+    // Should not be used if the windowing api relies upon logical pixels.
+    //
+    // If the plugin prefers to work out the scaling factor itself by querying the OS directly,
+    // then ignore the call.
+    //
+    // scale = 2 means 200% scaling.
+    //
+    // Returns true if the scaling could be applied
+    // Returns false if the call was ignored, or the scaling could not be applied.
+    // [main-thread]
+    bool function(const clap_plugin_t *plugin, double scale) set_scale;
+
+    // Get the current size of the plugin UI.
+    // clap_plugin_gui->create() must have been called prior to asking the size.
+    //
+    // Returns true if the plugin could get the size.
+    // [main-thread]
+    bool function(const clap_plugin_t *plugin, uint *width, uint *height) get_size;
+
+    // Returns true if the window is resizeable (mouse drag).
+    // [main-thread & !floating]
+    bool function(const clap_plugin_t *plugin) can_resize;
+
+    // Returns true if the plugin can provide hints on how to resize the window.
+    // [main-thread & !floating]
+    bool function(const clap_plugin_t *plugin, clap_gui_resize_hints_t *hints) get_resize_hints;
+
+    // If the plugin gui is resizable, then the plugin will calculate the closest
+    // usable size which fits in the given size.
+    // This method does not change the size.
+    //
+    // Returns true if the plugin could adjust the given size.
+    // [main-thread & !floating]
+    bool function(const clap_plugin_t *plugin, uint *width, uint *height) adjust_size;
+
+    // Sets the window size.
+    //
+    // Returns true if the plugin could resize its window to the given size.
+    // [main-thread & !floating]
+    bool function(const clap_plugin_t *plugin, uint width, uint height) set_size;
+
+    // Embeds the plugin window into the given window.
+    //
+    // Returns true on success.
+    // [main-thread & !floating]
+    bool function(const clap_plugin_t *plugin, const clap_window_t *window) set_parent;
+
+    // Set the plugin floating window to stay above the given window.
+    //
+    // Returns true on success.
+    // [main-thread & floating]
+    bool function(const clap_plugin_t *plugin, const clap_window_t *window) set_transient;
+
+    // Suggests a window title. Only for floating windows.
+    //
+    // [main-thread & floating]
+    void function(const clap_plugin_t *plugin, const char *title) suggest_title;
+
+    // Show the window.
+    //
+    // Returns true on success.
+    // [main-thread]
+    bool function(const clap_plugin_t *plugin) show;
+
+    // Hide the window, this method does not free the resources, it just hides
+    // the window content. Yet it may be a good idea to stop painting timers.
+    //
+    // Returns true on success.
+    // [main-thread]
+    bool function(const clap_plugin_t *plugin) hide;
+}
+
+struct clap_host_gui_t 
+{
+    // The host should call get_resize_hints() again.
+    // [thread-safe & !floating]
+    void function(const clap_host_t *host) resize_hints_changed; 
+
+    // Request the host to resize the client area to width, height.
+    // Return true if the new size is accepted, false otherwise.
+    // The host doesn't have to call set_size().
+    //
+    // Note: if not called from the main thread, then a return value simply means that the host
+    // acknowledged the request and will process it asynchronously. If the request then can't be
+    // satisfied then the host will call set_size() to revert the operation.
+    // [thread-safe & !floating]
+    bool function(const clap_host_t *host, uint width, uint height) request_resize;
+
+    // Request the host to show the plugin gui.
+    // Return true on success, false otherwise.
+    // [thread-safe]
+    bool function(const clap_host_t *host) request_show;
+
+    // Request the host to hide the plugin gui.
+    // Return true on success, false otherwise.
+    // [thread-safe]
+    bool function(const clap_host_t *host) request_hide;
+
+    // The floating window has been closed, or the connection to the gui has been lost.
+    //
+    // If was_destroyed is true, then the host must call clap_plugin_gui->destroy() to acknowledge
+    // the gui destruction.
+    // [thread-safe]
+    void function(const clap_host_t *host, bool was_destroyed) closed;
+}
+
+// host.h
+
+struct clap_host_t 
+{
+    clap_version_t clap_version; // initialized to CLAP_VERSION
+
+    void* host_data; // reserved pointer for the host
+
+    // name and version are mandatory.
+    const(char) *name;    // eg: "Bitwig Studio"
+    const(char) *vendor;  // eg: "Bitwig GmbH"
+    const(char) *url;     // eg: "https://bitwig.com"
+    const(char) *version_; // eg: "4.3", see plugin.h for advice on how to format the version
+
+    // Query an extension.
+    // The returned pointer is owned by the host.
+    // It is forbidden to call it before plugin->init().
+    // You can call it within plugin->init() call, and after.
+    // [thread-safe]
+    const(void)* function(const(clap_host_t) *host, const char *extension_id) get_extension;
+
+    // Request the host to deactivate and then reactivate the plugin.
+    // The operation may be delayed by the host.
+    // [thread-safe]
+    void function(const(clap_host_t)*host) request_restart;
+
+    // Request the host to activate and start processing the plugin.
+    // This is useful if you have external IO and need to wake up the plugin from "sleep".
+    // [thread-safe]
+    void function(const(clap_host_t)*host) request_process;
+
+    // Request the host to schedule a call to plugin->on_main_thread(plugin) on the main thread.
+    // [thread-safe]
+    void function(const(clap_host_t)*host) request_callback;
+}
