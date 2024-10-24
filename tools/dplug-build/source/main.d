@@ -1495,9 +1495,10 @@ void buildPlugin(OS targetOS,
     // If we want to support Notarization, we can't target earlier than 10.11
     // Note: it seems it is overriden at some point and when notarizing you can't target lower
     // If you want Universal Binary 2, can't target earlier than 10.12
+    // So nowadays we set it to 10.12.
     version(OSX)
     {
-        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.10";
+        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.12";
     }
 
     if (targetOS == OS.windows && compilerIsLDC(compiler))
