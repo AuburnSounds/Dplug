@@ -42,6 +42,15 @@ import dplug.clap.clapversion;
 
 alias clap_id = uint;
 enum clap_id CLAP_INVALID_ID = uint.max;
+/*
+void printfemergency(const(char)* s)
+{
+    import core.stdc.stdio;
+    FILE* fio = fopen(`C:\Users\guill\Desktop\output.txt`, "a");
+    fprintf(fio, "%s", s);
+    fflush(fio);
+    fclose(fio);
+}*/
 
 
 // string-sizes.h
@@ -131,6 +140,7 @@ extern(C)
         // Fill with information from PluginClass
         __gshared clap_plugin_descriptor_t desc;
 
+        desc.clap_version = CLAP_VERSION;
         desc.id   = assumeZeroTerminated(client.CLAPIdentifier);
         desc.name = assumeZeroTerminated(client.pluginName);
         desc.vendor = assumeZeroTerminated(client.vendorName);
@@ -388,10 +398,10 @@ struct clap_process_t
 
     // The input event list can't be modified.
     // Input read-only event list. The host will deliver these sorted in sample order.
-    const void /*clap_input_events_t*/  *in_events;
+    const(clap_input_events_t)* in_events;
 
     // Output event list. The plugin must insert events in sample sorted order when inserting events
-    const void /*clap_output_events_t*/ *out_events;
+    const(clap_output_events_t)* out_events;
 }
 
 
@@ -885,6 +895,7 @@ struct clap_event_midi2_t
 // Input event list. The host will deliver these sorted in sample order.
 struct clap_input_events_t 
 {
+extern(C) nothrow @nogc:
     void *ctx; // reserved pointer for the list
 
     // returns the number of events in the list
@@ -1076,6 +1087,8 @@ struct clap_gui_resize_hints_t
 // responsible for defining if it is physical pixels or logical pixels.
 struct clap_plugin_gui_t 
 {
+extern(C) nothrow @nogc:
+
     // Returns true if the requested gui api is supported
     // [main-thread]
     bool function(const clap_plugin_t *plugin, const char *api, bool is_floating) is_api_supported;
@@ -1086,7 +1099,7 @@ struct clap_plugin_gui_t
     // one of the CLAP_WINDOW_API_ constants defined above, not strcopied.
     // [main-thread]
     bool function(const clap_plugin_t *plugin,
-                                        const char         **api,
+                                        const(char)  **api,
                                         bool                *is_floating) get_preferred_api;
 
     // Create and allocate all resources necessary for the gui.

@@ -26,6 +26,7 @@ module dplug.clap.client;
 
 import core.stdc.string: strcmp, strlen;
 import core.stdc.stdio: snprintf;
+import core.stdc.math: isnan, isfinite;
 
 import dplug.core.nogc;
 import dplug.core.runtime;
@@ -87,8 +88,17 @@ nothrow:
     }
 
 private:
+
+    // Underlying generic client.
     Client _client;
+
+    // Host access.
     CLAPHost _hostCommand;
+
+    // Which DAW is it?
+    DAW _daw; 
+
+    // Returned to the CLAP api, it's a sort of v-table.
     clap_plugin_t _plugin;
 
     // plugin is "activated" (status of activate / deactivate sequence)
@@ -106,6 +116,13 @@ private:
     // Max frames in block., -1 if not specified yet.
     int _maxFrames = -1;
 
+    // Note: REAPER doesn't like parameters with -inf as minimum value.
+    // It will react by sending NaNs around.
+    // However, all other formats support it.
+    // When REAPER is detected, do not allow parameter to have -inf has minimum.
+    // instead, this is set to a low value.
+    Vec!bool REAPER_inf_param_workaround;
+
     // Implement methods of clap_plugin_t using the C trampolines
 
     // Must be called after creating the plugin.
@@ -117,6 +134,12 @@ private:
     // [main-thread]
     bool initFun()
     {
+        // Detect DAW here
+        _daw = _hostCommand.getDAW();
+
+        REAPER_inf_param_workaround.resize(_client.params.length);
+        REAPER_inf_param_workaround.fill(false);
+
         // Create the bus configuration.
         int maxInputs = _client.maxInputs();
         int maxOutputs = _client.maxOutputs();
@@ -219,6 +242,13 @@ private:
         // It seems the number of ports and channels is discovered here
         // as last resort.
 
+        // First, process incoming events.
+        if (processParams)
+        {
+            if (processParams.in_events)
+                processInputEvents(processParams.in_events);
+        }
+
         if (_mustReset)
         {
             _mustReset = false;
@@ -228,7 +258,7 @@ private:
         }
 
         //TODO: processing
-        debugLog("TODO processing");
+        debugLog("TODO processing\n");
 
 
         // Note: CLAP can expose more internal state, such as tail, process only non-silence etc.
@@ -261,7 +291,23 @@ private:
 
         if (strcmp(name, "clap.gui") == 0)
         {
-
+            __gshared clap_plugin_gui_t api;
+            api.is_api_supported = &plugin_gui_is_api_supported;
+            api.get_preferred_api = &plugin_gui_get_preferred_api;
+            api.create = &plugin_gui_create;
+            api.destroy = &plugin_gui_destroy;
+            api.set_scale = &plugin_gui_set_scale;
+            api.get_size = &plugin_gui_get_size;
+            api.can_resize = &plugin_gui_can_resize;
+            api.get_resize_hints = &plugin_gui_get_resize_hints;
+            api.adjust_size = &plugin_gui_adjust_size;
+            api.set_size = &plugin_gui_set_size;
+            api.set_parent = &plugin_gui_set_parent;
+            api.set_transient = &plugin_gui_set_transient;
+            api.suggest_title = &plugin_gui_suggest_title;
+            api.show = &plugin_gui_show;
+            api.hide = &plugin_gui_hide;
+            return &api;
         }
         
         debug(clap) printf("get_extension %s\n", name);
@@ -324,6 +370,13 @@ private:
         {
             flags |= 0;
             min = fp.minValue();
+
+            if (min == -double.infinity && _daw == DAW.Reaper)
+            {
+                REAPER_inf_param_workaround[param_index] = true;
+                min = -320; // replace -inf by very low value
+            }
+
             max = fp.maxValue();
             def = fp.defaultValue();
         }
@@ -339,7 +392,7 @@ private:
         param_info.min_value = min;
         param_info.max_value = max;
         param_info.default_value = def;
-        param_info.cookie = cast(void*) p; // fast access cookie
+        param_info.cookie = null;//cast(void*) p; // fast access cookie
 
         p.toNameN(param_info.name.ptr, CLAP_NAME_SIZE);
 
@@ -367,7 +420,26 @@ private:
         else
             assert(false);
 
+        assert(!isnan(*out_value));
         return true;
+    }
+
+    final double normalizeParamValue(Parameter p, double value)
+    {
+        assert(!isnan(value));
+
+        double normalized;
+        if (BoolParameter bp = cast(BoolParameter)p)
+            normalized = value;
+        else if (IntegerParameter ip = cast(IntegerParameter)p)
+            normalized = ip.toNormalized(cast(int)value); 
+        else if (FloatParameter fp = cast(FloatParameter)p)
+        {
+            normalized = fp.toNormalized(value);
+        }            
+        else
+            assert(false);
+        return normalized;
     }
 
     // eg: "2.3 kHz"
@@ -383,15 +455,7 @@ private:
             return false;
 
         // 1. Find corresponding normalized value
-        double normalized;
-        if (BoolParameter bp = cast(BoolParameter)p)
-            normalized = value;
-        else if (IntegerParameter ip = cast(IntegerParameter)p)
-            normalized = ip.toNormalized(cast(int)value); 
-        else if (FloatParameter fp = cast(FloatParameter)p)
-            normalized = fp.toNormalized(value);
-        else
-            assert(false);
+        double normalized = normalizeParamValue(p, value);
 
         // 2. Find text corresponding to that
 
@@ -447,7 +511,83 @@ private:
     void params_flush(const(clap_input_events_t)  *in_,
                       const(clap_output_events_t) *out_)
     {
-        debug(clap) debugLog("FLUSH");
+        processInputEvents(in_);
+
+        // TODO output events
+    }
+
+    void processInputEvents(const(clap_input_events_t)  *in_)
+    {
+        if (in_ == null)
+            return;
+
+        if (in_.size == null)
+            return;
+
+        // Manage incoming messages from host.
+        uint size = in_.size(in_);
+
+        for (uint n = 0; n < size; ++n)
+        {
+            const(clap_event_header_t)* hdr = in_.get(in_, n);
+            if (!hdr) continue;
+            if (hdr.space_id != 0) continue; 
+
+            switch(hdr.type)
+            {
+                case CLAP_EVENT_NOTE_ON: 
+                    //TODO
+                    break;
+                case CLAP_EVENT_NOTE_OFF:
+                    //TODO
+                    break;
+                case CLAP_EVENT_NOTE_CHOKE:
+                    //TODO
+                    break;
+                case CLAP_EVENT_NOTE_END:
+                    //TODO
+                    break;
+                case CLAP_EVENT_PARAM_VALUE:
+                    if (hdr.size < clap_event_param_value_t.sizeof) 
+                        break;
+                    const(clap_event_param_value_t)* ev = cast(const(clap_event_param_value_t)*) hdr;
+
+                    int index = convertParamIDToParamIndex(ev.param_id);
+                    Parameter param = _client.param(index);
+                    if (!param)
+                        break;
+
+                    // Note: assuming wildcard here. For proper handling, Dplug would have to 
+                    // maintain values of parameters for many combination, which is ridiculous.
+                    // Note: param value is not normalized, so we have to first normalize it.
+                    double normalized = normalizeParamValue(param, ev.value);
+                    param.setFromHost(normalized);
+                    break;
+
+                case CLAP_EVENT_PARAM_MOD:
+                    // Not supported by our CLAP client.
+                    break;
+                case CLAP_EVENT_PARAM_GESTURE_BEGIN:
+                case CLAP_EVENT_PARAM_GESTURE_END: 
+                    // something to use rather in output 
+                    // FAR FUTURE: should this "hover" the params in the UI?
+                    break;
+
+                case CLAP_EVENT_TRANSPORT:
+                    // TODO
+                    break;
+                case CLAP_EVENT_MIDI:
+                    // TODO
+                    break;
+                case CLAP_EVENT_MIDI_SYSEX:
+                    // TODO
+                    break;
+                case CLAP_EVENT_MIDI2:
+                    // No support in Dplug
+                    break;
+                default:
+            }
+        }
     }
 
 
@@ -513,6 +653,86 @@ private:
         info.port_type = null;
         info.in_place_pair = CLAP_INVALID_ID; // true luxury is letting the host deal with that
         return true;
+    }
+
+
+    // gui implementation
+
+    bool gui_is_api_supported(const(char)*api, bool is_floating)
+    {
+        debugLog("TODO gui_is_api_supported");
+        return false;
+    }
+
+    bool gui_get_preferred_api(const(char)** api, bool* is_floating) 
+    {
+        debugLog("TODO gui_get_preferred_api");
+        return false;
+    }
+
+    bool gui_create(const(char)* api, bool is_floating)
+    {
+        assert(false, "TODO");
+    }
+
+    void gui_destroy()
+    {
+        assert(false, "TODO");
+    }
+
+    bool gui_set_scale(double scale)
+    {
+        assert(false, "TODO");
+    }
+
+    bool gui_get_size(uint *width, uint *height)
+    {
+        assert(false, "TODO");
+    }
+
+    bool gui_can_resize()
+    {
+assert(false, "TODO");
+    }
+
+    bool gui_get_resize_hints(clap_gui_resize_hints_t *hints)
+    {
+assert(false, "TODO");
+    }
+
+    bool gui_adjust_size(uint *width, uint *height)
+    {
+assert(false, "TODO");
+    }
+
+    bool gui_set_size(uint width, uint height)
+    {
+assert(false, "TODO");
+    }
+
+    bool gui_set_parent(const(clap_window_t)* window)
+    {
+assert(false, "TODO");
+    }
+
+    bool gui_set_transient(const(clap_window_t)* window)
+    {
+assert(false, "TODO");
+    }
+
+    void gui_suggest_title(const(char)* title)
+    {
+assert(false, "TODO");
+    }
+
+    bool gui_show()
+    {
+assert(false, "TODO");
+    }
+
+    bool gui_hide()
+    {
+        assert(false, "TODO");
     }
 }
 
@@ -650,6 +870,101 @@ extern(C) static
         mixin(ClientCallback);
         return client.audio_ports_get(index, is_input, info);
     }
+
+
+    // gui implem
+
+    bool plugin_gui_is_api_supported(const(clap_plugin_t)* plugin, 
+                                     const(char)*api, 
+                                     bool is_floating)
+    {
+        mixin(ClientCallback);
+        return client.gui_is_api_supported(api, is_floating);
+    }
+
+    bool plugin_gui_get_preferred_api(const(clap_plugin_t)* plugin, const(char)** api, bool* is_floating) 
+    {
+        mixin(ClientCallback);
+        return client.gui_get_preferred_api(api, is_floating);
+    }
+
+    bool plugin_gui_create(const(clap_plugin_t)* plugin, const(char)* api, bool is_floating)
+    {
+        mixin(ClientCallback);
+        return client.gui_create(api, is_floating);
+    }
+
+    void plugin_gui_destroy(const(clap_plugin_t)* plugin)
+    {
+        mixin(ClientCallback);
+        return client.gui_destroy();
+    }
+    
+    bool plugin_gui_set_scale(const(clap_plugin_t)* plugin, double scale)
+    {
+        mixin(ClientCallback);
+        return client.gui_set_scale(scale);
+    }
+
+    bool plugin_gui_get_size(const(clap_plugin_t)* plugin, uint *width, uint *height)
+    {
+        mixin(ClientCallback);
+        return client.gui_get_size(width, height);
+    }
+
+    bool plugin_gui_can_resize(const(clap_plugin_t)* plugin)
+    {
+        mixin(ClientCallback);
+        return client.gui_can_resize();
+    }
+
+    bool plugin_gui_get_resize_hints(const(clap_plugin_t)* plugin, clap_gui_resize_hints_t *hints)
+    {
+        mixin(ClientCallback);
+        return client.gui_get_resize_hints(hints);
+    }
+
+    bool plugin_gui_adjust_size(const(clap_plugin_t)* plugin, uint *width, uint *height)
+    {
+        mixin(ClientCallback);
+        return client.gui_adjust_size(width, height);
+    }
+
+    bool plugin_gui_set_size(const(clap_plugin_t)* plugin, uint width, uint height)
+    {
+        mixin(ClientCallback);
+        return client.gui_set_size(width, height);
+    }
+
+    bool plugin_gui_set_parent(const(clap_plugin_t)* plugin, const(clap_window_t)* window)
+    {
+        mixin(ClientCallback);
+        return client.gui_set_parent(window);
+    }
+
+    bool plugin_gui_set_transient(const(clap_plugin_t)* plugin, const(clap_window_t)* window)
+    {
+        mixin(ClientCallback);
+        return client.gui_set_transient(window);
+    }
+
+    void plugin_gui_suggest_title(const(clap_plugin_t)* plugin, const(char)* title)
+    {
+        mixin(ClientCallback);
+        return client.gui_suggest_title(title);
+    }
+
+    bool plugin_gui_show(const(clap_plugin_t)* plugin)
+    {
+        mixin(ClientCallback);
+        return client.gui_show();
+    }
+
+    bool plugin_gui_hide(const(clap_plugin_t)* plugin)
+    {
+        mixin(ClientCallback);
+        return client.gui_hide();
+    }
 }
 
 // CLAP host commands
@@ -703,7 +1018,17 @@ nothrow @nogc:
 
     DAW getDAW()
     {
-        return identifyDAW(_host.name);
+        char[128] dawStr;
+        snprintf(dawStr.ptr, 128, "%s", _host.name);
+
+        // Force lowercase
+        for (char* p =  dawStr.ptr; *p != '\0'; ++p)
+        {
+            if (*p >= 'A' && *p <= 'Z')
+                *p += ('a' - 'A');
+        }
+
+        return identifyDAW(dawStr.ptr);
     }
 
     PluginFormat getPluginFormat()
