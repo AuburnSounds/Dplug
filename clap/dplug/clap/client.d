@@ -41,8 +41,10 @@ import dplug.client.midi;
 
 import dplug.clap.types;
 
-debug = clap;
+//debug = clap;
 debug(clap) import core.stdc.stdio;
+
+// TODO: sync calls to IGraphics externally.
 
 nothrow @nogc:
 
@@ -118,10 +120,9 @@ private:
 
     // Note: REAPER doesn't like parameters with -inf as minimum value.
     // It will react by sending NaNs around.
-    // However, all other formats support it.
-    // When REAPER is detected, do not allow parameter to have -inf has minimum.
-    // instead, this is set to a low value.
-    Vec!bool REAPER_inf_param_workaround;
+    // What we do for FloatParameter is expose them as normalized floats.
+    // This helps UI-less programs to have more meaningful mapping.
+    Vec!bool expose_param_as_normalized;
 
     // Implement methods of clap_plugin_t using the C trampolines
 
@@ -139,8 +140,8 @@ private:
         // Detect DAW here
         _daw = _hostCommand.getDAW();
 
-        REAPER_inf_param_workaround.resize(_client.params.length);
-        REAPER_inf_param_workaround.fill(false);
+        expose_param_as_normalized.resize(_client.params.length);
+        expose_param_as_normalized.fill(false);
 
         // Create the bus configuration.
         int maxInputs = _client.maxInputs();
@@ -289,7 +290,7 @@ private:
             return &api;
         }
 
-        if (strcmp(name, "clap.gui") == 0)
+        if (_client.hasGUI() && strcmp(name, "clap.gui") == 0)
         {
             __gshared clap_plugin_gui_t api;
             api.is_api_supported = &plugin_gui_is_api_supported;
@@ -365,19 +366,15 @@ private:
         }
         else if (FloatParameter fp = cast(FloatParameter)p)
         {
+            // REAPER doesn't actually accept parameters that are -inf, 
+            // but Dplug does. So we have to normalize the float params,
+            // which also improve the display in UI-less plugins since
+            // it's mapped as the programmer intended.
             flags |= 0;
-            min = fp.minValue();
-
-            if (min == -double.infinity && _daw == DAW.Reaper)
-            {
-                REAPER_inf_param_workaround[param_index] = true;
-
-                // TODO: report this to REAPER
-                min = -320; // replace -inf by low value (asuming dB)
-            }
-
-            max = fp.maxValue();
-            def = fp.defaultValue();
+            expose_param_as_normalized[param_index] = true;
+            min = 0;
+            max = 1.0;
+            def = fp.getNormalizedDefault();
         }
         else
             assert(false);
@@ -409,6 +406,12 @@ private:
         Parameter p = _client.param(idx);
         if (!p)
             return false;
+
+        if (expose_param_as_normalized[idx])
+        {
+            *out_value = p.getNormalized();
+            return true;
+        }
 
         if (BoolParameter bp = cast(BoolParameter)p)
             *out_value = bp.value() ? 1.0 : 0.0;
@@ -454,7 +457,9 @@ private:
             return false;
 
         // 1. Find corresponding normalized value
-        double normalized = normalizeParamValue(p, value);
+        double normalized = value;
+        if (!expose_param_as_normalized[idx]) 
+            normalized = normalizeParamValue(p, value);
 
         // 2. Find text corresponding to that
         char[CLAP_NAME_SIZE] str;
@@ -482,6 +487,12 @@ private:
         double normalized;
         if (p.normalizedValueFromString(param_value_text[0..len], normalized))
         {
+            if (expose_param_as_normalized[idx])
+            {
+                *out_value = normalized;
+                return true;
+            }
+
             if (BoolParameter bp = cast(BoolParameter)p)
                 *out_value = normalized;
             else if (IntegerParameter ip = cast(IntegerParameter)p)
@@ -557,7 +568,9 @@ private:
                     // Note: assuming wildcard here. For proper handling, Dplug would have to 
                     // maintain values of parameters for many combination, which is ridiculous.
                     // Note: param value is not normalized, so we have to first normalize it.
-                    double normalized = normalizeParamValue(param, ev.value);
+                    double normalized = ev.value;
+                    if (!expose_param_as_normalized[index])
+                        normalized = normalizeParamValue(param, ev.value);
                     param.setFromHost(normalized);
                     break;
 
@@ -741,7 +754,13 @@ private:
 
     bool gui_get_resize_hints(clap_gui_resize_hints_t *hints)
     {
-        return false; // TODO: have GUIGraphics gives those important hints...
+        hints.can_resize_horizontally = _client.getGraphics().isResizeableHorizontally();
+        hints.can_resize_vertically = _client.getGraphics().isResizeableVertically();
+        hints.preserve_aspect_ratio = _client.getGraphics().isAspectRatioPreserved();
+        int[2] AR = _client.getGraphics().getPreservedAspectRatio();
+        hints.aspect_ratio_width = AR[0];
+        hints.aspect_ratio_height = AR[1];
+        return true;
     }
 
     bool gui_adjust_size(uint *width, uint *height)

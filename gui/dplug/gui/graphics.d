@@ -231,6 +231,27 @@ nothrow:
         return isUIResizable();
     }
 
+    override bool isAspectRatioPreserved()
+    {
+        if (!isUIResizable()) return false;
+        return _sizeConstraints.preserveAspectRatio();
+    }
+
+    override int[2] getPreservedAspectRatio()
+    {
+        return _sizeConstraints.aspectRatio();
+    }
+
+    override bool isResizeableHorizontally()
+    {
+        return _sizeConstraints.canResizeHorizontally();
+    }
+
+    override bool isResizeableVertically()
+    {
+        return _sizeConstraints.canResizeVertically();
+    }
+
     override void getMaxSmallerValidSize(int* inoutWidth, int* inoutHeight)
     {
         _sizeConstraints.getMaxSmallerValidSize(inoutWidth, inoutHeight);

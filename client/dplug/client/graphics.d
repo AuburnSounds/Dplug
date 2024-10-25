@@ -37,9 +37,13 @@ nothrow:
     abstract void getGUISize(int* widthLogicalPixels, int* heightLogicalPixels);
 
     /// Used by CLAP and VST3.
-    /// Returns: `true` if this is resizeable in terms of logical pixels.
-    /// This should succeed even if the UI is closed.
+    /// Returns: `true` if plugin is resizeable in terms of logical pixels.
     abstract bool isResizeable();
+
+    /// Used by CLAP.
+    /// Returns: `true` if plugin is resizeable in terms of logical pixels, horizontally.
+    abstract bool isResizeableHorizontally();
+    abstract bool isResizeableVertically();
 
     /// Used by CLAP and VST3.
     /// Returns: Maximum valid size that still fits into a `inoutWidth x inoutHeight` rectangle.
@@ -59,5 +63,15 @@ nothrow:
     /// This is to be forwarded to IWindow.
     /// Returns: `true` if properly resized.
     abstract bool nativeWindowResize(int newWidthLogicalPixels, int newHeightLogicalPixels);
+
+    /// Used by CLAP.
+    /// Returns: `true` if plugin is preserves an apsect ratio, even though it reality sizes will be rounded
+    ///          to integer logical pixels.
+    ///         false if not resizeable or doesn't preserve a ratio.
+    abstract bool isAspectRatioPreserved();
+
+    /// Used by CLAP.
+    /// Only makes sense if `isAspectRatioPreserved` returned true, else it's UB.
+    abstract int[2] getPreservedAspectRatio();
 }
 
