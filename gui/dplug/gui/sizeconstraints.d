@@ -167,7 +167,35 @@ nothrow:
             case rectangularBounds: 
                 return true;
             case discreteRatioXY: 
-                return numDiscreteScalesX > 1 && numDiscreteScalesY > 1;
+                return (numDiscreteScalesX > 1) || (numDiscreteScalesY > 1);
+        }
+    }
+
+    bool canResizeHorizontally()
+    {
+        final switch(type) with (Type)
+        {
+            case continuousRatio:
+            case discreteRatio:
+                return true;
+            case rectangularBounds: 
+                return minWidth != maxWidth;
+            case discreteRatioXY: 
+                return numDiscreteScalesX > 1;
+        }
+    }
+
+    bool canResizeVertically()
+    {
+        final switch(type) with (Type)
+        {
+            case continuousRatio:
+            case discreteRatio:
+                return true;
+            case rectangularBounds: 
+                return minHeight != maxHeight;
+            case discreteRatioXY: 
+                return numDiscreteScalesY > 1;
         }
     }
 
@@ -182,6 +210,23 @@ nothrow:
             case rectangularBounds: 
             case discreteRatioXY: 
                 return false;
+        }
+    }
+
+    /// _Approximate_ aspect ratio fraction that should be preserved on resize.
+    /// Only make sense if `preserveAspectRatio()` yields true.
+    /// Returns: X and Y, represent X/Y fraction.
+    int[2] aspectRatio()
+    {
+        final switch(type) with (Type)
+        {
+            case continuousRatio:
+            case discreteRatio:
+                return [defaultWidth, defaultHeight];
+            case rectangularBounds: 
+            case discreteRatioXY: 
+                // doesn't make sense, there is no single aspect ratio for the UI
+                return [defaultWidth, defaultHeight]; 
         }
     }
 
