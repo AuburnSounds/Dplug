@@ -1216,6 +1216,8 @@ extern(C) nothrow @nogc:
 
 struct clap_host_gui_t 
 {
+extern(C) nothrow @nogc:
+
     // The host should call get_resize_hints() again.
     // [thread-safe & !floating]
     void function(const clap_host_t *host) resize_hints_changed; 
@@ -1252,6 +1254,7 @@ struct clap_host_gui_t
 
 struct clap_host_t 
 {
+extern(C) nothrow @nogc:
     clap_version_t clap_version; // initialized to CLAP_VERSION
 
     void* host_data; // reserved pointer for the host

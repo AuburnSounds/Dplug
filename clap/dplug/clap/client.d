@@ -1050,6 +1050,7 @@ nothrow @nogc:
     this(const(clap_host_t)* host)
     {
         _host = host;
+        _host_gui = cast(clap_host_gui_t*) host.get_extension(host, "clap.gui".ptr);
     }
 
     /// Notifies the host that editing of a parameter has begun from UI side.
@@ -1082,8 +1083,11 @@ nothrow @nogc:
     /// Returns: `true` if the host parent window has been resized.
     override bool requestResize(int widthLogicalPixels, int heightLogicalPixels)
     {
-        // TODO
-        return false;
+        if (!_host_gui)
+            return false;
+        if (widthLogicalPixels < 0 || heightLogicalPixels < 0)
+            return false;
+        return _host_gui.request_resize(_host, widthLogicalPixels, heightLogicalPixels);
     }
 
     override bool notifyResized()
@@ -1112,5 +1116,6 @@ nothrow @nogc:
     }
 
     const(clap_host_t)* _host;
+    const(clap_host_gui_t)* _host_gui;
 }
 
