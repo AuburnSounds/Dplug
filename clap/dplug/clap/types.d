@@ -37,6 +37,15 @@ import dplug.clap.client;
 import dplug.clap;
 import dplug.clap.clapversion;
 
+
+// CLAP has lots of unsigned integers, meaning we must in theory 
+// check for overflows
+int assumeNoOverflow(uint x) pure @safe
+{
+    assert(x <= int.max);
+    return x;
+}
+
 // id.h
 
 alias clap_id = uint;
@@ -411,8 +420,8 @@ struct clap_process_t
     // by clap_plugin_audio_ports->count().
     // The index maps to clap_plugin_audio_ports->get().
     // Input buffer and its contents are read-only.
-    const(void /*clap_audio_buffer_t*/)*audio_inputs;
-    void /*clap_audio_buffer_t*/       *audio_outputs;
+    const(clap_audio_buffer_t)*audio_inputs;
+    clap_audio_buffer_t       *audio_outputs;
     uint audio_inputs_count;
     uint audio_outputs_count;
 
@@ -422,6 +431,35 @@ struct clap_process_t
 
     // Output event list. The plugin must insert events in sample sorted order when inserting events
     const(clap_output_events_t)* out_events;
+}
+
+// audiobuffer.h
+
+// Sample code for reading a stereo buffer:
+//
+// bool isLeftConstant = (buffer->constant_mask & (1 << 0)) != 0;
+// bool isRightConstant = (buffer->constant_mask & (1 << 1)) != 0;
+//
+// for (int i = 0; i < N; ++i) {
+//    float l = data32[0][isLeftConstant ? 0 : i];
+//    float r = data32[1][isRightConstant ? 0 : i];
+// }
+//
+// Note: checking the constant mask is optional, and this implies that
+// the buffer must be filled with the constant value.
+// Rationale: if a buffer reader doesn't check the constant mask, then it may
+// process garbage samples and in result, garbage samples may be transmitted
+// to the audio interface with all the bad consequences it can have.
+//
+// The constant mask is a hint.
+struct clap_audio_buffer_t 
+{
+    // Either data32 or data64 pointer will be set.
+    float  **data32;
+    double **data64;
+    uint channel_count;
+    uint latency; // latency from/to the audio interface
+    ulong constant_mask;
 }
 
 
@@ -565,7 +603,7 @@ extern(C) nothrow @nogc:
                   clap_id              param_id,
                   double               value,
                   char                *out_buffer,
-                  uint                out_buffer_capacity) value_to_text;
+                  uint                 out_buffer_capacity) value_to_text;
 
     // Converts the null-terminated UTF-8 param_value_text into a double and writes it to out_value.
     // The host can use this to convert user input into a parameter value.
@@ -1077,13 +1115,14 @@ static immutable string CLAP_WINDOW_API_WAYLAND = "wayland";
 
 alias clap_hwnd = void*;
 alias clap_nsview = void*;
-
 alias clap_xwnd = c_ulong;
 
 // Represent a window reference.
-struct clap_window_t {
+struct clap_window_t 
+{
     const(char) *api; // one of CLAP_WINDOW_API_XXX
-    union {
+    union 
+    {
         clap_nsview cocoa;
         clap_xwnd   x11;
         clap_hwnd   win32;

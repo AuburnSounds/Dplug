@@ -24,13 +24,14 @@ SOFTWARE.
 */
 module dplug.clap.client;
 
-import core.stdc.string: strcmp, strlen;
+import core.stdc.string: strcmp, strlen, memcpy;
 import core.stdc.stdio: snprintf;
 import core.stdc.math: isnan, isfinite;
 
 import dplug.core.nogc;
 import dplug.core.runtime;
 import dplug.core.vec;
+import dplug.core.sync;
 
 import dplug.client.client;
 import dplug.client.params;
@@ -44,10 +45,10 @@ import dplug.clap.types;
 //debug = clap;
 debug(clap) import core.stdc.stdio;
 
-// TODO: sync calls to IGraphics externally.
-
 nothrow @nogc:
 
+// TODO https://github.com/free-audio/clap/blob/main/include/clap/ext/audio-ports-config.h
+// else not possible in theory to have both mono and stereo ports
 class CLAPClient
 {
 public:
@@ -82,6 +83,24 @@ nothrow:
     {
         destroyFree(_client);
         destroyFree(_hostCommand);
+
+        for (int i = 0; i < _maxInputs; ++i)
+            _inputBuffers[i].destroy();
+        for (int i = 0; i < _maxOutputs; ++i)
+            _outputBuffers[i].destroy();
+        _inputBuffers.freeSlice();
+        _outputBuffers.freeSlice();
+    }
+
+    // Resize copy buffers according to maximum block size.
+    void resizeScratchBuffers(int maxFrames, 
+                              int inputChannels,
+                              int outputChannels)
+    {
+        for (int i = 0; i < inputChannels; ++i)
+            _inputBuffers[i].resize(maxFrames);
+        for (int i = 0; i < outputChannels; ++i)
+            _outputBuffers[i].resize(maxFrames);
     }
 
     const(clap_plugin_t)* get_clap_plugin()
@@ -118,6 +137,19 @@ private:
     // Max frames in block., -1 if not specified yet.
     int _maxFrames = -1;
 
+    // Max possible number of channels (should belong to Bus ideally)
+    int _maxInputs;
+
+    // Max possible number of channels (should belong to Bus ideally)
+    int _maxOutputs;
+
+    // Input and output scratch buffers, one per channel.
+    Vec!float[] _inputBuffers;  
+    Vec!float[] _outputBuffers;
+
+    Vec!(float*) _inputPointers;
+    Vec!(float*) _outputPointers;
+
     // Note: REAPER doesn't like parameters with -inf as minimum value.
     // It will react by sending NaNs around.
     // What we do for FloatParameter is expose them as normalized floats.
@@ -144,33 +176,35 @@ private:
         expose_param_as_normalized.fill(false);
 
         // Create the bus configuration.
-        int maxInputs = _client.maxInputs();
-        int maxOutputs = _client.maxOutputs();
+        _maxInputs = _client.maxInputs();
+        _maxOutputs = _client.maxOutputs();
         bool receivesMIDI = _client.receivesMIDI();
         bool sendsMIDI = _client.sendsMIDI();
 
         // Note: extrapolate buses from just channel count (:
 
-        if (maxInputs)
+        if (_maxInputs)
         {
             Bus b;
             b.isMain = true;
             b.isActive = true;
             b.name = "Input";
-            b.currentChannelCount = maxInputs;
+            b.numChannels = _maxInputs;
             audioInputs.pushBack(b);
         }
 
-        if (maxOutputs)
+        if (_maxOutputs)
         {
             Bus b;
             b.isMain = true;
             b.isActive = true;
             b.name = "Output";
-            b.currentChannelCount = maxOutputs;
+            b.numChannels = _maxOutputs;
             audioOutputs.pushBack(b);
         }
 
+        _inputBuffers  = mallocSlice!(Vec!float)(_maxInputs);
+        _outputBuffers = mallocSlice!(Vec!float)(_maxOutputs);
         return true;
     }
 
@@ -194,14 +228,31 @@ private:
         if (max_frames_count > int.max)
             return false;
 
-        // No synchronization needed, since
-        // the plugin is deactivated.
-        // Delay that reset, since we don't know for sure the buses configuration here.
+        // Note: We can assume we already know the port configuration!
+        //       CLAP host are stictly typed and host follow the constraints.
+        // And no synchronization needed, since the plugin is deactivated.
         _sampleRate = sample_rate;
-        _maxFrames = cast(int) max_frames_count;
-        _mustReset = true;
+        _maxFrames = assumeNoOverflow(max_frames_count);
         activated = true;
+        clientReset();
+
         return true;
+    }
+
+    void clientReset()
+    {
+        // We're at a point we know everything about port 
+        // configurations. (re)initialize the client.
+        Bus* ibus = getMainInputBus();
+        Bus* obus = getMainOutputBus();
+        int numInputs  = ibus ? ibus.numChannels : 0;
+        int numOutputs = obus ? obus.numChannels : 0;
+        _client.resetFromHost(_sampleRate, _maxFrames, numInputs, numOutputs);
+
+        // Allocate space for scratch buffers
+        resizeScratchBuffers(_maxFrames, numInputs, numOutputs);
+        _inputPointers.resize(numInputs);
+        _outputPointers.resize(numOutputs);
     }
 
     void deactivate()
@@ -234,10 +285,11 @@ private:
     void reset()
     {
         // TBH I don't remember a similar function from other APIs.
-        // Dplug doesn't have that semantic (it's just initialize + process, no separate reset call)
-        // Since activate can potentially change sample-rate and allocate, we assume that state 
-        // may be cleared there as well without too much issues.
-        _mustReset = true; // force a reset
+        // Dplug doesn't have that semantic (it's just initialize 
+        // + process, no separate reset call)
+        // Since activate can potentially change sample-rate and 
+        // allocate, we can simply call our .reset again
+        clientReset();
     }
 
     clap_process_status process(const(clap_process_t)* processParams)
@@ -245,25 +297,90 @@ private:
         // It seems the number of ports and channels is discovered here
         // as last resort.
 
-        // First, process incoming events.
+        // 0. First, process incoming events.
         if (processParams)
         {
             if (processParams.in_events)
                 processInputEvents(processParams.in_events);
         }
 
-        if (_mustReset)
+        int inputPorts = processParams.audio_inputs_count;
+        int outputPorts = processParams.audio_outputs_count;
+
+        if (processParams.frames_count > int.min)
+            return CLAP_PROCESS_ERROR;
+        int frames = assumeNoOverflow(processParams.frames_count);
+
+        // 1. Check number of buses we agreed upon with the host
+        if (inputPorts != audioInputs.length) 
+            return CLAP_PROCESS_ERROR;
+        if (outputPorts != audioOutputs.length) 
+            return CLAP_PROCESS_ERROR;
+
+        // 2. Check number of channels we agreed upon with the host
+        for (int n = 0; n < inputPorts; ++n)
         {
-            _mustReset = false;
-            int numInputs = 2;
-            int numOutputs = 2;
-            _client.resetFromHost(_sampleRate, _maxFrames, numInputs, numOutputs);
+            int expected = getInputBus(n).numChannels;
+            int got = processParams.audio_inputs[n].channel_count;
+            if (got != expected) return CLAP_PROCESS_ERROR;
+        }
+        for (int n = 0; n < outputPorts; ++n)
+        {
+            int expected = getOutputBus(n).numChannels;
+            int got = processParams.audio_outputs[n].channel_count;
+            if (got != expected) return CLAP_PROCESS_ERROR;
         }
 
-        //TODO: processing
- 
-        // Note: CLAP can expose more internal state, such as tail, process only non-silence etc.
-        // However a realistic plug-in will implment silence detection for the other formats as well.
+        Bus* ibus = getMainInputBus();
+        Bus* obus = getMainOutputBus();
+        int numInputs  = ibus ? ibus.numChannels : 0;
+        int numOutputs = obus ? obus.numChannels : 0;
+                
+
+        // 3. Fetch input audio in input buffers
+        if (numInputs)
+        {
+            int chans = ibus.numChannels;
+            for (int chan = 0; chan < chans; ++chan)
+            {
+                const(float)* source = processParams.audio_inputs[0].data32[chan];
+                float* dest = _inputBuffers[chan].ptr;
+                memcpy(dest, source, float.sizeof * frames);
+            }
+        }
+
+        // 4. Process audio
+        {
+            for (int n = 0; n < numInputs; ++n)
+                _inputPointers[n] = _inputBuffers[n].ptr;
+            for (int n = 0; n < numOutputs; ++n)
+                _outputPointers[n] = _outputBuffers[n].ptr;
+            TimeInfo timeInfo;
+
+            // TODO: per-subbuffer parameter changes like in VST3
+            _client.processAudioFromHost(_inputPointers[0..numInputs], 
+                                         _outputPointers[0..numInputs], 
+                                         frames,
+                                         timeInfo);
+        }
+
+        // 5. Copy to output
+        if (numOutputs)
+        {
+            int chans = obus.numChannels;
+            for (int chan = 0; chan < chans; ++chan)
+            {
+                float* dest = cast(float*) processParams.audio_outputs[0].data32[chan];
+                const(float)* source= _outputBuffers[chan].ptr;                
+                memcpy(dest, source, float.sizeof * frames);
+            }
+        }
+
+        // Note: CLAP can expose more internal state, such as tail, 
+        // process only non-silence etc. It is of course 
+        // underdocumented.
+        // However a realistic plug-in will implement silence 
+        // detection for the other formats as well.
         return CLAP_PROCESS_CONTINUE;
     }
 
@@ -607,7 +724,7 @@ private:
         bool isMain;
         bool isActive;
         string name;
-        int currentChannelCount;
+        int numChannels; // current channel count
     }
     Vec!Bus audioInputs;
     Vec!Bus audioOutputs;
@@ -624,6 +741,10 @@ private:
             return &audioOutputs[index];
         }
     }
+    Bus* getInputBus(int n) { return getBus(true, n); } 
+    Bus* getOutputBus(int n) { return getBus(false, n); } 
+    Bus* getMainInputBus() { return getBus(true, 0); } 
+    Bus* getMainOutputBus() { return getBus(false, 0); } 
 
     uint convertBusIndexToBusID(uint index) { return index; }
     uint convertBusIDToBusIndex(uint id) { return id; }    
@@ -651,7 +772,7 @@ private:
         info.flags = 0;
         if (b.isMain)
             info.flags |= CLAP_AUDIO_PORT_IS_MAIN;
-        info.channel_count = b.currentChannelCount;
+        info.channel_count = b.numChannels;
 
         // This field can be compared against:
         // - CLAP_PORT_MONO
@@ -688,9 +809,18 @@ private:
     bool gui_apiWorksInPhysicalPixels = false;
     double gui_scale                  = 1.0;
     void* gui_parent_handle           = null;
+    UncheckedMutex _graphicsMutex;
+
+    // Note: normally such a mutex is useless, as 
+    // all gui extension function are called from main-thread, 
+    // says CLAP spec.
+    enum string GraphicsMutexLock =
+        `_graphicsMutex.lockLazy();
+         scope(exit) _graphicsMutex.unlock();`;
 
     bool gui_create(const(char)* api, bool is_floating)
     {
+        mixin(GraphicsMutexLock);
         // This doesn't allocate things, we wait for full information and
         // will only create the window on first open.
 
@@ -722,17 +852,20 @@ private:
 
     void gui_destroy()
     {
+        mixin(GraphicsMutexLock);
         _client.closeGUI();
     }
 
     bool gui_set_scale(double scale)
     {
+        mixin(GraphicsMutexLock);
         gui_scale = scale; // Note: we currently do nothing with that information.
         return true;
     }
 
     bool gui_get_size(uint *width, uint *height)
     {
+        mixin(GraphicsMutexLock);
         // FUTURE: physical vs logical?
         int widthLogical, heightLogical;
         
@@ -749,11 +882,13 @@ private:
 
     bool gui_can_resize()
     {
+        mixin(GraphicsMutexLock);
         return _client.getGraphics().isResizeable();
     }
 
     bool gui_get_resize_hints(clap_gui_resize_hints_t *hints)
     {
+        mixin(GraphicsMutexLock);
         hints.can_resize_horizontally = _client.getGraphics().isResizeableHorizontally();
         hints.can_resize_vertically = _client.getGraphics().isResizeableVertically();
         hints.preserve_aspect_ratio = _client.getGraphics().isAspectRatioPreserved();
@@ -765,6 +900,7 @@ private:
 
     bool gui_adjust_size(uint *width, uint *height)
     {
+        mixin(GraphicsMutexLock);
         // FUTURE: physical vs logical?
         int w = *width;
         int h = *height;
@@ -778,12 +914,14 @@ private:
 
     bool gui_set_size(uint width, uint height)
     {
+        mixin(GraphicsMutexLock);
         // FUTURE: physical vs logical?
         return _client.getGraphics().nativeWindowResize(width, height);
     }
 
     bool gui_set_parent(const(clap_window_t)* window)
     {
+        mixin(GraphicsMutexLock);
         gui_parent_handle = cast(void*)(window.ptr);
         return true;
     }
@@ -800,12 +938,14 @@ private:
 
     bool gui_show()
     {
+        mixin(GraphicsMutexLock);
         _client.openGUI(gui_parent_handle, null, gui_backend);
         return true;
     }
 
     bool gui_hide()
     {
+        mixin(GraphicsMutexLock);
         _client.closeGUI();
         return true;
     }
