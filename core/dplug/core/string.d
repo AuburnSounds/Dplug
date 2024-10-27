@@ -232,8 +232,16 @@ public double strtod_nolocale(const(char)* s, const(char)** p)
 }
 unittest
 {
-    string[8] sPartial = ["0x123lol", "+0x1.921fb54442d18p+0001()", "0,", "-0.0,,,,", "0.65,stuff", "1.64587okokok", "-1.0e+9HELLO", "1.1454e-25f#STUFF"]; 
-    for (int n = 0; n < 8; ++n)
+    string[18] sPartial = 
+    [
+        "0x123lol", "+0x1.921fb54442d18p+0001()", "0,", "-0.0,,,,", 
+        "0.65,stuff", "1.64587okokok", "-1.0e+9HELLO", "1.1454e-25f#STUFF",
+        "+iNfu", "-infEXCESS", "infuh", "-infinity", 
+        "+infinity", "+nan", "-nan", "nan",
+        "INFINITY", "-NAN"
+    ]; 
+
+    for (int n = 0; n < sPartial.length; ++n)
     {
         const(char)* p1, p2;
         double r1 = strtod(sPartial[n].ptr, &p1); // in unittest, no program tampering the C locale
@@ -415,6 +423,40 @@ private double stb__clex_parse_number_literal(const(char)* p,
         p += 1;
     }
 
+    // Issue #865, "-inf" was parsed as 0
+    // libc can produce "infinity" as well as "inf"
+    // %f specifier can produce "infinity", "inf", "nan"
+    // %F specifier can produce "INFINITY", "INF", "NAN"
+    // In practice, C libraries parse combination of uppercase and lowercase
+    if (allowFloat)
+    {
+        if (  (p[0] == 'i' || p[0] == 'I')
+           && (p[1] == 'n' || p[1] == 'N')
+           && (p[2] == 'f' || p[2] == 'F') )
+        {
+            value = double.infinity;
+            p += 3;
+
+            if (  (p[0] == 'i' || p[0] == 'I')
+               && (p[1] == 'n' || p[1] == 'N')
+               && (p[2] == 'i' || p[2] == 'I')
+               && (p[3] == 't' || p[3] == 'T')
+               && (p[4] == 'y' || p[4] == 'Y') )            
+                p += 5;
+
+            goto found_value;
+        }
+
+         if (  (p[0] == 'n' || p[0] == 'N')
+            && (p[1] == 'a' || p[1] == 'A')
+            && (p[2] == 'n' || p[2] == 'N') )
+        {
+            value = double.nan;
+            p += 3;
+            goto found_value;
+        }
+    }
+
     if (*p == '0') 
     {
         if (p[1] == 'x' || p[1] == 'X') 
@@ -482,6 +524,8 @@ private double stb__clex_parse_number_literal(const(char)* p,
                 value *= power;
         }
     }
+
+    found_value:
     
     if (q) *q = p;
     if (err) *err = false; // seen no error
