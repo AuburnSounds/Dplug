@@ -583,9 +583,11 @@ private:
         char[CLAP_NAME_SIZE] label;
 
         p.stringFromNormalizedValue(normalized, str.ptr, CLAP_NAME_SIZE);
-        
         p.toLabelN(label.ptr, CLAP_NAME_SIZE);
-        snprintf(out_buffer, out_buffer_capacity, "%s %s", str.ptr, label.ptr);
+        if (strlen(label.ptr))
+            snprintf(out_buffer, out_buffer_capacity, "%s %s", str.ptr, label.ptr);
+        else
+            snprintf(out_buffer, out_buffer_capacity, "%s", str.ptr);
         return true;
     }
 
