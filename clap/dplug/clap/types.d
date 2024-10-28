@@ -1325,3 +1325,23 @@ extern(C) nothrow @nogc:
     // [thread-safe]
     void function(const(clap_host_t)*host) request_callback;
 }
+
+// latency.h
+
+struct clap_plugin_latency_t
+{
+extern(C) nothrow @nogc:
+    // Returns the plugin latency in samples.
+    // [main-thread & (being-activated | active)]
+    uint function(const(clap_plugin_t)* plugin) get;
+}
+
+struct clap_host_latency_t 
+{
+extern(C) nothrow @nogc:
+    // Tell the host that the latency changed.
+    // The latency is only allowed to change during plugin->activate.
+    // If the plugin is activated, call host->request_restart()
+    // [main-thread & being-activated]
+    void function(const(clap_host_t)* host) changed;
+}

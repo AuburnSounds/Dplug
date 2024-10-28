@@ -132,7 +132,10 @@ private:
     bool _mustReset;
 
     // Last hint at sampleRate, -1 if not specified yet
-    float _sampleRate = -1;
+    double _sampleRate = -1;
+
+    // Current latency in samples.
+    int _latencySamples;
 
     // Max frames in block., -1 if not specified yet.
     int _maxFrames = -1;
@@ -236,6 +239,9 @@ private:
         activated = true;
         clientReset();
 
+        // Set latency. Tells the host to check latency immediately.
+        _latencySamples = _client.latencySamples(_sampleRate);
+        _hostCommand.notifyLatencyChanged();
         return true;
     }
 
@@ -427,7 +433,15 @@ private:
             api.hide = &plugin_gui_hide;
             return &api;
         }
-        // no extension support
+
+        if (strcmp(name, "clap.latency") == 0)
+        {
+            __gshared clap_plugin_latency_t api;
+            api.get = &plugin_latency_get;
+            return &api;
+        }
+
+        // extension not supported
         return null;
     }
 
@@ -1182,6 +1196,15 @@ extern(C) static
         mixin(ClientCallback);
         return client.gui_hide();
     }
+
+    // latency implem
+    uint plugin_latency_get(const(clap_plugin_t)* plugin)
+    {
+        mixin(ClientCallback);
+        int samples = client._latencySamples;
+        assert(samples >= 0);
+        return samples;
+    }
 }
 
 // CLAP host commands
@@ -1193,8 +1216,9 @@ nothrow @nogc:
     {
         _host = host;
         _host_gui = cast(clap_host_gui_t*) host.get_extension(host, "clap.gui".ptr);
+        _host_latency = cast(clap_host_latency_t*) host.get_extension(host, "clap.latency".ptr);
     }
-
+    
     /// Notifies the host that editing of a parameter has begun from UI side.
     override void beginParamEdit(int paramIndex)
     {
@@ -1237,6 +1261,18 @@ nothrow @nogc:
         return false;
     }
 
+    // Tell the host the latency changed while activated.
+    bool notifyLatencyChanged()
+    {
+        if (_host_latency)
+        {
+            _host_latency.changed(_host);
+            return true;
+        }
+        else
+            return false;
+    }
+
     DAW getDAW()
     {
         char[128] dawStr;
@@ -1259,5 +1295,6 @@ nothrow @nogc:
 
     const(clap_host_t)* _host;
     const(clap_host_gui_t)* _host_gui;
+    const(clap_host_latency_t)* _host_latency;
 }
 
