@@ -861,7 +861,7 @@ struct clap_event_param_value_t
     double value;
 }
 
-struct clap_event_param_mod 
+struct clap_event_param_mod_t
 {
     clap_event_header_t header;
 
@@ -933,7 +933,7 @@ struct clap_event_midi_t
     ubyte[3]  data;
 }
 
-struct clap_event_midi_sysex 
+struct clap_event_midi_sysex_t
 {
     clap_event_header_t header;
     ushort port_index;
@@ -949,6 +949,21 @@ struct clap_event_midi2_t
     ushort port_index;
     uint[4] data;
 }
+
+// A CLAP event that is a union of any type of event
+union clap_event_any_t
+{
+    clap_event_note_t            event_note;
+    clap_event_note_expression_t note_expression;
+    clap_event_param_value_t     param_value;
+    clap_event_param_mod_t       param_mod;
+    clap_event_param_gesture_t   param_gesture;
+    clap_event_transport_t       transport;
+    clap_event_midi_t            midi;
+    clap_event_midi_sysex_t      midi_sysex;
+    clap_event_midi2_t           midi2;
+}
+
 
 // Input event list. The host will deliver these sorted in sample order.
 struct clap_input_events_t 
@@ -1344,4 +1359,110 @@ extern(C) nothrow @nogc:
     // If the plugin is activated, call host->request_restart()
     // [main-thread & being-activated]
     void function(const(clap_host_t)* host) changed;
+}
+
+// state.h
+
+struct clap_plugin_state_t 
+{
+extern(C) nothrow @nogc:
+    // Saves the plugin state into stream.
+    // Returns true if the state was correctly saved.
+    // [main-thread]
+    bool function(const(clap_plugin_t)* plugin, const(clap_ostream_t)* stream) save;
+
+    // Loads the plugin state from stream.
+    // Returns true if the state was correctly restored.
+    // [main-thread]
+    bool function(const(clap_plugin_t)* plugin, const(clap_istream_t)* stream) load;
+}
+
+struct clap_host_state_t 
+{
+extern(C) nothrow @nogc:
+    // Tell the host that the plugin state has changed and should be saved again.
+    // If a parameter value changes, then it is implicit that the state is dirty.
+    // [main-thread]
+    void function(const(clap_host_t)* host) mark_dirty;
+}
+
+
+// stream.h
+
+/// @page Streams
+///
+/// ## Notes on using streams
+///
+/// When working with `clap_istream` and `clap_ostream` objects to load and save
+/// state, it is important to keep in mind that the host may limit the number of
+/// bytes that can be read or written at a time. The return values for the
+/// stream read and write functions indicate how many bytes were actually read
+/// or written. You need to use a loop to ensure that you read or write the
+/// entirety of your state. Don't forget to also consider the negative return
+/// values for the end of file and IO error codes.
+
+struct clap_istream_t 
+{
+extern(C) nothrow @nogc:
+    void *ctx; // reserved pointer for the stream
+
+    // returns the number of bytes read; 0 indicates end of file and -1 a read error
+    long function(const(clap_istream_t)* stream, void *buffer, ulong size) read;
+}
+
+struct clap_ostream_t 
+{
+extern(C) nothrow @nogc:
+    void *ctx; // reserved pointer for the stream
+
+    // returns the number of bytes written; -1 on write error
+    long function(const(clap_ostream_t)* stream, const(void)* buffer, ulong size) write;
+}
+
+// Helper function to perform a whole read in a loop.
+// Return `size` if `size` bytes were read.
+// -1 on error or if less bytes were read than `size`.
+// There is no end-of-file indication.
+long readExactly(const(clap_istream_t)* stream, void *buffer, ulong size)
+{
+    ulong remain = size;
+    ubyte* bbuf = cast(ubyte*) buffer;
+    while (remain > 0)
+    {
+        long read = stream.read(stream, bbuf, remain);
+        if (read == -1)
+            return -1;
+
+        remain -= read;
+        assert(remain >= 0);
+        bbuf   += read;
+
+        if (read == 0) // end of file
+            break;
+    }
+    return (remain == 0) ? size : -1;
+}
+
+// Helper function to perform a whole read in a loop.
+// Return `size` if `size` bytes were read.
+// -1 on error or if less bytes were read than `size`.
+// There is no end-of-file indication.
+long writeExactly(const(clap_ostream_t)* stream, void *buffer, ulong size)
+{
+    ulong remain = size;
+    ubyte* bbuf = cast(ubyte*) buffer;
+    while (remain > 0)
+    {
+        long written = stream.write(stream, bbuf, remain);
+        if (written == -1)
+            return -1;
+
+        remain -= written;
+        assert(remain >= 0);
+        bbuf   += written;
+
+        if (written == 0) // nothing written, exit
+            break;
+    }
+    return (remain == 0) ? size : -1;
 }

@@ -26,6 +26,7 @@ module dplug.clap.client;
 
 import core.stdc.string: strcmp, strlen, memcpy;
 import core.stdc.stdio: snprintf;
+import core.stdc.stdlib: free;
 import core.stdc.math: isnan, isfinite;
 
 import dplug.core.nogc;
@@ -377,9 +378,16 @@ private:
             for (int chan = 0; chan < chans; ++chan)
             {
                 float* dest = cast(float*) processParams.audio_outputs[0].data32[chan];
-                const(float)* source= _outputBuffers[chan].ptr;                
+                const(float)* source= _outputBuffers[chan].ptr;
                 memcpy(dest, source, float.sizeof * frames);
             }
+        }
+
+        // 6. Lastly, process output events.
+        if (processParams)
+        {
+            if (processParams.out_events)
+                processOutputEvents(processParams.out_events);
         }
 
         // Note: CLAP can expose more internal state, such as tail, 
@@ -438,6 +446,17 @@ private:
         {
             __gshared clap_plugin_latency_t api;
             api.get = &plugin_latency_get;
+            return &api;
+        }
+
+        // Note: nothing in the spec forces the host to save session 
+        // using the extension but as plug-in we assume that is the 
+        // case, the host MUST use clap.state if present.
+        if (strcmp(name, "clap.state") == 0)
+        {
+            __gshared clap_plugin_state_t api;
+            api.save = &plugin_state_save;
+            api.load = &plugin_state_load;
             return &api;
         }
 
@@ -654,7 +673,7 @@ private:
                       const(clap_output_events_t) *out_)
     {
         processInputEvents(in_);
-        // TODO output events
+        processOutputEvents(out_);
     }
 
     void processInputEvents(const(clap_input_events_t)  *in_)
@@ -731,6 +750,11 @@ private:
                 default:
             }
         }
+    }
+
+    void processOutputEvents(const(clap_output_events_t)  *out_)
+    {
+
     }
 
 
@@ -964,6 +988,85 @@ private:
         mixin(GraphicsMutexLock);
         _client.closeGUI();
         return true;
+    }
+
+    // state impl
+
+    Vec!ubyte _lastChunkLoad;
+    UncheckedMutex _stateMutex; // clap-validator calls save() and load() at the same time
+    enum string StateMutexLock =
+        `_stateMutex.lockLazy();
+        scope(exit) _stateMutex.unlock();`;
+
+    bool state_save(const(clap_ostream_t)* stream)
+    {
+        mixin(StateMutexLock);
+        
+        // PERF: could amortize alloc with appendStateChunkFromCurrentState
+        assert(stream);
+        ubyte[] state = _client.presetBank.getStateChunkFromCurrentState();
+        assert(state);
+
+        if (state.length > uint.max)
+            return false; // absurd long chunk
+
+        // write size of chunk
+        uint size = cast(uint)state.length;
+        version(LittleEndian)
+            writeExactly(stream, &size, uint.sizeof);
+        else
+            static assert(false);
+
+        // write chunk
+        writeExactly(stream, state.ptr, state.length);
+
+        free(state.ptr);
+        return true;
+    }
+
+        
+
+    bool state_load(const(clap_istream_t)* stream)
+    {
+        mixin(StateMutexLock);
+        assert(stream);
+
+        // read size of chunk
+        uint size = 0;
+        if (readExactly(stream, &size, uint.sizeof) != uint.sizeof)
+            return false;
+
+        version(LittleEndian)
+        {}
+        else
+            static assert(false);
+
+        // Note sure if we should load chunk with zero size,
+        // OTOH those chunk probably won't ever exist.
+        if (size == 0)
+            return true;
+
+        // read chunk
+        _lastChunkLoad.resize(size);
+        if (readExactly(stream, _lastChunkLoad.ptr, size) == size)
+        {
+            //apply chunk
+            bool err = false;
+
+            import std.stdio;
+            debug writeln(_lastChunkLoad[0..$]);
+
+            _client.presetBank.loadStateChunk(_lastChunkLoad[], &err);
+            if (err)
+                return false;
+
+            // TODO: notify host of new values for parameters
+            // so that its parameter values are updated.
+
+            return true;
+        }
+        else
+            return false;
     }
 }
 
@@ -1205,7 +1308,22 @@ extern(C) static
         assert(samples >= 0);
         return samples;
     }
+
+    // state impl
+
+    bool plugin_state_save(const(clap_plugin_t)* plugin, const(clap_ostream_t)* stream)
+    {
+        mixin(ClientCallback);
+        return client.state_save(stream);
+    }
+
+    bool plugin_state_load(const(clap_plugin_t)* plugin, const(clap_istream_t)* stream)
+    {
+        mixin(ClientCallback);
+        return client.state_load(stream);
+    }
 }
+
 
 // CLAP host commands
 
