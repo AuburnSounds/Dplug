@@ -27,7 +27,7 @@ module dplug.clap.client;
 import core.stdc.string: strcmp, strlen, memcpy;
 import core.stdc.stdio: snprintf;
 import core.stdc.stdlib: free;
-import core.stdc.math: isnan, isfinite;
+import core.stdc.math: isnan, isinf, isfinite;
 
 import dplug.core.nogc;
 import dplug.core.runtime;
@@ -136,7 +136,10 @@ private:
     double _sampleRate = -1;
 
     // Current latency in samples.
-    int _latencySamples;
+    int _latencySamples = 0;
+
+    // Current tail in samples. int.max if infinite tail.
+    int _tailSamples = int.max;
 
     // Max frames in block., -1 if not specified yet.
     int _maxFrames = -1;
@@ -241,7 +244,7 @@ private:
             return false;
 
         // Note: We can assume we already know the port configuration!
-        //       CLAP host are stictly typed and host follow the constraints.
+        //       CLAP host are strictly typed and host follow the constraints.
         // And no synchronization needed, since the plugin is deactivated.
         _sampleRate = sample_rate;
         _maxFrames = assumeNoOverflow(max_frames_count);
@@ -251,6 +254,22 @@ private:
         // Set latency. Tells the host to check latency immediately.
         _latencySamples = _client.latencySamples(_sampleRate);
         _hostCommand.notifyLatencyChanged();
+
+        // Set tail size.
+        float tailSizeInSeconds = _client.tailSizeInSeconds();
+        assert(tailSizeInSeconds >= 0);
+        if (isinf(tailSizeInSeconds))
+        {
+            _tailSamples = int.max;
+        }
+        else
+        {
+            long samples = cast(long)(0.5 + tailSizeInSeconds * _sampleRate);
+            if (samples > int.max)
+                samples = int.max;
+            _tailSamples = cast(int)(samples);
+        }
+         _hostCommand.notifyTailChanged();
         return true;
     }
 
@@ -1371,11 +1390,20 @@ extern(C) static
         return client.gui_hide();
     }
 
-    // latency implem
+    // latency impl
     uint plugin_latency_get(const(clap_plugin_t)* plugin)
     {
         mixin(ClientCallback);
         int samples = client._latencySamples;
+        assert(samples >= 0);
+        return samples;
+    }
+
+    // tail impl
+    uint plugin_tail_get(const(clap_plugin_t)* plugin)
+    {
+        mixin(ClientCallback);
+        int samples = client._tailSamples;
         assert(samples >= 0);
         return samples;
     }
@@ -1407,7 +1435,8 @@ nothrow @nogc:
         _host         = host;
         _host_gui     = cast(clap_host_gui_t*)     host.get_extension(host, "clap.gui".ptr);
         _host_latency = cast(clap_host_latency_t*) host.get_extension(host, "clap.latency".ptr);
-        _host_params  = cast(clap_host_params_t*)  host.get_extension(host,  "clap.params".ptr);
+        _host_params  = cast(clap_host_params_t*)  host.get_extension(host, "clap.params".ptr);
+        _host_tail    = cast(clap_host_tail_t*)    host.get_extension(host, "clap.tail".ptr);
     }
 
     /// Notifies the host that editing of a parameter has begun from UI side.
@@ -1491,6 +1520,18 @@ nothrow @nogc:
             return false;
     }
 
+    // Tell the host the tail size changed.
+    bool notifyTailChanged()
+    {
+        if (_host_tail)
+        {
+            _host_tail.changed(_host);
+            return true;
+        }
+        else 
+            return false;
+    }
+
     DAW getDAW()
     {
         char[128] dawStr;
@@ -1516,5 +1557,6 @@ nothrow @nogc:
     const(clap_host_gui_t)*     _host_gui;
     const(clap_host_latency_t)* _host_latency;
     const(clap_host_params_t)*  _host_params;
+    const(clap_host_tail_t)*    _host_tail;
 }
 

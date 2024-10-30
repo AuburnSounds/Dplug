@@ -1555,3 +1555,23 @@ long writeExactly(const(clap_ostream_t)* stream, void *buffer, ulong size)
     }
     return (remain == 0) ? size : -1;
 }
+
+
+// tail.h
+
+struct clap_plugin_tail_t 
+{
+extern(C) nothrow @nogc:
+    // Returns tail length in samples.
+    // Any value greater or equal to INT32_MAX implies infinite tail.
+    // [main-thread,audio-thread]
+    uint function(const(clap_plugin_t)* plugin) get;
+}
+
+struct clap_host_tail_t 
+{
+extern(C) nothrow @nogc:
+    // Tell the host that the tail has changed.
+    // [audio-thread]
+    void function(const(clap_host_t)* host) changed;
+}

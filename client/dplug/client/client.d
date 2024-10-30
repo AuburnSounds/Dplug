@@ -59,6 +59,9 @@ nothrow @nogc:
     /// Notifies the host that a parameter was edited from the UI side.
     /// This enables the host to record automation.
     /// It is illegal to call `paramAutomate` outside of a `beginParamEdit`/`endParamEdit` pair.
+    ///
+    /// Params:
+    ///    value Normalized parameter value.
     void paramAutomate(int paramIndex, float value);
 
     /// Notifies the host that editing of a parameter has finished from UI side.
