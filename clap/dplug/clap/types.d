@@ -134,11 +134,23 @@ const(void)* clap_factory_templated(ClientClass)(const(char)* factory_id)
                                     &factory_create_plugin!ClientClass);
         return &g_factory;
     }
+
+    if (  (strcmp(factory_id, CLAP_PRESET_DISCOVERY_FACTORY_ID.ptr) == 0)
+          || (strcmp(factory_id, CLAP_PRESET_DISCOVERY_FACTORY_ID_COMPAT.ptr) == 0) )
+    {
+        static immutable __gshared clap_preset_discovery_factory_t g_presetfactory
+            = clap_preset_discovery_factory_t(&preset_discovery_count, 
+                                              &preset_discovery_get_descriptor!ClientClass,
+                                              &preset_discovery_create!ClientClass);
+        return &g_presetfactory;
+    }
     return null;
 }
 
 extern(C)
 {
+    // plugin factory impl
+
     uint factory_get_plugin_count(const(clap_plugin_factory_t)* factory)
     {
         return 1;
@@ -252,6 +264,74 @@ extern(C)
         CLAPClient clapClient = mallocNew!CLAPClient(client, host);
 
         return clapClient.get_clap_plugin();
+    }
+
+
+    // preset factory impl
+
+    uint preset_discovery_count(const(clap_preset_discovery_factory_t)* factory)
+    {
+        return 1; // always one preset provider
+    }
+
+    const(clap_preset_discovery_provider_descriptor_t)*  get_preset_dicovery_from_client(Client client)
+    {
+        // ID is globally unique, why not. Apparently you can
+        // provide presets for other people's products that way.
+        __gshared clap_preset_discovery_provider_descriptor_t desc;        
+        desc.clap_version = CLAP_VERSION;
+        desc.id = assumeZeroTerminated(client.CLAPIdentifierFactory);
+        desc.name = "Dplug preset provider"; // what an annoying thing to name
+        desc.vendor = assumeZeroTerminated(client.vendorName);
+        return &desc;
+    }
+
+    // Retrieves a preset provider descriptor by its index.
+    // Returns null in case of error.
+    // The descriptor must not be freed.
+    // [thread-safe]
+    const(clap_preset_discovery_provider_descriptor_t)* 
+        preset_discovery_get_descriptor(ClientClass)(const(clap_preset_discovery_factory_t)* factory, uint index)
+    {
+        ScopedForeignCallback!(false, true) sfc;
+        sfc.enter();
+
+        if (index != 0)
+            return null;
+
+        // Create a client just for the purpose of describing its "preset provider"
+        ClientClass client = mallocNew!ClientClass();
+        scope(exit) client.destroyFree();
+        return get_preset_dicovery_from_client(client);
+    }
+
+    const(clap_preset_discovery_provider_t)* 
+        preset_discovery_create(ClientClass)(const(clap_preset_discovery_factory_t)* factory,
+                                             const(clap_preset_discovery_indexer_t)* indexer,
+                                             const(char)* provider_id)
+    {
+        ScopedForeignCallback!(false, true) sfc;
+        sfc.enter();
+
+        // Create a client yet again for the purpose of creating its
+        // "preset provider"
+        ClientClass client = mallocNew!ClientClass();
+        scope(exit) client.destroyFree();
+
+        const(clap_preset_discovery_provider_descriptor_t)* desc = get_preset_dicovery_from_client(client);
+
+        if (strcmp(provider_id, desc.id) != 0)
+            return null;
+
+        CLAPPresetProvider provider = mallocNew!CLAPPresetProvider(client, indexer);
+        __gshared clap_preset_discovery_provider_t provdesc;
+        provdesc.desc          = desc;
+        provdesc.provider_data = cast(void*)provider;
+        provdesc.init_         = &provider_init;
+        provdesc.destroy       = &provider_destroy;
+        provdesc.get_metadata  = &provider_get_metadata;
+        provdesc.get_extension = &provider_get_extension;
+        return &provdesc;   
     }
 }
 
@@ -1574,4 +1654,357 @@ extern(C) nothrow @nogc:
     // Tell the host that the tail has changed.
     // [audio-thread]
     void function(const(clap_host_t)* host) changed;
+}
+
+
+// universal-id.h
+
+// Pair of plugin ABI and plugin identifier.
+//
+// If you want to represent other formats please send us an update to the comment with the
+// name of the abi and the representation of the id.
+struct clap_universal_plugin_id_t 
+{
+    // The plugin ABI name, in lowercase and null-terminated.
+    // eg: "clap", "vst3", "vst2", "au", ...
+    const(char)* abi;
+
+    // The plugin ID, null-terminated and formatted as follows:
+    //
+    // CLAP: use the plugin id
+    //   eg: "com.u-he.diva"
+    //
+    // AU: format the string like "type:subt:manu"
+    //   eg: "aumu:SgXT:VmbA"
+    //
+    // VST2: print the id as a signed 32-bits integer
+    //   eg: "-4382976"
+    //
+    // VST3: print the id as a standard UUID
+    //   eg: "123e4567-e89b-12d3-a456-426614174000"
+    const(char)* id;
+}
+
+// timestamp.h
+
+// This type defines a timestamp: the number of seconds since UNIX EPOCH.
+// See C's time_t time(time_t *).
+alias clap_timestamp = ulong;
+
+
+// preset-discovery.h
+
+/*
+Preset Discovery API.
+
+Preset Discovery enables a plug-in host to identify where presets are found, what
+extensions they have, which plug-ins they apply to, and other metadata associated with the
+presets so that they can be indexed and searched for quickly within the plug-in host's browser.
+
+This has a number of advantages for the user:
+- it allows them to browse for presets from one central location in a consistent way
+- the user can browse for presets without having to commit to a particular plug-in first
+
+The API works as follow to index presets and presets metadata:
+1. clap_plugin_entry.get_factory(CLAP_PRESET_DISCOVERY_FACTORY_ID)
+2. clap_preset_discovery_factory_t.create(...)
+3. clap_preset_discovery_provider.init() (only necessary the first time, declarations
+can be cached)
+`-> clap_preset_discovery_indexer.declare_filetype()
+`-> clap_preset_discovery_indexer.declare_location()
+`-> clap_preset_discovery_indexer.declare_soundpack() (optional)
+`-> clap_preset_discovery_indexer.set_invalidation_watch_file() (optional)
+4. crawl the given locations and monitor file system changes
+`-> clap_preset_discovery_indexer.get_metadata() for each presets files
+
+Then to load a preset, use ext/draft/preset-load.h.
+TODO: create a dedicated repo for other plugin abi preset-load extension.
+
+The design of this API deliberately does not define a fixed set tags or categories. It is the
+plug-in host's job to try to intelligently map the raw list of features that are found for a
+preset and to process this list to generate something that makes sense for the host's tagging and
+categorization system. The reason for this is to reduce the work for a plug-in developer to add
+Preset Discovery support for their existing preset file format and not have to be concerned with
+all the different hosts and how they want to receive the metadata.
+
+VERY IMPORTANT:
+- the whole indexing process has to be **fast**
+- clap_preset_provider->get_metadata() has to be fast and avoid unnecessary operations
+- the whole indexing process must not be interactive
+- don't show dialogs, windows, ...
+- don't ask for user input
+*/
+
+// Use it to retrieve const clap_preset_discovery_factory_t* from
+// clap_plugin_entry.get_factory()
+enum string CLAP_PRESET_DISCOVERY_FACTORY_ID = "clap.preset-discovery-factory/2";
+
+// The latest draft is 100% compatible.
+// This compat ID may be removed in 2026.
+enum string CLAP_PRESET_DISCOVERY_FACTORY_ID_COMPAT = "clap.preset-discovery-factory/draft-2";
+
+enum clap_preset_discovery_location_kind 
+{
+    // The preset are located in a file on the OS filesystem.
+    // The location is then a path which works with the OS file system functions (open, stat, ...)
+    // So both '/' and '\' shall work on Windows as a separator.
+    CLAP_PRESET_DISCOVERY_LOCATION_FILE = 0,
+
+    // The preset is bundled within the plugin DSO itself.
+    // The location must then be null, as the preset are within the plugin itself and then the plugin
+    // will act as a preset container.
+    CLAP_PRESET_DISCOVERY_LOCATION_PLUGIN = 1,
+}
+
+enum clap_preset_discovery_flags 
+{
+    // This is for factory or sound-pack presets.
+    CLAP_PRESET_DISCOVERY_IS_FACTORY_CONTENT = 1 << 0,
+
+    // This is for user presets.
+    CLAP_PRESET_DISCOVERY_IS_USER_CONTENT = 1 << 1,
+
+    // This location is meant for demo presets, those are preset which may trigger
+    // some limitation in the plugin because they require additional features which the user
+    // needs to purchase or the content itself needs to be bought and is only available in
+    // demo mode.
+    CLAP_PRESET_DISCOVERY_IS_DEMO_CONTENT = 1 << 2,
+
+    // This preset is a user's favorite
+    CLAP_PRESET_DISCOVERY_IS_FAVORITE = 1 << 3,
+}
+
+
+// Receiver that receives the metadata for a single preset file.
+// The host would define the various callbacks in this interface and the preset parser function
+// would then call them.
+//
+// This interface isn't thread-safe.
+struct clap_preset_discovery_metadata_receiver_t 
+{
+extern(C) nothrow @nogc:
+
+    void *receiver_data; // reserved pointer for the metadata receiver
+
+    // If there is an error reading metadata from a file this should be called with an error
+    // message.
+    // os_error: the operating system error, if applicable. If not applicable set it to a non-error
+    // value, eg: 0 on unix and Windows.
+    void function(const(clap_preset_discovery_metadata_receiver_t)* receiver,
+                  int os_error,
+                  const(char) *error_message) on_error;
+
+    // This must be called for every preset in the file and before any preset metadata is
+    // sent with the calls below.
+    //
+    // If the preset file is a preset container then name and load_key are mandatory, otherwise
+    // they are optional.
+    //
+    // The load_key is a machine friendly string used to load the preset inside the container via a
+    // the preset-load plug-in extension. The load_key can also just be the subpath if that's what
+    // the plugin wants but it could also be some other unique id like a database primary key or a
+    // binary offset. It's use is entirely up to the plug-in.
+    //
+    // If the function returns false, then the provider must stop calling back into the receiver.
+    bool function(const(clap_preset_discovery_metadata_receiver_t)* receiver,
+                  const(char)*name,
+                  const(char)*load_key) begin_preset;
+
+    // Adds a plug-in id that this preset can be used with.
+    void function(const(clap_preset_discovery_metadata_receiver_t)* receiver,
+                  const(clap_universal_plugin_id_t)* plugin_id) add_plugin_id;
+
+    // Sets the sound pack to which the preset belongs to.
+    void function(const(clap_preset_discovery_metadata_receiver_t)* receiver,
+                  const(char)* soundpack_id) set_soundpack_id;
+
+    // Sets the flags, see clap_preset_discovery_flags.
+    // If unset, they are then inherited from the location.
+    void function(const(clap_preset_discovery_metadata_receiver_t)* receiver,
+                  uint flags) set_flags;
+
+    // Adds a creator name for the preset.
+    void function(const(clap_preset_discovery_metadata_receiver_t)* receiver,
+                  const(char)* creator) add_creator;
+
+    // Sets a description of the preset.
+    void function(const(clap_preset_discovery_metadata_receiver_t)* receiver,
+                  const(char)* description) set_description;
+
+    // Sets the creation time and last modification time of the preset.
+    // If one of the times isn't known, set it to CLAP_TIMESTAMP_UNKNOWN.
+    // If this function is not called, then the indexer may look at the file's creation and
+    // modification time.
+    void function(const(clap_preset_discovery_metadata_receiver_t)* receiver,
+                  clap_timestamp creation_time,
+                  clap_timestamp modification_time) set_timestamps;
+
+    // Adds a feature to the preset.
+    //
+    // The feature string is arbitrary, it is the indexer's job to understand it and remap it to its
+    // internal categorization and tagging system.
+    //
+    // However, the strings from plugin-features.h should be understood by the indexer and one of the
+    // plugin category could be provided to determine if the preset will result into an audio-effect,
+    // instrument, ...
+    //
+    // Examples:
+    // kick, drum, tom, snare, clap, cymbal, bass, lead, metalic, hardsync, crossmod, acid,
+    // distorted, drone, pad, dirty, etc...
+    void function(const(clap_preset_discovery_metadata_receiver_t)* receiver,
+                  const(char)* feature) add_feature;
+
+    // Adds extra information to the metadata.
+    void function(const(clap_preset_discovery_metadata_receiver_t)* receiver,
+                  const(char)* key,
+                  const(char)* value) add_extra_info;
+}
+
+struct clap_preset_discovery_filetype_t 
+{
+    const(char)* name;
+    const(char)* description; // optional
+
+    // `.' isn't included in the string.
+    // If empty or NULL then every file should be matched.
+    const(char)* file_extension;
+}
+
+// Defines a place in which to search for presets
+struct clap_preset_discovery_location_t 
+{
+    uint         flags; // see enum clap_preset_discovery_flags
+    const(char)* name;  // name of this location
+    uint         kind;  // See clap_preset_discovery_location_kind
+
+    // Actual location in which to crawl presets.
+    // For FILE kind, the location can be either a path to a directory or a file.
+    // For PLUGIN kind, the location must be null.
+    const(char)* location;
+}
+
+// Describes an installed sound pack.
+struct clap_preset_discovery_soundpack_t 
+{
+    uint          flags;              // see enum clap_preset_discovery_flags
+    const(char)   *id;                // sound pack identifier
+    const(char)   *name;              // name of this sound pack
+    const(char)   *description;       // optional, reasonably short description of the sound pack
+    const(char)   *homepage_url;      // optional, url to the pack's homepage
+    const(char)   *vendor;            // optional, sound pack's vendor
+    const(char)   *image_path;        // optional, an image on disk
+    clap_timestamp release_timestamp; // release date, CLAP_TIMESTAMP_UNKNOWN if unavailable
+}
+
+// Describes a preset provider
+struct clap_preset_discovery_provider_descriptor_t 
+{
+    clap_version_t clap_version; // initialized to CLAP_VERSION
+    const(char)   *id;           // see plugin.h for advice on how to choose a good identifier
+    const(char)   *name;         // eg: "Diva's preset provider"
+    const(char)   *vendor;       // optional, eg: u-he
+}
+
+// This interface isn't thread-safe.
+struct clap_preset_discovery_provider_t 
+{
+extern(C) nothrow @nogc:
+
+    const(clap_preset_discovery_provider_descriptor_t)* desc;
+
+    void* provider_data; // reserved pointer for the provider
+
+    // Initialize the preset provider.
+    // It should declare all its locations, filetypes and sound packs.
+    // Returns false if initialization failed.
+    bool function(const(clap_preset_discovery_provider_t)* provider) init_;
+
+    // Destroys the preset provider
+    void function(const(clap_preset_discovery_provider_t)* provider) destroy;
+
+    // reads metadata from the given file and passes them to the metadata receiver
+    // Returns true on success.
+    bool function(const(clap_preset_discovery_provider_t)* provider,
+                  uint location_kind,
+                  const(char)* location,
+                  const(clap_preset_discovery_metadata_receiver_t)* metadata_receiver) get_metadata;
+
+    // Query an extension.
+    // The returned pointer is owned by the provider.
+    // It is forbidden to call it before provider->init().
+    // You can call it within provider->init() call, and after.
+    const(void)* function(const(clap_preset_discovery_provider_t)* provider,
+                          const(char)* extension_id) get_extension;
+}
+
+// This interface isn't thread-safe
+struct clap_preset_discovery_indexer_t
+{
+extern(C) nothrow @nogc:
+
+    clap_version_t clap_version; // initialized to CLAP_VERSION
+    const(char) *name;     // eg: "Bitwig Studio"
+    const(char) *vendor;   // optional, eg: "Bitwig GmbH"
+    const(char) *url;      // optional, eg: "https://bitwig.com"
+    const(char) *version_; // optional, eg: "4.3", see plugin.h for advice on how to format the version
+
+    void *indexer_data; // reserved pointer for the indexer
+
+    // Declares a preset filetype.
+    // Don't callback into the provider during this call.
+    // Returns false if the filetype is invalid.
+    bool function(const(clap_preset_discovery_indexer_t)* indexer,
+                  const(clap_preset_discovery_filetype_t)* filetype) declare_filetype;
+
+    // Declares a preset location.
+    // Don't callback into the provider during this call.
+    // Returns false if the location is invalid.
+    bool function(const(clap_preset_discovery_indexer_t)* indexer,
+                  const(clap_preset_discovery_location_t)* location) declare_location;
+
+    // Declares a sound pack.
+    // Don't callback into the provider during this call.
+    // Returns false if the sound pack is invalid.
+    bool function(const(clap_preset_discovery_indexer_t)* indexer,
+                  const(clap_preset_discovery_soundpack_t)* soundpack) declare_soundpack;
+
+    // Query an extension.
+    // The returned pointer is owned by the indexer.
+    // It is forbidden to call it before provider->init().
+    // You can call it within provider->init() call, and after.
+    const(void)* function(const(clap_preset_discovery_indexer_t)* indexer,
+                          const(char)* extension_id) get_extension;
+}
+
+// Every methods in this factory must be thread-safe.
+// It is encouraged to perform preset indexing in background threads, maybe even in background
+// process.
+//
+// The host may use clap_plugin_invalidation_factory to detect filesystem changes
+// which may change the factory's content.
+struct clap_preset_discovery_factory_t 
+{
+extern(C) nothrow @nogc:
+
+    // Get the number of preset providers available.
+    // [thread-safe]
+    uint function(const(clap_preset_discovery_factory_t)* factory) count;
+
+    // Retrieves a preset provider descriptor by its index.
+    // Returns null in case of error.
+    // The descriptor must not be freed.
+    // [thread-safe]
+    const(clap_preset_discovery_provider_descriptor_t)* 
+        function(const(clap_preset_discovery_factory_t)* factory, uint index) get_descriptor;
+
+    // Create a preset provider by its id.
+    // The returned pointer must be freed by calling preset_provider->destroy(preset_provider);
+    // The preset provider is not allowed to use the indexer callbacks in the create method.
+    // It is forbidden to call back into the indexer before the indexer calls provider->init().
+    // Returns null in case of error.
+    // [thread-safe]
+    const(clap_preset_discovery_provider_t)* 
+        function(const(clap_preset_discovery_factory_t)* factory,
+                 const(clap_preset_discovery_indexer_t)* indexer,
+                 const(char)* provider_id) create;
 }

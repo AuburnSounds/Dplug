@@ -195,6 +195,9 @@ struct PluginInfo
 
     /// Used as CLAP identifier ("com.wittyaudio.Destructatorizer")
     string CLAPIdentifier;
+
+    /// Used as CLAP identifier for factory preset provider ("com.wittyaudio.Destructatorizer.factory")
+    string CLAPIdentifierFactory;
 }
 
 /// This allows to write things life tempo-synced LFO.
@@ -742,6 +745,11 @@ nothrow:
         return _info.CLAPIdentifier;
     }
 
+    final string CLAPIdentifierFactory() pure const nothrow @nogc
+    {
+        return _info.CLAPIdentifierFactory;
+    }
+
     /// Returns: Plugin "unique" ID.
     final char[4] getPluginUniqueID() pure const nothrow @nogc
     {
@@ -1250,6 +1258,7 @@ PluginInfo parsePluginInfo(string json)
     info.AUBundleIdentifier = CFBundleIdentifierPrefix ~ ".audiounit." ~ sanitizedName;
     info.AAXBundleIdentifier = CFBundleIdentifierPrefix ~ ".aax." ~ sanitizedName;
     info.CLAPIdentifier = CFBundleIdentifierPrefix ~ "." ~ sanitizedName;
+    info.CLAPIdentifierFactory = CFBundleIdentifierPrefix ~ "." ~ sanitizedName ~ ".factory";
 
     PluginCategory category = parsePluginCategory(j["category"].str);
     if (category == PluginCategory.invalid)

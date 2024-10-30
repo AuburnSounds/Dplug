@@ -1560,3 +1560,78 @@ nothrow @nogc:
     const(clap_host_tail_t)*    _host_tail;
 }
 
+
+
+class CLAPPresetProvider
+{
+public:
+nothrow:
+@nogc:
+
+    this(Client client, const(clap_preset_discovery_indexer_t)* indexer)
+    {
+        _indexer = indexer;
+        _client = client;
+    }
+
+    bool init_()
+    {
+        // TODO report every preset
+        return true;
+    }
+
+    bool get_metadata(uint location_kind,
+                      const(char)* location,
+                      const(clap_preset_discovery_metadata_receiver_t)* metadata_receiver)
+    {
+        // TODO send every available metadata
+        return false;
+    }
+
+private:
+    const(clap_preset_discovery_indexer_t)* _indexer;
+    Client _client;
+}
+
+extern(C) static
+{
+    enum string PresetCallback =
+        `ScopedForeignCallback!(false, true) sc;
+        sc.enter();
+        CLAPPresetProvider provobj = cast(CLAPPresetProvider)(provider.provider_data);`;
+
+    // plugin callbacks
+
+    bool provider_init(const(clap_preset_discovery_provider_t)* provider)
+    {
+        mixin(PresetCallback);
+        return provobj.init_();
+    }
+
+    void provider_destroy(const(clap_preset_discovery_provider_t)* provider)
+    {
+        mixin(PresetCallback);
+        destroyFree(provobj);
+    }
+
+    // reads metadata from the given file and passes them to the metadata receiver
+    // Returns true on success.
+    bool provider_get_metadata(const(clap_preset_discovery_provider_t)* provider,
+                               uint location_kind,
+                               const(char)* location,
+                               const(clap_preset_discovery_metadata_receiver_t)* metadata_receiver)
+    {
+        mixin(PresetCallback);
+        return provobj.get_metadata(location_kind, location, metadata_receiver);
+    }
+
+    // Query an extension.
+    // The returned pointer is owned by the provider.
+    // It is forbidden to call it before provider->init().
+    // You can call it within provider->init() call, and after.
+    const(void)* provider_get_extension(const(clap_preset_discovery_provider_t)* provider,
+                                        const(char)* extension_id)
+    {
+        return null;
+    }
+}
