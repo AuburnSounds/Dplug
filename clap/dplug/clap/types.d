@@ -116,7 +116,7 @@ static immutable CLAP_PLUGIN_FEATURE_AMBISONIC = "ambisonic";
 
 // version.h
 
-__gshared UncheckedMutex g_factoryMutex;
+__gshared UncheckedMutex g_factoryMutex; // FUTURE: sounds like... leaked?
 
 // Get the pointer to a factory. See factory/plugin-factory.h for an example.
 //
@@ -628,6 +628,85 @@ extern(C) nothrow @nogc:
                   const(clap_output_events_t) *out_) flush;
 }
 
+alias clap_param_rescan_flags = uint;
+enum : clap_param_rescan_flags
+{
+    // The parameter values did change, eg. after loading a preset.
+    // The host will scan all the parameters value.
+    // The host will not record those changes as automation points.
+    // New values takes effect immediately.
+    CLAP_PARAM_RESCAN_VALUES = 1 << 0,
+
+    // The value to text conversion changed, and the text needs to be rendered again.
+    CLAP_PARAM_RESCAN_TEXT = 1 << 1,
+
+    // The parameter info did change, use this flag for:
+    // - name change
+    // - module change
+    // - is_periodic (flag)
+    // - is_hidden (flag)
+    // New info takes effect immediately.
+    CLAP_PARAM_RESCAN_INFO = 1 << 2,
+
+    // Invalidates everything the host knows about parameters.
+    // It can only be used while the plugin is deactivated.
+    // If the plugin is activated use clap_host->restart() and delay any change until the host calls
+    // clap_plugin->deactivate().
+    //
+    // You must use this flag if:
+    // - some parameters were added or removed.
+    // - some parameters had critical changes:
+    //   - is_per_note (flag)
+    //   - is_per_key (flag)
+    //   - is_per_channel (flag)
+    //   - is_per_port (flag)
+    //   - is_readonly (flag)
+    //   - is_bypass (flag)
+    //   - is_stepped (flag)
+    //   - is_modulatable (flag)
+    //   - min_value
+    //   - max_value
+    //   - cookie
+    CLAP_PARAM_RESCAN_ALL = 1 << 3,
+}
+
+alias clap_param_clear_flags = uint;
+enum : clap_param_clear_flags
+{
+    // Clears all possible references to a parameter
+    CLAP_PARAM_CLEAR_ALL = 1 << 0,
+
+    // Clears all automations to a parameter
+    CLAP_PARAM_CLEAR_AUTOMATIONS = 1 << 1,
+
+    // Clears all modulations to a parameter
+    CLAP_PARAM_CLEAR_MODULATIONS = 1 << 2,
+}
+
+struct clap_host_params_t
+{
+extern(C) nothrow @nogc:
+    // Rescan the full list of parameters according to the flags.
+    // [main-thread]
+    void function(const(clap_host_t)* host, clap_param_rescan_flags flags) rescan;
+
+    // Clears references to a parameter.
+    // [main-thread]
+    void function(const(clap_host_t)* host, clap_id param_id, clap_param_clear_flags flags) clear;
+
+    // Request a parameter flush.
+    //
+    // The host will then schedule a call to either:
+    // - clap_plugin.process()
+    // - clap_plugin_params.flush()
+    //
+    // This function is always safe to use and should not be called from an [audio-thread] as the
+    // plugin would already be within process() or flush().
+    //
+    // [thread-safe,!audio-thread]
+    void function(const(clap_host_t)* host) request_flush;
+}
+
 
 // events.h
 
@@ -964,6 +1043,15 @@ union clap_event_any_t
     clap_event_midi2_t           midi2;
 }
 
+// A.Bique said: "If you are using non standard events, you should 
+// make the event a single block of memory if possible, and use 
+// relative pointers instead, I mean offsets from the start of the 
+// struct.
+// Cross process events could happen, for example if we have an intel
+// 32 bits plugin and a 64 bits one, and one plugin is sending an 
+// output event, we'd have to pass it to the other plugin host, via 
+// IPC, so it has to work with memcpy()"
+
 
 // Input event list. The host will deliver these sorted in sample order.
 struct clap_input_events_t 
@@ -981,6 +1069,7 @@ extern(C) nothrow @nogc:
 // Output event list. The plugin must insert events in sample sorted order when inserting events
 struct clap_output_events_t 
 {
+extern(C) nothrow @nogc:
     void *ctx; // reserved pointer for the list
 
     // Pushes a copy of the event
@@ -1173,8 +1262,8 @@ extern(C) nothrow @nogc:
     // one of the CLAP_WINDOW_API_ constants defined above, not strcopied.
     // [main-thread]
     bool function(const clap_plugin_t *plugin,
-                                        const(char)  **api,
-                                        bool                *is_floating) get_preferred_api;
+                  const(char)  **api,
+                  bool *is_floating) get_preferred_api;
 
     // Create and allocate all resources necessary for the gui.
     //
@@ -1324,7 +1413,7 @@ extern(C) nothrow @nogc:
     // It is forbidden to call it before plugin->init().
     // You can call it within plugin->init() call, and after.
     // [thread-safe]
-    const(void)* function(const(clap_host_t) *host, const char *extension_id) get_extension;
+    const(void)* function(const(clap_host_t) *host, const(char)* extension_id) get_extension;
 
     // Request the host to deactivate and then reactivate the plugin.
     // The operation may be delayed by the host.

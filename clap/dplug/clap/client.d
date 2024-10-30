@@ -59,7 +59,7 @@ nothrow:
     this(Client client, const(clap_host_t)* host)
     {
         _client = client;
-        _hostCommand = mallocNew!CLAPHost(host);
+        _hostCommand = mallocNew!CLAPHost(this, host);
 
         // fill _plugin
 
@@ -153,6 +153,14 @@ private:
 
     Vec!(float*) _inputPointers;
     Vec!(float*) _outputPointers;
+
+    // Events that need to be sent to host at next `process`/`flush`.
+    // Those need no synchronization if done from audio thread, or 
+    // from main-thread outside activation.
+    // However, popping from there, or pushing from a parameter listener, 
+    // needs locking;
+    UncheckedMutex _pendingEventsMutex;
+    Vec!clap_event_any_t _pendingEvents;
 
     // Note: REAPER doesn't like parameters with -inf as minimum value.
     // It will react by sending NaNs around.
@@ -548,29 +556,33 @@ private:
         return true;
     }
 
+    double paramValueForHost(Parameter p, int index)
+    {
+        assert(p);
+
+        if (expose_param_as_normalized[index])
+        {
+            return p.getNormalized();
+        }
+
+        if (BoolParameter bp = cast(BoolParameter)p)
+            return bp.value() ? 1.0 : 0.0;
+        else if (IntegerParameter ip = cast(IntegerParameter)p)
+            return ip.value();
+        else if (FloatParameter fp = cast(FloatParameter)p)
+            return fp.value();
+        else
+            assert(false);
+    }
+
     bool params_get_value(clap_id param_id, double *out_value)
     {
-        // Note: this wants a non-normalized value, so we have to cast the Parameter to its subtype
-
         uint idx = convertParamIDToParamIndex(param_id);
         Parameter p = _client.param(idx);
         if (!p)
             return false;
 
-        if (expose_param_as_normalized[idx])
-        {
-            *out_value = p.getNormalized();
-            return true;
-        }
-
-        if (BoolParameter bp = cast(BoolParameter)p)
-            *out_value = bp.value() ? 1.0 : 0.0;
-        else if (IntegerParameter ip = cast(IntegerParameter)p)
-            *out_value = ip.value();
-        else if (FloatParameter fp = cast(FloatParameter)p)
-            *out_value = fp.value();
-        else
-            assert(false);
+        *out_value = paramValueForHost(p, idx);
 
         assert(!isnan(*out_value));
         return true;
@@ -754,9 +766,71 @@ private:
 
     void processOutputEvents(const(clap_output_events_t)  *out_)
     {
+        _pendingEventsMutex.lockLazy();
 
+        size_t len = _pendingEvents.length;
+        for (size_t n = 0; n < len; ++n)
+        {
+            // Note: CLAP doesn't specify who own the sysex buffer
+            // and with what lifetime. So no sysex support here.
+
+            clap_event_any_t* any = &_pendingEvents[n];
+
+            // Nothing says the parameters will be copied...
+            // But I don't see what to do if they don't.
+            bool ok = out_.try_push(out_, cast(clap_event_header_t*) any);
+        }
+        _pendingEvents.clearContents();
+        _pendingEventsMutex.unlock();
     }
 
+    void enqueueParamBeginEdit(Parameter param)
+    {
+        clap_event_any_t evt;
+        evt.param_gesture.header.size     = clap_event_param_gesture_t.sizeof;
+        evt.param_gesture.header.time     = 0; // ASAP, those event comes from state chunks or UI
+        evt.param_gesture.header.space_id = 0;
+        evt.param_gesture.header.type     = CLAP_EVENT_PARAM_GESTURE_BEGIN;
+        evt.param_gesture.header.flags    = 0; // record automation, and not a live event
+        evt.param_gesture.param_id        = convertParamIndexToParamID(param.index);
+        _pendingEventsMutex.lockLazy();
+        _pendingEvents.pushBack(evt);
+        _pendingEventsMutex.unlock();
+    }
+
+    void enqueueParamEndEdit(Parameter param)
+    {
+        clap_event_any_t evt;
+        evt.param_gesture.header.size     = clap_event_param_gesture_t.sizeof;
+        evt.param_gesture.header.time     = 0; // ASAP, those event comes from state chunks or UI
+        evt.param_gesture.header.space_id = 0;
+        evt.param_gesture.header.type     = CLAP_EVENT_PARAM_GESTURE_END;
+        evt.param_gesture.header.flags    = 0; // record automation, and not a live event
+        evt.param_gesture.param_id        = convertParamIndexToParamID(param.index);
+        _pendingEventsMutex.lockLazy();
+        _pendingEvents.pushBack(evt);
+        _pendingEventsMutex.unlock();
+    }
+
+    void enqueueParamChange(Parameter param)
+    {
+        clap_event_any_t evt;
+        evt.param_value.header.size     = clap_event_param_value_t.sizeof;
+        evt.param_value.header.time     = 0; // ASAP, those event comes from state chunks or UI
+        evt.param_value.header.space_id = 0;
+        evt.param_value.header.type     = CLAP_EVENT_PARAM_VALUE;
+        evt.param_value.header.flags    = 0; // record automation, and not a live event
+        evt.param_value.param_id        = convertParamIndexToParamID(param.index);
+        evt.param_value.cookie          = null;
+        evt.param_value.note_id         = -1;
+        evt.param_value.port_index      = -1;
+        evt.param_value.channel         = -1;
+        evt.param_value.key             = -1;
+        evt.param_value.value           = paramValueForHost(param, param.index);
+        _pendingEventsMutex.lockLazy();
+        _pendingEvents.pushBack(evt);
+        _pendingEventsMutex.unlock();
+    }
 
     // clap.audio-ports implementation
     static struct Bus
@@ -1024,8 +1098,6 @@ private:
         return true;
     }
 
-        
-
     bool state_load(const(clap_istream_t)* stream)
     {
         mixin(StateMutexLock);
@@ -1060,9 +1132,8 @@ private:
             if (err)
                 return false;
 
-            // TODO: notify host of new values for parameters
-            // so that its parameter values are updated.
-
+            // Ask for param value rescan.
+            _hostCommand.notifyRequestParamRescan(CLAP_PARAM_RESCAN_VALUES);
             return true;
         }
         else
@@ -1330,17 +1401,23 @@ extern(C) static
 class CLAPHost : IHostCommand
 {
 nothrow @nogc:
-    this(const(clap_host_t)* host)
+    this(CLAPClient backRef, const(clap_host_t)* host)
     {
-        _host = host;
-        _host_gui = cast(clap_host_gui_t*) host.get_extension(host, "clap.gui".ptr);
+        _backRef      = backRef;
+        _host         = host;
+        _host_gui     = cast(clap_host_gui_t*)     host.get_extension(host, "clap.gui".ptr);
         _host_latency = cast(clap_host_latency_t*) host.get_extension(host, "clap.latency".ptr);
+        _host_params  = cast(clap_host_params_t*)  host.get_extension(host,  "clap.params".ptr);
     }
-    
+
     /// Notifies the host that editing of a parameter has begun from UI side.
     override void beginParamEdit(int paramIndex)
     {
-        // TODO
+        Parameter p = _backRef._client.param(paramIndex);
+        if (!p)
+            return;
+        _backRef.enqueueParamBeginEdit(p);
+        notifyRequestFlush();
     }
 
     /// Notifies the host that a parameter was edited from the UI side.
@@ -1348,13 +1425,21 @@ nothrow @nogc:
     /// It is illegal to call `paramAutomate` outside of a `beginParamEdit`/`endParamEdit` pair.
     override void paramAutomate(int paramIndex, float value)
     {
-        // TODO
+        Parameter p = _backRef._client.param(paramIndex);
+        if (!p)
+            return;
+        _backRef.enqueueParamChange(p);
+        notifyRequestFlush();
     }
 
     /// Notifies the host that editing of a parameter has finished from UI side.
     override void endParamEdit(int paramIndex)
     {
-        // TODO
+        Parameter p = _backRef._client.param(paramIndex);
+        if (!p)
+            return;
+        _backRef.enqueueParamEndEdit(p);
+        notifyRequestFlush();
     }
 
     /// Requests to the host a resize of the plugin window's PARENT window, given logical pixels of plugin window.
@@ -1377,6 +1462,21 @@ nothrow @nogc:
     override bool notifyResized()
     {
         return false;
+    }
+
+    void notifyRequestFlush()
+    {
+        // says to the host to call flush or process, so that input
+        // and output events can be processed
+        if (_host_params)
+            _host_params.request_flush(_host);
+    }
+
+    void notifyRequestParamRescan(clap_param_rescan_flags flags)
+    {
+        // says to the host to rescan parameters
+        if (_host_params)
+            _host_params.rescan(_host, flags);
     }
 
     // Tell the host the latency changed while activated.
@@ -1411,8 +1511,10 @@ nothrow @nogc:
         return PluginFormat.clap;
     }
 
-    const(clap_host_t)* _host;
-    const(clap_host_gui_t)* _host_gui;
+    CLAPClient                  _backRef;
+    const(clap_host_t)*         _host;
+    const(clap_host_gui_t)*     _host_gui;
     const(clap_host_latency_t)* _host_latency;
+    const(clap_host_params_t)*  _host_params;
 }
 
