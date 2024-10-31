@@ -25,7 +25,7 @@ SOFTWARE.
 module dplug.clap.client;
 
 import core.stdc.string: strcmp, strlen, memcpy;
-import core.stdc.stdio: snprintf;
+import core.stdc.stdio: sscanf, snprintf;
 import core.stdc.stdlib: free;
 import core.stdc.math: isnan, isinf, isfinite;
 
@@ -38,6 +38,7 @@ import dplug.client.client;
 import dplug.client.params;
 import dplug.client.graphics;
 import dplug.client.daw;
+import dplug.client.preset;
 import dplug.client.midi;
 
 
@@ -484,6 +485,14 @@ private:
             __gshared clap_plugin_state_t api;
             api.save = &plugin_state_save;
             api.load = &plugin_state_load;
+            return &api;
+        }
+
+        if ( (strcmp(name, CLAP_EXT_PRESET_LOAD.ptr) == 0)
+          || (strcmp(name, CLAP_EXT_PRESET_LOAD_COMPAT.ptr) == 0) )
+        {
+            __gshared clap_plugin_preset_load_t api;
+            api.from_location = &plugin_preset_load_from_location;
             return &api;
         }
 
@@ -1141,11 +1150,8 @@ private:
         _lastChunkLoad.resize(size);
         if (readExactly(stream, _lastChunkLoad.ptr, size) == size)
         {
-            //apply chunk
+            // apply chunk
             bool err = false;
-
-            import std.stdio;
-            debug writeln(_lastChunkLoad[0..$]);
 
             _client.presetBank.loadStateChunk(_lastChunkLoad[], &err);
             if (err)
@@ -1157,6 +1163,41 @@ private:
         }
         else
             return false;
+    }
+
+    // preset-load impl
+
+    bool preset_load_from_location(uint location_kind,
+                                   const(char)* location,
+                                   const(char)* load_key)
+    {
+        int index;
+
+        if (location_kind != CLAP_PRESET_DISCOVERY_LOCATION_PLUGIN)
+            goto error;
+        if (location != null)
+            goto error;
+        if (sscanf(load_key, "%d", &index) != 1)
+            goto error;
+        if (index < 0 || index > _client.presetBank.numPresets)
+            goto error;
+
+        _client.presetBank.loadPresetFromHost(index);
+
+        _hostCommand.notifyPresetLoaded(location_kind,
+                                        location,
+                                        load_key);
+        // Ask for param value rescan.
+        _hostCommand.notifyRequestParamRescan(CLAP_PARAM_RESCAN_VALUES);
+        return true;
+
+    error:
+        _hostCommand.notifyPresetError(location_kind,
+                                        location,
+                                        load_key,
+                                        0,
+                                        "Couldn't load preset");
+        return false;
     }
 }
 
@@ -1421,6 +1462,17 @@ extern(C) static
         mixin(ClientCallback);
         return client.state_load(stream);
     }
+
+    // preset-load impl
+    bool plugin_preset_load_from_location(
+        const(clap_plugin_t)*plugin,
+        uint                 location_kind,
+        const(char)         *location,
+        const(char)         *load_key)
+    {
+        mixin(ClientCallback);
+        return client.preset_load_from_location(location_kind, location, load_key);
+    }
 }
 
 
@@ -1437,6 +1489,10 @@ nothrow @nogc:
         _host_latency = cast(clap_host_latency_t*) host.get_extension(host, "clap.latency".ptr);
         _host_params  = cast(clap_host_params_t*)  host.get_extension(host, "clap.params".ptr);
         _host_tail    = cast(clap_host_tail_t*)    host.get_extension(host, "clap.tail".ptr);
+
+        _host_preset  = cast(clap_host_preset_load_t*) host.get_extension(host, CLAP_EXT_PRESET_LOAD.ptr);
+        if (!_host_preset)
+            _host_preset  = cast(clap_host_preset_load_t*) host.get_extension(host, CLAP_EXT_PRESET_LOAD_COMPAT.ptr);
     }
 
     /// Notifies the host that editing of a parameter has begun from UI side.
@@ -1532,6 +1588,32 @@ nothrow @nogc:
             return false;
     }
 
+    void notifyPresetLoaded(uint location_kind,
+                            const(char) *location,
+                            const(char) *load_key)
+    {
+        if (_host_preset)
+            _host_preset.loaded(_host, 
+                                location_kind, 
+                                location, 
+                                load_key);
+    }
+
+    void notifyPresetError(uint location_kind,
+                           const(char) *location,
+                           const(char) *load_key,
+                           int os_error,
+                           const(char)* msg)
+    {
+        if (_host_preset)
+            _host_preset.on_error(_host, 
+                                  location_kind, 
+                                  location, 
+                                  load_key,
+                                  os_error,
+                                  msg);
+    }
+
     DAW getDAW()
     {
         char[128] dawStr;
@@ -1552,15 +1634,14 @@ nothrow @nogc:
         return PluginFormat.clap;
     }
 
-    CLAPClient                  _backRef;
-    const(clap_host_t)*         _host;
-    const(clap_host_gui_t)*     _host_gui;
-    const(clap_host_latency_t)* _host_latency;
-    const(clap_host_params_t)*  _host_params;
-    const(clap_host_tail_t)*    _host_tail;
+    CLAPClient                      _backRef;
+    const(clap_host_t)*             _host;
+    const(clap_host_gui_t)*         _host_gui;
+    const(clap_host_latency_t)*     _host_latency;
+    const(clap_host_params_t)*      _host_params;
+    const(clap_host_tail_t)*        _host_tail;
+    const(clap_host_preset_load_t)* _host_preset;
 }
-
-
 
 class CLAPPresetProvider
 {
@@ -1574,9 +1655,19 @@ nothrow:
         _client = client;
     }
 
+    ~this()
+    {
+        destroyFree(_client);
+    }
+
     bool init_()
     {
-        // TODO report every preset
+        clap_preset_discovery_location_t loc;
+        loc.flags = CLAP_PRESET_DISCOVERY_IS_FACTORY_CONTENT;
+        loc.name = "Factory presets";
+        loc.kind = CLAP_PRESET_DISCOVERY_LOCATION_PLUGIN;
+        loc.location = null;
+        _indexer.declare_location(_indexer, &loc);
         return true;
     }
 
@@ -1584,8 +1675,34 @@ nothrow:
                       const(char)* location,
                       const(clap_preset_discovery_metadata_receiver_t)* metadata_receiver)
     {
-        // TODO send every available metadata
-        return false;
+        if (location_kind != CLAP_PRESET_DISCOVERY_LOCATION_PLUGIN)
+            return false;
+        if (location !is null)
+            return false;
+
+        PresetBank bank = _client.presetBank();
+        int numPresets = bank.numPresets();
+
+        for (int n = 0; n < numPresets; ++n)
+        {
+            Preset preset = bank.preset(n);
+
+            // Assuming the load key is copied here.
+            // Load key is simply the preset index.
+            char[24] load_key;
+            snprintf(load_key.ptr, 24, "%d", n);
+            const(char)* nameZ = preset.name.ptr; // TODO: this is incorrect, add term zero to Preset
+            if (!metadata_receiver.begin_preset(metadata_receiver, nameZ, load_key.ptr))
+                break;
+
+            clap_universal_plugin_id_t thisPlugin;
+            thisPlugin.abi = "clap";
+            thisPlugin.id   = assumeZeroTerminated(_client.CLAPIdentifier);
+            // say this preset is for that plugin
+            metadata_receiver.add_plugin_id(metadata_receiver, &thisPlugin);
+            metadata_receiver.set_flags(metadata_receiver, CLAP_PRESET_DISCOVERY_IS_FACTORY_CONTENT);
+        }
+        return true;
     }
 
 private:

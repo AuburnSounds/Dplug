@@ -278,7 +278,7 @@ extern(C)
     {
         // ID is globally unique, why not. Apparently you can
         // provide presets for other people's products that way.
-        __gshared clap_preset_discovery_provider_descriptor_t desc;        
+        __gshared clap_preset_discovery_provider_descriptor_t desc;
         desc.clap_version = CLAP_VERSION;
         desc.id = assumeZeroTerminated(client.CLAPIdentifierFactory);
         desc.name = "Dplug preset provider"; // what an annoying thing to name
@@ -316,13 +316,12 @@ extern(C)
         // Create a client yet again for the purpose of creating its
         // "preset provider"
         ClientClass client = mallocNew!ClientClass();
-        scope(exit) client.destroyFree();
-
         const(clap_preset_discovery_provider_descriptor_t)* desc = get_preset_dicovery_from_client(client);
 
         if (strcmp(provider_id, desc.id) != 0)
             return null;
 
+        // Note: take ownership of that Client
         CLAPPresetProvider provider = mallocNew!CLAPPresetProvider(client, indexer);
         __gshared clap_preset_discovery_provider_t provdesc;
         provdesc.desc          = desc;
@@ -1743,7 +1742,8 @@ enum string CLAP_PRESET_DISCOVERY_FACTORY_ID = "clap.preset-discovery-factory/2"
 // This compat ID may be removed in 2026.
 enum string CLAP_PRESET_DISCOVERY_FACTORY_ID_COMPAT = "clap.preset-discovery-factory/draft-2";
 
-enum clap_preset_discovery_location_kind 
+alias clap_preset_discovery_location_kind = int;
+enum : clap_preset_discovery_location_kind 
 {
     // The preset are located in a file on the OS filesystem.
     // The location is then a path which works with the OS file system functions (open, stat, ...)
@@ -1756,7 +1756,8 @@ enum clap_preset_discovery_location_kind
     CLAP_PRESET_DISCOVERY_LOCATION_PLUGIN = 1,
 }
 
-enum clap_preset_discovery_flags 
+alias clap_preset_discovery_flags = int;
+enum : clap_preset_discovery_flags 
 {
     // This is for factory or sound-pack presets.
     CLAP_PRESET_DISCOVERY_IS_FACTORY_CONTENT = 1 << 0,
@@ -2007,4 +2008,55 @@ extern(C) nothrow @nogc:
         function(const(clap_preset_discovery_factory_t)* factory,
                  const(clap_preset_discovery_indexer_t)* indexer,
                  const(char)* provider_id) create;
+}
+
+
+// preset-load.h
+
+enum string CLAP_EXT_PRESET_LOAD = "clap.preset-load/2";
+
+// The latest draft is 100% compatible.
+// This compat ID may be removed in 2026.
+enum string CLAP_EXT_PRESET_LOAD_COMPAT = "clap.preset-load.draft/2";
+
+struct clap_plugin_preset_load_t 
+{
+extern(C) nothrow @nogc:
+
+    // Loads a preset in the plugin native preset file format from a location.
+    // The preset discovery provider defines the location and load_key to be passed to this function.
+    // Returns true on success.
+    // [main-thread]
+    bool                 function(const(clap_plugin_t)*plugin,
+                                  uint                 location_kind,
+                                  const(char)         *location,
+                                  const(char)         *load_key) from_location;
+}
+
+struct clap_host_preset_load_t 
+{
+extern(C) nothrow @nogc:
+
+    // Called if clap_plugin_preset_load.load() failed.
+    // os_error: the operating system error, if applicable. If not applicable set it to a non-error
+    // value, eg: 0 on unix and Windows.
+    //
+    // [main-thread]
+    void            function(const(clap_host_t)*host,
+                             uint               location_kind,
+                             const(char)       *location,
+                             const(char)       *load_key,
+                             int                os_error,
+                             const(char)       *msg) on_error;
+
+    // Informs the host that the following preset has been loaded.
+    // This contributes to keep in sync the host preset browser and plugin preset browser.
+    // If the preset was loaded from a container file, then the load_key must be set, otherwise it
+    // must be null.
+    //
+    // [main-thread]
+    void           function(const(clap_host_t)*host,
+                            uint               location_kind,
+                            const(char)       *location,
+                            const(char)       *load_key) loaded;
 }
