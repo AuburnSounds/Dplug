@@ -1663,8 +1663,8 @@ nothrow:
     bool init_()
     {
         clap_preset_discovery_location_t loc;
-        loc.flags = CLAP_PRESET_DISCOVERY_IS_FACTORY_CONTENT;
-        loc.name = "Factory presets";
+        loc.flags    = CLAP_PRESET_DISCOVERY_IS_FACTORY_CONTENT;
+        loc.name     = "Factory presets";
         loc.kind = CLAP_PRESET_DISCOVERY_LOCATION_PLUGIN;
         loc.location = null;
         _indexer.declare_location(_indexer, &loc);
