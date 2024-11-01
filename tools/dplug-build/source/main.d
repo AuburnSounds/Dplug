@@ -988,6 +988,15 @@ int main(string[] args)
                             else
                                 installDir = WIN_LV2_DIR_X86;
                         }
+                        else if (configIsCLAP(config))
+                        {
+                            format = "CLAP";
+                            title = "CLAP plug-in";
+                            if (arch == arch.x86_64)
+                                installDir = WIN_CLAP_DIR;
+                            else
+                                installDir = WIN_CLAP_DIR_X86;
+                        }
                         else if (configIsFLP(config))
                         {
                             format = "FLP";
@@ -1054,6 +1063,11 @@ int main(string[] args)
                     {
                         pluginDir = plugin.prettyName ~ ".lv2";
                         installDir = MAC_LV2_DIR;
+                    }
+                    else if (configIsCLAP(config))
+                    {
+                        pluginDir = plugin.prettyName ~ ".clap";
+                        installDir = MAC_CLAP_DIR;
                     }
                     else if (configIsFLP(config))
                     {
@@ -1298,6 +1312,12 @@ int main(string[] args)
                             pkgFilename   = plugin.pkgFilenameLV2();
                             title = "LV2 plug-in";
                         }
+                        else if (configIsCLAP(config))
+                        {
+                            pkgIdentifier = plugin.pkgBundleCLAP();
+                            pkgFilename   = plugin.pkgFilenameCLAP();
+                            title = "FLStudio plug-in";
+                        }
                         else if (configIsFLP(config))
                         {
                             pkgIdentifier = plugin.pkgBundleFLP();
@@ -1352,7 +1372,7 @@ int main(string[] args)
                             bundleFlag = "--component " ~ escapeShellArgument(bundleDir);
                         }
 
-                        // Create individual .pkg installer for each VST, AU or AAX given
+                        // Create individual .pkg installer for each VST, AU, CLAP, or AAX given
                         string cmd = format("xcrun pkgbuild%s%s%s --install-location %s --identifier %s --version %s %s %s",
                             signStr,
                             quietStr,
