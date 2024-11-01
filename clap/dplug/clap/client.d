@@ -41,7 +41,6 @@ import dplug.client.daw;
 import dplug.client.preset;
 import dplug.client.midi;
 
-
 import dplug.clap.types;
 
 //debug = clap;
@@ -1175,8 +1174,10 @@ private:
 
         if (location_kind != CLAP_PRESET_DISCOVERY_LOCATION_PLUGIN)
             goto error;
-        if (location != null)
-            goto error;
+
+        // Same remark as for indexing: MultiTrackStudio sends non-null
+        // location, ignore that.
+
         if (sscanf(load_key, "%d", &index) != 1)
             goto error;
         if (index < 0 || index > _client.presetBank.numPresets)
@@ -1660,14 +1661,33 @@ nothrow:
         destroyFree(_client);
     }
 
+    UncheckedMutex _presetMutex;
+    __gshared clap_preset_discovery_filetype_t filetype;
+    __gshared clap_universal_plugin_id_t thisPlugin;
+
     bool init_()
     {
+        _presetMutex.lockLazy();
+        scope(exit) _presetMutex.unlock();
+
         clap_preset_discovery_location_t loc;
-        loc.flags    = CLAP_PRESET_DISCOVERY_IS_FACTORY_CONTENT;
-        loc.name     = "Factory presets";
+        loc.flags = CLAP_PRESET_DISCOVERY_IS_FACTORY_CONTENT;
+        loc.name  = "Factory presets";
         loc.kind = CLAP_PRESET_DISCOVERY_LOCATION_PLUGIN;
         loc.location = null;
-        _indexer.declare_location(_indexer, &loc);
+
+        thisPlugin.abi = "clap";
+        thisPlugin.id   = assumeZeroTerminated(_client.CLAPIdentifier);
+
+        // Note: this file extension makes no sense but CLAP
+        //       apparently forces us to declare one.
+        filetype.name = "Dplug CLAP chunk";
+        filetype.description = "Dplug factory preset format";
+        filetype.file_extension = "patch";
+
+        // FUTURE: rare error ignored here
+        bool res = _indexer.declare_filetype(_indexer, &filetype);
+        res = _indexer.declare_location(_indexer, &loc);
         return true;
     }
 
@@ -1675,10 +1695,15 @@ nothrow:
                       const(char)* location,
                       const(clap_preset_discovery_metadata_receiver_t)* metadata_receiver)
     {
+        _presetMutex.lockLazy();
+        scope(exit) _presetMutex.unlock();
+
         if (location_kind != CLAP_PRESET_DISCOVERY_LOCATION_PLUGIN)
             return false;
-        if (location !is null)
-            return false;
+
+        // Here is a trick, multi-track studio when given a NULL 
+        // location, will get back to us with a "" location, and a
+        // non-null pointer. Do NOT check location.
 
         PresetBank bank = _client.presetBank();
         int numPresets = bank.numPresets();
@@ -1695,9 +1720,6 @@ nothrow:
             if (!metadata_receiver.begin_preset(metadata_receiver, nameZ, load_key.ptr))
                 break;
 
-            clap_universal_plugin_id_t thisPlugin;
-            thisPlugin.abi = "clap";
-            thisPlugin.id   = assumeZeroTerminated(_client.CLAPIdentifier);
             // say this preset is for that plugin
             metadata_receiver.add_plugin_id(metadata_receiver, &thisPlugin);
             metadata_receiver.set_flags(metadata_receiver, CLAP_PRESET_DISCOVERY_IS_FACTORY_CONTENT);
@@ -1715,7 +1737,7 @@ extern(C) static
     enum string PresetCallback =
         `ScopedForeignCallback!(false, true) sc;
         sc.enter();
-        CLAPPresetProvider provobj = cast(CLAPPresetProvider)(provider.provider_data);`;
+        CLAPPresetProvider provobj = cast(CLAPPresetProvider)cast(Object)(provider.provider_data);`;
 
     // plugin callbacks
 
