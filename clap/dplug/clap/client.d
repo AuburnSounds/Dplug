@@ -426,9 +426,9 @@ private:
     }
 
     // aka QueryInterface for the people
-    void* get_extension(const(char)* name)
+    void* get_extension(const(char)* s)
     {
-        if (strcmp(name, "clap.params") == 0)
+        if (strcmp(s, "clap.params") == 0)
         {
             __gshared clap_plugin_params_t api;
             api.count         = &plugin_params_count;
@@ -440,7 +440,7 @@ private:
             return &api;
         }
 
-        if (strcmp(name, "clap.audio-ports") == 0)
+        if (strcmp(s, "clap.audio-ports") == 0)
         {
             __gshared clap_plugin_audio_ports_t api;
             api.count = &plugin_audio_ports_count;
@@ -448,7 +448,7 @@ private:
             return &api;
         }
 
-        if (_client.hasGUI() && strcmp(name, "clap.gui") == 0)
+        if (_client.hasGUI() && strcmp(s, "clap.gui") == 0)
         {
             __gshared clap_plugin_gui_t api;
             api.is_api_supported = &plugin_gui_is_api_supported;
@@ -469,7 +469,7 @@ private:
             return &api;
         }
 
-        if (strcmp(name, "clap.latency") == 0)
+        if (strcmp(s, "clap.latency") == 0)
         {
             __gshared clap_plugin_latency_t api;
             api.get = &plugin_latency_get;
@@ -479,7 +479,7 @@ private:
         // Note: nothing in the spec forces the host to save session 
         // using the extension but as plug-in we assume that is the 
         // case, the host MUST use clap.state if present.
-        if (strcmp(name, "clap.state") == 0)
+        if (strcmp(s, "clap.state") == 0)
         {
             __gshared clap_plugin_state_t api;
             api.save = &plugin_state_save;
@@ -487,11 +487,29 @@ private:
             return &api;
         }
 
-        if ( (strcmp(name, CLAP_EXT_PRESET_LOAD.ptr) == 0)
-          || (strcmp(name, CLAP_EXT_PRESET_LOAD_COMPAT.ptr) == 0) )
+        if ( (strcmp(s, CLAP_EXT_PRESET_LOAD.ptr) == 0)
+          || (strcmp(s, CLAP_EXT_PRESET_LOAD_COMPAT.ptr) == 0) )
         {
             __gshared clap_plugin_preset_load_t api;
             api.from_location = &plugin_preset_load_from_location;
+            return &api;
+        }
+
+        if (strcmp(s, CLAP_EXT_AUDIO_PORTS_CONFIG.ptr) == 0)
+        {
+            __gshared clap_plugin_audio_ports_config_t api;
+            api.count  = &plugin_ports_config_count;
+            api.get    = &plugin_ports_config_get;
+            api.select = &plugin_ports_config_select;
+            return &api;
+        }
+
+        if ( (strcmp(s, CLAP_EXT_AUDIO_PORTS_CONFIG_INFO.ptr) == 0)
+          || (strcmp(s, CLAP_EXT_AUDIO_PORTS_CONFIG_INFO_COMPAT.ptr) == 0) )
+        {
+            __gshared clap_plugin_audio_ports_config_info_t api;
+            api.current_config = &plugin_ports_current_config;
+            api.get = &plugin_ports_config_info_get;
             return &api;
         }
 
@@ -915,14 +933,7 @@ private:
             info.flags |= CLAP_AUDIO_PORT_IS_MAIN;
         info.channel_count = b.numChannels;
 
-        // This field can be compared against:
-        // - CLAP_PORT_MONO
-        // - CLAP_PORT_STEREO
-        // - CLAP_PORT_SURROUND (defined in the surround extension)
-        // - CLAP_PORT_AMBISONIC (defined in the ambisonic extension)
-     
-        // not sure what this implies TODO derive that from current channels?
-        info.port_type = null;
+        info.port_type = portTypeChans(b.numChannels);
         info.in_place_pair = CLAP_INVALID_ID; // true luxury is letting the host deal with that
         return true;
     }
@@ -1200,6 +1211,120 @@ private:
                                         "Couldn't load preset");
         return false;
     }
+
+
+    // audio-ports-config
+
+    uint ports_config_count()
+    {   
+        LegalIO[] legalIOs = _client.legalIOs();
+        return cast(uint) (legalIOs.length);
+    }
+
+    bool ports_config_get(uint index,
+                          clap_audio_ports_config_t* config)
+    {
+        LegalIO[] legalIOs = _client.legalIOs();
+        if (index >= legalIOs.length)
+            return false;
+
+        LegalIO* io = &legalIOs[index];
+
+        with (config)
+        {
+            id = index;
+            // Call that "2-2" for stereo, etc
+            snprintf(name.ptr, CLAP_NAME_SIZE, "%d-%d", 
+                     io.numInputChannels, io.numOutputChannels);
+            int inChannels  = io.numInputChannels;
+            int outChannels = io.numOutputChannels;
+            input_port_count  = inChannels ? 1 : 0;
+            output_port_count = outChannels ? 1 : 0;
+            has_main_input  = (inChannels != 0);
+            has_main_output = (outChannels != 0);
+            main_input_channel_count  = inChannels;
+            main_output_channel_count = outChannels;
+            main_input_port_type  = portTypeChans(inChannels);
+            main_output_port_type = portTypeChans(outChannels);
+        }
+        return true;
+    }
+
+    static const(char)* portTypeChans(int channels) pure
+    {
+        switch(channels)
+        {
+            case 1: return CLAP_PORT_MONO.ptr;
+            case 2: return CLAP_PORT_STEREO.ptr;
+            default:
+                // no support yet for ambisonic or surround
+                return null; 
+        }
+    }
+
+    bool ports_config_select(clap_id config_id)
+    {
+        LegalIO[] legalIOs = _client.legalIOs();
+        uint index = config_id;
+        if (index >= legalIOs.length)
+            return false;
+
+        LegalIO* io = &legalIOs[index];
+        Bus* mainIn = getMainInputBus();
+        Bus* mainOut = getMainOutputBus();
+
+        // FUTURE: this would set the number of channels in SC too
+        if (mainIn) mainIn.numChannels = io.numInputChannels;
+        if (mainOut) mainOut.numChannels = io.numOutputChannels;
+        return true;
+    }
+
+    clap_id ports_current_config()
+    {
+        LegalIO[] legalIOs = _client.legalIOs();
+        Bus* mainIn = getMainInputBus();
+        Bus* mainOut = getMainOutputBus();
+        int inChannels = 0;
+        int outChannels = 0;
+        if (mainIn)  inChannels  = mainIn.numChannels;
+        if (mainOut) outChannels = mainOut.numChannels;
+        foreach(size_t nth, ref io; legalIOs)
+        {
+            if ( (io.numInputChannels == inChannels)
+              && (io.numOutputChannels == outChannels) )
+                return cast(clap_id)nth;
+        }
+        return CLAP_INVALID_ID;
+    }
+
+    bool ports_config_info_get(clap_id config_id,
+                               uint    port_index,
+                               bool    is_input,
+                               clap_audio_port_info_t *info)
+    {
+        LegalIO[] legalIOs = _client.legalIOs();
+        uint index = config_id;
+        if (index >= legalIOs.length)
+            return false;
+        LegalIO* io = &legalIOs[index];
+        Bus* b = getBus(is_input, port_index);
+        if (!b)
+            return false;
+
+        info.id = convertBusIndexToBusID(port_index);
+        snprintf(info.name.ptr, CLAP_NAME_SIZE, "%.*s", 
+                 cast(int)(b.name.length), b.name.ptr);
+
+        info.flags = 0;
+        if (b.isMain)
+            info.flags |= CLAP_AUDIO_PORT_IS_MAIN;
+        info.channel_count = is_input ? io.numInputChannels
+                                      : io.numOutputChannels;
+
+        info.port_type = portTypeChans(info.channel_count);
+        info.in_place_pair = CLAP_INVALID_ID; // true luxury is letting the host deal with that
+        return true;
+    }
 }
 
 extern(C) static
@@ -1472,7 +1597,49 @@ extern(C) static
         const(char)         *load_key)
     {
         mixin(ClientCallback);
-        return client.preset_load_from_location(location_kind, location, load_key);
+        return client.preset_load_from_location(location_kind, 
+                                                location, load_key);
+    }
+
+    // audio-port-config impl
+
+    uint plugin_ports_config_count(const(clap_plugin_t)* plugin)
+    {
+        mixin(ClientCallback);
+        return client.ports_config_count();
+    }
+
+    bool plugin_ports_config_get(const(clap_plugin_t)* plugin,
+                  uint index,
+                  clap_audio_ports_config_t* config)
+    {
+        mixin(ClientCallback);
+        return client.ports_config_get(index, config);
+    }
+
+    bool plugin_ports_config_select(const(clap_plugin_t)* plugin, 
+                                    clap_id config_id)
+    {
+        mixin(ClientCallback);
+        return client.ports_config_select(config_id);
+    }
+
+    // clap_plugin_audio_ports_config_info_t
+
+    clap_id plugin_ports_current_config(const(clap_plugin_t)*plugin)
+    {
+        mixin(ClientCallback);
+        return client.ports_current_config();
+    }
+
+    bool plugin_ports_config_info_get(const(clap_plugin_t)*plugin,
+        clap_id config_id,
+        uint    port_index,
+        bool    is_input,
+        clap_audio_port_info_t *info)
+    {
+        mixin(ClientCallback);
+        return client.ports_config_info_get(config_id, port_index, is_input, info);
     }
 }
 
@@ -1493,7 +1660,7 @@ nothrow @nogc:
 
         _host_preset  = cast(clap_host_preset_load_t*) host.get_extension(host, CLAP_EXT_PRESET_LOAD.ptr);
         if (!_host_preset)
-            _host_preset  = cast(clap_host_preset_load_t*) host.get_extension(host, CLAP_EXT_PRESET_LOAD_COMPAT.ptr);
+            _host_preset = cast(clap_host_preset_load_t*) host.get_extension(host, CLAP_EXT_PRESET_LOAD_COMPAT.ptr);
     }
 
     /// Notifies the host that editing of a parameter has begun from UI side.
