@@ -52,9 +52,11 @@ final class Preset
 {
 public:
 
-    this(string name, const(float)[] normalizedParams, const(ubyte)[] stateData = null) nothrow @nogc
+    this(const(char)[] name, 
+         const(float)[] normalizedParams, 
+         const(ubyte)[] stateData = null) nothrow @nogc
     {
-        _name = name.mallocDup;
+        _name = name.mallocDupZ; // add terminal zero
         _normalizedParams = normalizedParams.mallocDup;
         if (stateData) 
             _stateData = stateData.mallocDup;
@@ -72,6 +74,8 @@ public:
         _normalizedParams[paramIndex] = value;
     }
 
+    /// Returns: preset name. Guaranteed to be followed by a terminal
+    ///          zero for C compatibility.
     const(char)[] name() pure nothrow @nogc
     {
         return _name;
@@ -80,7 +84,7 @@ public:
     void setName(const(char)[] newName) nothrow @nogc
     {
         clearName();
-        _name = newName.mallocDup;
+        _name = newName.mallocDupZ;
     }
 
     version(futureBinState) void setStateData(ubyte[] data) nothrow @nogc
@@ -150,11 +154,8 @@ private:
 
     void clearName() nothrow @nogc
     {
-        if (_name !is null)
-        {
-            free(_name.ptr);
-            _name = null;
-        }
+        free(_name.ptr);
+        _name = null;
     }
 
     void clearData() nothrow @nogc

@@ -1691,7 +1691,7 @@ nothrow:
             // Load key is simply the preset index.
             char[24] load_key;
             snprintf(load_key.ptr, 24, "%d", n);
-            const(char)* nameZ = preset.name.ptr; // TODO: this is incorrect, add term zero to Preset
+            const(char)* nameZ = assumeZeroTerminated(preset.name);
             if (!metadata_receiver.begin_preset(metadata_receiver, nameZ, load_key.ptr))
                 break;
 

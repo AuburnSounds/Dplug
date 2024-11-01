@@ -263,11 +263,29 @@ void freeSlice(T)(const(T)[] slice) nothrow @nogc
 
 /// Duplicates a slice with `malloc`. Equivalent to `.dup`
 /// Has to be cleaned-up with `free(slice.ptr)` or `freeSlice(slice)`.
+/// FUTURE: all the semantics are not well-defined with null slices,
+///         but it would be tricky to think about it and define it.
 T[] mallocDup(T)(const(T)[] slice) nothrow @nogc if (!is(T == struct))
 {
     T[] copy = mallocSliceNoInit!T(slice.length);
     memcpy(copy.ptr, slice.ptr, slice.length * T.sizeof);
     return copy;
+}
+
+/// Duplicates a string with `malloc`, and add a terminal zero.
+/// Has to be cleaned-up with `free(slice.ptr)` or `freeSlice(slice)`.
+char[] mallocDupZ(const(char)[] slice) nothrow @nogc
+{
+    char[] copy = mallocSliceNoInit!char(slice.length + 1);
+    memcpy(copy.ptr, slice.ptr, slice.length * char.sizeof);
+    copy[$-1] = '\0';
+    return copy[0..$-1];
+}
+unittest
+{
+    char[] s = mallocDupZ("Hello");
+    assert(*assumeZeroTerminated(s) == 'H');
+    freeSlice(s);
 }
 
 /// Duplicates a slice with `malloc`. Equivalent to `.idup`
