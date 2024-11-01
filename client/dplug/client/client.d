@@ -216,6 +216,7 @@ struct TimeInfo
 }
 
 /// Describe a combination of input channels count and output channels count
+/// FUTURE: this should look more like clap_audio_ports_config_t
 struct LegalIO
 {
     int numInputChannels;
