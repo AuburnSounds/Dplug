@@ -2163,3 +2163,78 @@ extern(C) nothrow @nogc:
     // [main-thread]
     void function(const(clap_host_t)*host) rescan;
 }
+
+
+// note-ports.h
+
+/// The plugin is only allowed to change its note ports configuration while it is deactivated.
+
+enum string CLAP_EXT_NOTE_PORTS = "clap.note-ports";
+
+
+alias clap_note_dialect = int;
+enum : clap_note_dialect 
+{
+    // Uses clap_event_note and clap_event_note_expression.
+    CLAP_NOTE_DIALECT_CLAP = 1 << 0,
+
+    // Uses clap_event_midi, no polyphonic expression
+    CLAP_NOTE_DIALECT_MIDI = 1 << 1,
+
+    // Uses clap_event_midi, with polyphonic expression (MPE)
+    CLAP_NOTE_DIALECT_MIDI_MPE = 1 << 2,
+
+    // Uses clap_event_midi2
+    CLAP_NOTE_DIALECT_MIDI2 = 1 << 3,
+}
+
+struct clap_note_port_info_t 
+{
+    // id identifies a port and must be stable.
+    // id may overlap between input and output ports.
+    clap_id  id;
+    uint supported_dialects;   // bitfield, see clap_note_dialect
+    uint preferred_dialect;    // one value of clap_note_dialect
+    char[CLAP_NAME_SIZE] name; // displayable name, i18n?
+}
+
+// The note ports scan has to be done while the plugin is deactivated.
+struct clap_plugin_note_ports_t 
+{
+extern(C) nothrow @nogc:
+    // Number of ports, for either input or output.
+    // [main-thread]
+    uint function(const(clap_plugin_t)* plugin, bool is_input) count;
+
+    // Get info about a note port.
+    // Returns true on success and stores the result into info.
+    // [main-thread]
+    bool function(const(clap_plugin_t)* plugin,
+                  uint index,
+                  bool is_input,
+                  clap_note_port_info_t *info) get;
+}
+
+enum 
+{
+    // The ports have changed, the host shall perform a full scan of the ports.
+    // This flag can only be used if the plugin is not active.
+    // If the plugin active, call host->request_restart() and then call rescan()
+    // when the host calls deactivate()
+    CLAP_NOTE_PORTS_RESCAN_ALL = 1 << 0,
+
+    // The ports name did change, the host can scan them right away.
+    CLAP_NOTE_PORTS_RESCAN_NAMES = 1 << 1,
+}
+
+struct clap_host_note_ports_t 
+{
+extern(C) nothrow @nogc:
+    // Query which dialects the host supports
+    // [main-thread]
+    uint function(const(clap_host_t)* host) supported_dialects;
+
+    // Rescan the full list of note ports according to the flags.
+    // [main-thread]
+    void function(const(clap_host_t)* host, uint flags) rescan;
+}

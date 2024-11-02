@@ -218,6 +218,18 @@ private:
             audioOutputs.pushBack(b);
         }
 
+        if (receivesMIDI)
+        {
+            NoteBus b;
+            noteInputs.pushBack(b);
+        }
+
+        if (sendsMIDI)
+        {
+            NoteBus b;
+            noteOutputs.pushBack(b);
+        }
+
         _inputBuffers  = mallocSlice!(Vec!float)(_maxInputs);
         _outputBuffers = mallocSlice!(Vec!float)(_maxOutputs);
         return true;
@@ -510,6 +522,14 @@ private:
             __gshared clap_plugin_audio_ports_config_info_t api;
             api.current_config = &plugin_ports_current_config;
             api.get = &plugin_ports_config_info_get;
+            return &api;
+        }
+
+        if (strcmp(s, CLAP_EXT_NOTE_PORTS.ptr) == 0)
+        {
+            __gshared clap_plugin_note_ports_t api;
+            api.count = &plugin_note_ports_count;
+            api.get   = &plugin_note_ports_get;
             return &api;
         }
 
@@ -877,7 +897,7 @@ private:
         _pendingEventsMutex.unlock();
     }
 
-    // clap.audio-ports implementation
+    // clap.audio-ports utils
     static struct Bus
     {
         bool isMain;
@@ -906,7 +926,32 @@ private:
     Bus* getMainOutputBus() { return getBus(false, 0); } 
 
     uint convertBusIndexToBusID(uint index) { return index; }
-    uint convertBusIDToBusIndex(uint id) { return id; }    
+    uint convertBusIDToBusIndex(uint id) { return id; }
+
+
+    // clap.note-ports utils
+    static struct NoteBus
+    {
+        int dummy;
+    }
+    Vec!NoteBus noteInputs;
+    Vec!NoteBus noteOutputs;
+    NoteBus* getNoteBus(bool is_input, uint index)
+    {
+        if (is_input)
+        {
+            if (index >= noteInputs.length) return null;
+            return &noteInputs[index];
+        }
+        else
+        {
+            if (index >= noteOutputs.length) return null;
+            return &noteOutputs[index];
+        }
+    }
+
+
+    // audio-ports impl
 
     uint audio_ports_count(bool is_input)
     {
@@ -1213,7 +1258,7 @@ private:
     }
 
 
-    // audio-ports-config
+    // audio-ports-config impl
 
     uint ports_config_count()
     {   
@@ -1238,7 +1283,7 @@ private:
                      io.numInputChannels, io.numOutputChannels);
             int inChannels  = io.numInputChannels;
             int outChannels = io.numOutputChannels;
-            input_port_count  = inChannels ? 1 : 0;
+            input_port_count  = inChannels  ? 1 : 0;
             output_port_count = outChannels ? 1 : 0;
             has_main_input  = (inChannels != 0);
             has_main_output = (outChannels != 0);
@@ -1325,6 +1370,32 @@ private:
         info.in_place_pair = CLAP_INVALID_ID; // true luxury is letting the host deal with that
         return true;
     }
+
+    // note-ports impl
+    uint note_ports_count(bool is_input)
+    {
+        if (is_input)
+            return cast(uint) noteInputs.length;
+        else
+            return cast(uint) noteOutputs.length;
+    }
+
+    bool note_ports_get(uint index,
+                        bool is_input,
+                        clap_note_port_info_t *info) 
+    {
+        NoteBus* bus = getNoteBus(is_input, index);
+        if (!bus) 
+            return false;
+        with(info)
+        {
+            id = convertBusIndexToBusID(index);
+            supported_dialects = CLAP_NOTE_DIALECT_MIDI;
+            preferred_dialect = CLAP_NOTE_DIALECT_MIDI;
+            snprintf(name.ptr, CLAP_NAME_SIZE, "Events");
+        }
+        return true;
+    }
 }
 
 extern(C) static
@@ -1399,7 +1470,7 @@ extern(C) static
     }
 
 
-    // ext clap.params callbacks
+    // clap.params callbacks
 
     uint plugin_params_count(const(clap_plugin_t)*plugin)
     {
@@ -1463,7 +1534,7 @@ extern(C) static
     }
 
 
-    // gui implem
+    // gui callbacks
 
     bool plugin_gui_is_api_supported(const(clap_plugin_t)* plugin, 
                                      const(char)*api, 
@@ -1557,7 +1628,7 @@ extern(C) static
         return client.gui_hide();
     }
 
-    // latency impl
+    // latency callbacks
     uint plugin_latency_get(const(clap_plugin_t)* plugin)
     {
         mixin(ClientCallback);
@@ -1566,7 +1637,7 @@ extern(C) static
         return samples;
     }
 
-    // tail impl
+    // tail callbacks
     uint plugin_tail_get(const(clap_plugin_t)* plugin)
     {
         mixin(ClientCallback);
@@ -1575,7 +1646,7 @@ extern(C) static
         return samples;
     }
 
-    // state impl
+    // state callbacks
 
     bool plugin_state_save(const(clap_plugin_t)* plugin, const(clap_ostream_t)* stream)
     {
@@ -1601,7 +1672,7 @@ extern(C) static
                                                 location, load_key);
     }
 
-    // audio-port-config impl
+    // audio-port-config callbacks
 
     uint plugin_ports_config_count(const(clap_plugin_t)* plugin)
     {
@@ -1640,6 +1711,26 @@ extern(C) static
     {
         mixin(ClientCallback);
         return client.ports_config_info_get(config_id, port_index, is_input, info);
+    }
+
+    // note-ports callbacks
+
+    uint plugin_note_ports_count(const(clap_plugin_t)* plugin, bool is_input)
+    {
+        mixin(ClientCallback);
+        return client.note_ports_count(is_input);
+    }
+
+    // Get info about a note port.
+    // Returns true on success and stores the result into info.
+    // [main-thread]
+    bool plugin_note_ports_get(const(clap_plugin_t)* plugin,
+                               uint index,
+                               bool is_input,
+                               clap_note_port_info_t *info)
+    {
+        mixin(ClientCallback);
+        return client.note_ports_get(index, is_input, info);
     }
 }
 
