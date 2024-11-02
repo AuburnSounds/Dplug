@@ -37,40 +37,44 @@ public import dplug.clap.clapversion;
 
 
 // parts of entry.h and version.h here
-extern(C)
-{
-    alias CLAP_init_function_t = bool function(const(char)* plugin_path);
-    alias CLAP_deinit_function_t = void function();
-    alias CLAP_get_factory_function_t = const(void)* function(const(char)* factory_id);
-}
 
-struct clap_plugin_entry_t {
+struct clap_plugin_entry_t 
+{
+extern(C) nothrow @nogc:
     clap_version_t clap_version;
-    CLAP_init_function_t init;
-    CLAP_deinit_function_t deinit;
-    CLAP_get_factory_function_t get_factory;
+    bool function(const(char)* plugin_path) init;
+    void function() deinit;
+    const(void)* function(const(char)* factory_id) get_factory;
 }
 
 // Main entry point for CLAP plugins.
 template CLAPEntryPoint(alias ClientClass)
 {
-    static immutable enum factory_entry =
-    "extern(C) const(void)* clap_factory_entry(const(char)* factory_id) nothrow @nogc" ~
-    "{" ~
-    "    import dplug.clap.types;" ~
-    "    return clap_factory_templated!" ~ ClientClass.stringof ~ "(factory_id);" ~
-    "}\n";
+    enum factory_entry =
+        `extern(C) const(void)* clap_factory_entry(const(char)* 
+             factory_id) nothrow @nogc
+        {
+            import dplug.clap.types;
+            return clap_factory_templated!` 
+                ~ ClientClass.stringof ~ `(factory_id);
+        }`;
 
-    static immutable enum init_entry =
-    `extern(C) bool clap_entry_init(const(char)* plugin_path) nothrow @nogc { return true; }`;
+    enum init_entry =
+        `extern(C) bool clap_entry_init(const(char)* plugin_path) 
+         nothrow @nogc { return true; }`;
 
-    static immutable enum deinit_entry =
-    `extern(C) void clap_entry_deinit() nothrow @nogc { }`;
+    enum deinit_entry =
+        `extern(C) void clap_entry_deinit() nothrow @nogc { }`;
 
-    static immutable enum plugin_entry = 
-    `export extern(C) __gshared clap_plugin_entry_t clap_entry = clap_plugin_entry_t(CLAP_VERSION, &clap_entry_init, &clap_entry_deinit, &clap_factory_entry);`;
+    enum plugin_entry = 
+        `export extern(C) __gshared clap_plugin_entry_t clap_entry = 
+        clap_plugin_entry_t(CLAP_VERSION, &clap_entry_init, 
+        &clap_entry_deinit, &clap_factory_entry);`;
 
-    const char[] CLAPEntryPoint = init_entry ~ deinit_entry ~ factory_entry ~ plugin_entry;
+    const char[] CLAPEntryPoint = init_entry 
+                                ~ deinit_entry 
+                                ~ factory_entry 
+                                ~ plugin_entry;
 }
 
 
