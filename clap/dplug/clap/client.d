@@ -768,26 +768,62 @@ private:
         {
             const(clap_event_header_t)* hdr = in_.get(in_, n);
             if (!hdr) continue;
-            if (hdr.space_id != 0) continue; 
+            if (hdr.space_id != 0) continue;
+            int offset = cast(int)hdr.time;
+            if (offset < 0) continue;
+
+            static ubyte velocity(const(clap_event_note_t)* ev)
+            {
+                bool noteOn = (ev.header.type == CLAP_EVENT_NOTE_ON);
+                double fVelocity = ev.velocity;
+                if (fVelocity < 0) fVelocity = 0; 
+                if (fVelocity > 1) fVelocity = 1;
+                ubyte vel = cast(ubyte)(0.5 + 127.0 * fVelocity);
+
+                // "A NOTE_ON with a velocity of 0 is valid and 
+                // should not be interpreted as a NOTE_OFF."
+                // => Send MIDI but with velocity 1 in that case.
+                if (noteOn && vel == 0) vel = 1;
+
+                return vel;
+            }
 
             switch(hdr.type)
             {
                 case CLAP_EVENT_NOTE_ON: 
-                    //TODO
-                    break;
                 case CLAP_EVENT_NOTE_OFF:
-                    //TODO
+                {
+                    auto ev = cast(const(clap_event_note_t)*) hdr;
+                    
+                    ubyte vel = velocity(ev);
+                    short chan = ev.channel;
+                    if (chan == -1) chan = 0;
+                    short key = ev.key;
+                    // note sure how "key" can be a wildcard?
+                    if (key == -1)
+                        break;
+                    MidiMessage msg;
+                    bool noteOn = ev.header.type == CLAP_EVENT_NOTE_ON;
+                    if (noteOn)
+                        msg = makeMidiMessageNoteOn(offset, chan, key, vel);
+                    else
+                        msg = makeMidiMessageNoteOff(offset, chan, key);
+                    _client.enqueueMIDIFromHost(msg);
                     break;
+                }
                 case CLAP_EVENT_NOTE_CHOKE:
+
                     //TODO
                     break;
+
                 case CLAP_EVENT_NOTE_END:
-                    //TODO
+                    // ignore when coming from input
                     break;
+
                 case CLAP_EVENT_PARAM_VALUE:
                     if (hdr.size < clap_event_param_value_t.sizeof) 
                         break;
-                    const(clap_event_param_value_t)* ev = cast(const(clap_event_param_value_t)*) hdr;
+                    auto ev = cast(const(clap_event_param_value_t)*) hdr;
 
                     int index = convertParamIDToParamIndex(ev.param_id);
                     Parameter param = _client.param(index);
@@ -815,14 +851,24 @@ private:
                 case CLAP_EVENT_TRANSPORT:
                     // TODO
                     break;
+
                 case CLAP_EVENT_MIDI:
-                    // TODO
+                    auto ev = cast(const(clap_event_midi_t)*) hdr;
+
+                    // Note: port is ignored, Dplug assume one port
+                   
+                    MidiMessage msg = MidiMessage(offset, 
+                                                  ev.data[0], 
+                                                  ev.data[1], 
+                                                  ev.data[2]);
+                    _client.enqueueMIDIFromHost(msg);
                     break;
+
                 case CLAP_EVENT_MIDI_SYSEX:
-                    // TODO
+                    // no support in Dplug
                     break;
                 case CLAP_EVENT_MIDI2:
-                    // No support in Dplug
+                    // no support in Dplug
                     break;
                 default:
             }
@@ -1391,6 +1437,11 @@ private:
         {
             id = convertBusIndexToBusID(index);
             supported_dialects = CLAP_NOTE_DIALECT_MIDI;
+            
+            // disabled since bizarre semantics I'm unsure of
+            // and no time to test that
+            //supported_dialects |= CLAP_NOTE_DIALECT_CLAP;
+            
             preferred_dialect = CLAP_NOTE_DIALECT_MIDI;
             snprintf(name.ptr, CLAP_NAME_SIZE, "Events");
         }
