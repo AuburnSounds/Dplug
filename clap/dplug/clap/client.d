@@ -64,7 +64,7 @@ nothrow:
     this(Client client, const(clap_host_t)* host)
     {
         _client = client;
-        _hostCommand = mallocNew!CLAPHost(this, host);
+        _host = mallocNew!CLAPHost(this, host);
 
         // fill _plugin
 
@@ -88,7 +88,7 @@ nothrow:
     ~this()
     {
         destroyFree(_client);
-        destroyFree(_hostCommand);
+        destroyFree(_host);
 
         for (int i = 0; i < _maxInputs; ++i)
             _inputBuffers[i].destroy();
@@ -120,7 +120,7 @@ private:
     Client _client;
 
     // Host access.
-    CLAPHost _hostCommand;
+    CLAPHost _host;
 
     // Which DAW is it?
     DAW _daw; 
@@ -176,10 +176,10 @@ private:
 
     bool initFun()
     {
-        _client.setHostCommand(_hostCommand);
+        _client.setHostCommand(_host);
 
         // Detect DAW here
-        _daw = _hostCommand.getDAW();
+        _daw = _host.getDAW();
 
         expose_param_as_normalized.resize(_client.params.length);
         expose_param_as_normalized.fill(false);
@@ -255,7 +255,7 @@ private:
 
         // Set latency. Tells the host to check latency immediately.
         _latencySamples = _client.latencySamples(_sr);
-        _hostCommand.notifyLatencyChanged();
+        _host.notifyLatencyChanged();
 
         // Set tail size.
         float tailSize = _client.tailSizeInSeconds();
@@ -271,7 +271,7 @@ private:
                 samples = int.max;
             _tailSamples = cast(int)(samples);
         }
-         _hostCommand.notifyTailChanged();
+         _host.notifyTailChanged();
         return true;
     }
 
@@ -883,10 +883,10 @@ private:
         with (evt.param_gesture)
         {
             header.size     = clap_event_param_gesture_t.sizeof;
-            header.time     = 0; // ASAP, those event comes from state chunks or UI
+            header.time     = 0; // ASAP: events from UI
             header.space_id = 0;
-            header.type     = CLAP_EVENT_PARAM_GESTURE_BEGIN;
-            header.flags    = 0; // record automation, and not a live event
+            header.type     = CLAP_EVENT_PARAM_GESTURE_BEGIN;            
+            header.flags    = 0; // ie. automation, and not live
             param_id        = convertParamIndexToParamID(param.index);
         }
         _pendingEventsMutex.lockLazy();
@@ -897,12 +897,15 @@ private:
     void enqueueParamEndEdit(Parameter param)
     {
         clap_event_any_t evt;
-        evt.param_gesture.header.size     = clap_event_param_gesture_t.sizeof;
-        evt.param_gesture.header.time     = 0; // ASAP, those event comes from state chunks or UI
-        evt.param_gesture.header.space_id = 0;
-        evt.param_gesture.header.type     = CLAP_EVENT_PARAM_GESTURE_END;
-        evt.param_gesture.header.flags    = 0; // record automation, and not a live event
-        evt.param_gesture.param_id        = convertParamIndexToParamID(param.index);
+        with (evt.param_gesture)
+        {
+            header.size     = clap_event_param_gesture_t.sizeof;
+            header.time     = 0; // ASAP: events from UI
+            header.space_id = 0;
+            header.type     = CLAP_EVENT_PARAM_GESTURE_END;            
+            header.flags    = 0; // ie. automation, and not live
+            param_id        = convertParamIndexToParamID(param.index);
+        }
         _pendingEventsMutex.lockLazy();
         _pendingEvents.pushBack(evt);
         _pendingEventsMutex.unlock();
@@ -911,18 +914,21 @@ private:
     void enqueueParamChange(Parameter param)
     {
         clap_event_any_t evt;
-        evt.param_value.header.size     = clap_event_param_value_t.sizeof;
-        evt.param_value.header.time     = 0; // ASAP, those event comes from state chunks or UI
-        evt.param_value.header.space_id = 0;
-        evt.param_value.header.type     = CLAP_EVENT_PARAM_VALUE;
-        evt.param_value.header.flags    = 0; // record automation, and not a live event
-        evt.param_value.param_id        = convertParamIndexToParamID(param.index);
-        evt.param_value.cookie          = null;
-        evt.param_value.note_id         = -1;
-        evt.param_value.port_index      = -1;
-        evt.param_value.channel         = -1;
-        evt.param_value.key             = -1;
-        evt.param_value.value           = paramValueForHost(param, param.index);
+        with (evt.param_value)
+        {
+            header.size     = clap_event_param_value_t.sizeof;
+            header.time     = 0; // ASAP: events from UI
+            header.space_id = 0;
+            header.type     = CLAP_EVENT_PARAM_VALUE;
+            header.flags    = 0; // ie. automation, and not live
+            param_id        = convertParamIndexToParamID(param.index);
+            cookie          = null;
+            note_id         = -1;
+            port_index      = -1;
+            channel         = -1;
+            key             = -1;
+            value           = paramValueForHost(param, param.index);
+        }
         _pendingEventsMutex.lockLazy();
         _pendingEvents.pushBack(evt);
         _pendingEventsMutex.unlock();
@@ -1010,7 +1016,7 @@ private:
         info.channel_count = b.numChannels;
 
         info.port_type = portTypeChans(b.numChannels);
-        info.in_place_pair = CLAP_INVALID_ID; // true luxury is letting the host deal with that
+        info.in_place_pair = CLAP_INVALID_ID;
         return true;
     }
 
@@ -1018,18 +1024,30 @@ private:
     bool gui_is_api_supported(const(char)*api, bool is_floating)
     {
         if (is_floating) return false;
-        version(Windows) return (strcmp(api, CLAP_WINDOW_API_WIN32.ptr) == 0);
-        version(OSX)     return (strcmp(api, CLAP_WINDOW_API_COCOA.ptr) == 0);
-        version(linux)   return (strcmp(api, CLAP_WINDOW_API_X11.ptr)   == 0);
+        version(Windows) return streq(api, CLAP_WINDOW_API_WIN32);
+        version(OSX)     return streq(api, CLAP_WINDOW_API_COCOA);
+        version(linux)   return streq(api, CLAP_WINDOW_API_X11);
         return false;
     }
 
     bool gui_get_preferred_api(const(char)** api, bool* is_floating) 
     {
         *is_floating = false;
-        version(Windows) { *api = CLAP_WINDOW_API_WIN32.ptr; return true; }
-        version(OSX)     { *api = CLAP_WINDOW_API_COCOA.ptr; return true; }
-        version(linux)   { *api = CLAP_WINDOW_API_X11.ptr;   return true; }
+        version(Windows) 
+            { 
+                *api = CLAP_WINDOW_API_WIN32.ptr;
+                return true; 
+            }
+        version(OSX)     
+            { 
+                *api = CLAP_WINDOW_API_COCOA.ptr;
+                return true; 
+            }
+        version(linux)   
+            { 
+                *api = CLAP_WINDOW_API_X11.ptr;
+                return true; 
+            }
         return false;
     }
 
@@ -1049,8 +1067,8 @@ private:
     bool gui_create(const(char)* api, bool is_floating)
     {
         mixin(GraphicsMutexLock);
-        // This doesn't allocate things, we wait for full information and
-        // will only create the window on first open.
+        // This doesn't allocate things, we wait for full information 
+        // and will only create the window on first open.
 
         version(Windows)
             if (strcmp(api, CLAP_WINDOW_API_WIN32.ptr) == 0)
@@ -1087,7 +1105,8 @@ private:
     bool gui_set_scale(double scale)
     {
         mixin(GraphicsMutexLock);
-        gui_scale = scale; // Note: we currently do nothing with that information.
+        // FUTURE: We currently do nothing with that information.
+        gui_scale = scale; 
         return true;
     }
 
@@ -1117,23 +1136,28 @@ private:
     bool gui_get_resize_hints(clap_gui_resize_hints_t *hints)
     {
         mixin(GraphicsMutexLock);
-        hints.can_resize_horizontally = _client.getGraphics().isResizeableHorizontally();
-        hints.can_resize_vertically = _client.getGraphics().isResizeableVertically();
-        hints.preserve_aspect_ratio = _client.getGraphics().isAspectRatioPreserved();
-        int[2] AR = _client.getGraphics().getPreservedAspectRatio();
-        hints.aspect_ratio_width = AR[0];
-        hints.aspect_ratio_height = AR[1];
+        IGraphics gr = _client.getGraphics();
+        int[2] AR    = gr.getPreservedAspectRatio();
+        with(*hints)
+        {
+            can_resize_horizontally = gr.isResizeableHorizontally();
+            can_resize_vertically   = gr.isResizeableVertically();
+            preserve_aspect_ratio   = gr.isAspectRatioPreserved();        
+            aspect_ratio_width      = AR[0];
+            aspect_ratio_height     = AR[1];
+        }
         return true;
     }
 
     bool gui_adjust_size(uint *width, uint *height)
     {
-        mixin(GraphicsMutexLock);
         // FUTURE: physical vs logical?
+        mixin(GraphicsMutexLock);
+        IGraphics gr = _client.getGraphics();
         int w = *width;
         int h = *height;
         if (w < 0 || h < 0) return false;
-        _client.getGraphics().getMaxSmallerValidSize(&w, &h);
+        gr.getMaxSmallerValidSize(&w, &h);
         if (w < 0 || h < 0) return false;
         *width  = w;
         *height = h;
@@ -1142,9 +1166,10 @@ private:
 
     bool gui_set_size(uint width, uint height)
     {
-        mixin(GraphicsMutexLock);
         // FUTURE: physical vs logical?
-        return _client.getGraphics().nativeWindowResize(width, height);
+        mixin(GraphicsMutexLock);
+        IGraphics gr = _client.getGraphics();
+        return gr.nativeWindowResize(width, height);
     }
 
     bool gui_set_parent(const(clap_window_t)* window)
@@ -1162,6 +1187,7 @@ private:
 
     void gui_suggest_title(const(char)* title)
     {
+        // ignore
     }
 
     bool gui_show()
@@ -1181,7 +1207,11 @@ private:
     // state impl
 
     Vec!ubyte _lastChunkLoad;
-    UncheckedMutex _stateMutex; // clap-validator calls save() and load() at the same time
+
+    // Protect save/load.
+    // clap-validator calls save() and load() at the same time
+    UncheckedMutex _stateMutex; 
+
     enum string StateMutexLock =
         `_stateMutex.lockLazy();
         scope(exit) _stateMutex.unlock();`;
@@ -1190,9 +1220,11 @@ private:
     {
         mixin(StateMutexLock);
         
-        // PERF: could amortize alloc with appendStateChunkFromCurrentState
+        // PERF: could amortize alloc with 
+        //       `appendStateChunkFromCurrentState()`
+        PresetBank bank = _client.presetBank;
         assert(stream);
-        ubyte[] state = _client.presetBank.getStateChunkFromCurrentState();
+        ubyte[] state = bank.getStateChunkFromCurrentState();
         assert(state);
 
         if (state.length > uint.max)
@@ -1244,7 +1276,7 @@ private:
                 return false;
 
             // Ask for param value rescan.
-            _hostCommand.notifyRequestParamRescan(CLAP_PARAM_RESCAN_VALUES);
+            _host.notifyRequestParamRescan(CLAP_PARAM_RESCAN_VALUES);
             return true;
         }
         else
@@ -1262,8 +1294,8 @@ private:
         if (location_kind != CLAP_PRESET_DISCOVERY_LOCATION_PLUGIN)
             goto error;
 
-        // Same remark as for indexing: MultiTrackStudio sends non-null
-        // location, ignore that.
+        // Same remark as for indexing: MultiTrackStudio sends 
+        // non-null location, ignore that.
 
         if (sscanf(load_key, "%d", &index) != 1)
             goto error;
@@ -1272,19 +1304,19 @@ private:
 
         _client.presetBank.loadPresetFromHost(index);
 
-        _hostCommand.notifyPresetLoaded(location_kind,
+        _host.notifyPresetLoaded(location_kind,
                                         location,
                                         load_key);
         // Ask for param value rescan.
-        _hostCommand.notifyRequestParamRescan(CLAP_PARAM_RESCAN_VALUES);
+        _host.notifyRequestParamRescan(CLAP_PARAM_RESCAN_VALUES);
         return true;
 
     error:
-        _hostCommand.notifyPresetError(location_kind,
-                                        location,
-                                        load_key,
-                                        0,
-                                        "Couldn't load preset");
+        _host.notifyPresetError(location_kind,
+                                location,
+                                load_key,
+                                0,
+                                "Couldn't load preset");
         return false;
     }
 
@@ -1459,9 +1491,9 @@ extern(C) static
     }
 
     bool plugin_activate(const(clap_plugin_t)* plugin,
-                  double                    sample_rate,
-                  uint                  min_frames_count,
-                  uint                  max_frames_count)
+                         double           sample_rate,
+                         uint        min_frames_count,
+                         uint        max_frames_count)
     {
         mixin(ClientCallback);
         return client.activate(sample_rate, 
@@ -1493,15 +1525,15 @@ extern(C) static
         client.reset();
     }
 
-    clap_process_status plugin_process(
-        const(clap_plugin_t)*plugin, 
-        const(clap_process_t)* processParams)
+    clap_process_status plugin_process(const(clap_plugin_t)* plugin, 
+                                       const(clap_process_t)*    pp)
     {
         mixin(ClientCallback);
-        return client.process(processParams);
+        return client.process(pp);
     }
 
-    const(void)* plugin_get_extension(const(clap_plugin_t)*plugin, const char *id)
+    const(void)* plugin_get_extension(const(clap_plugin_t)* plugin, 
+                                      const(char)*              id)
     {
         mixin(ClientCallback);
         return client.get_extension(id);
@@ -1521,56 +1553,63 @@ extern(C) static
         return client.params_count();
     }
 
-    bool plugin_params_get_info(const(clap_plugin_t)*plugin, uint param_index, clap_param_info_t* param_info)
+    bool plugin_params_get_info(const(clap_plugin_t)*  plugin, 
+                                uint              param_index, 
+                                clap_param_info_t* param_info)
     {
         mixin(ClientCallback);
         return client.params_get_info(param_index, param_info);
     }
 
-    bool plugin_params_get_value(const(clap_plugin_t)*plugin, clap_id param_id, double *out_value)
+    bool plugin_params_get_value(const(clap_plugin_t)*plugin, 
+                                 clap_id            param_id, 
+                                 double*           out_value)
     {
         mixin(ClientCallback);
         return client.params_get_value(param_id, out_value);
     }
 
     // eg: "2.3 kHz"
-    bool plugin_params_value_to_text(const(clap_plugin_t)*plugin,
-                              clap_id              param_id,
-                              double               value,
-                              char                *out_buffer,
-                              uint                out_buffer_capacity)
+    bool plugin_params_value_to_text(const(clap_plugin_t)* plugin,
+                                     clap_id             param_id,
+                                     double                 value,
+                                     char*             out_buffer,
+                                     uint     out_buffer_capacity)
     {
         mixin(ClientCallback);
-        return client.params_value_to_text(param_id, value, out_buffer, out_buffer_capacity);
+        return client.params_value_to_text(param_id, value, 
+            out_buffer, out_buffer_capacity);
     }
 
-    bool plugin_params_text_to_value(const(clap_plugin_t)*plugin,
-                              clap_id              param_id,
-                              const(char)         *param_value_text,
-                              double              *out_value)
+    bool plugin_params_text_to_value(const(clap_plugin_t)*  plugin,
+                                     clap_id              param_id,
+                                     const(char)* param_value_text,
+                                     double*             out_value)
     {
         mixin(ClientCallback);
-        return client.params_text_to_value(param_id, param_value_text, out_value);
+        return client.params_text_to_value(param_id, 
+            param_value_text, out_value);
     }
 
-    void plugin_params_flush(const(clap_plugin_t)        *plugin,
-                      const(clap_input_events_t)  *in_,
-                      const(clap_output_events_t) *out_)
+    void plugin_params_flush(const(clap_plugin_t)*      plugin,
+                             const(clap_input_events_t)*   in_,
+                             const(clap_output_events_t)* out_)
     {
         mixin(ClientCallback);
         return client.params_flush(in_, out_);
     }
 
-    uint plugin_audio_ports_count(const(clap_plugin_t)* plugin, bool is_input)
+    uint plugin_audio_ports_count(const(clap_plugin_t)* plugin, 
+                                  bool                is_input)
     {
         mixin(ClientCallback);
         return client.audio_ports_count(is_input);
     }
 
     bool plugin_audio_ports_get(const(clap_plugin_t)* plugin,
-                  uint index,
-                  bool is_input,
-                  clap_audio_port_info_t *info)
+                                uint                   index,
+                                bool                is_input,
+                                clap_audio_port_info_t *info)
     {
         mixin(ClientCallback);
         return client.audio_ports_get(index, is_input, info);
@@ -1580,20 +1619,24 @@ extern(C) static
     // gui callbacks
 
     bool plugin_gui_is_api_supported(const(clap_plugin_t)* plugin, 
-                                     const(char)*api, 
-                                     bool is_floating)
+                                     const(char)*             api, 
+                                     bool             is_floating)
     {
         mixin(ClientCallback);
         return client.gui_is_api_supported(api, is_floating);
     }
 
-    bool plugin_gui_get_preferred_api(const(clap_plugin_t)* plugin, const(char)** api, bool* is_floating) 
+    bool plugin_gui_get_preferred_api(const(clap_plugin_t)* plugin, 
+                                      const(char)**            api, 
+                                      bool*            is_floating) 
     {
         mixin(ClientCallback);
         return client.gui_get_preferred_api(api, is_floating);
     }
 
-    bool plugin_gui_create(const(clap_plugin_t)* plugin, const(char)* api, bool is_floating)
+    bool plugin_gui_create(const(clap_plugin_t)* plugin, 
+                           const(char)*             api, 
+                           bool             is_floating)
     {
         mixin(ClientCallback);
         return client.gui_create(api, is_floating);
@@ -1605,13 +1648,15 @@ extern(C) static
         return client.gui_destroy();
     }
     
-    bool plugin_gui_set_scale(const(clap_plugin_t)* plugin, double scale)
+    bool plugin_gui_set_scale(const(clap_plugin_t)* plugin, double s)
     {
         mixin(ClientCallback);
-        return client.gui_set_scale(scale);
+        return client.gui_set_scale(s);
     }
 
-    bool plugin_gui_get_size(const(clap_plugin_t)* plugin, uint *width, uint *height)
+    bool plugin_gui_get_size(const(clap_plugin_t)* plugin, 
+                             uint*                  width, 
+                             uint*                 height)
     {
         mixin(ClientCallback);
         return client.gui_get_size(width, height);
@@ -1623,37 +1668,45 @@ extern(C) static
         return client.gui_can_resize();
     }
 
-    bool plugin_gui_get_resize_hints(const(clap_plugin_t)* plugin, clap_gui_resize_hints_t *hints)
+    bool plugin_gui_get_resize_hints(const(clap_plugin_t)*   plugin, 
+                                     clap_gui_resize_hints_t* hints)
     {
         mixin(ClientCallback);
         return client.gui_get_resize_hints(hints);
     }
 
-    bool plugin_gui_adjust_size(const(clap_plugin_t)* plugin, uint *width, uint *height)
+    bool plugin_gui_adjust_size(const(clap_plugin_t)* plugin, 
+                                uint*                  width, 
+                                uint*                 height)
     {
         mixin(ClientCallback);
         return client.gui_adjust_size(width, height);
     }
 
-    bool plugin_gui_set_size(const(clap_plugin_t)* plugin, uint width, uint height)
+    bool plugin_gui_set_size(const(clap_plugin_t)* plugin, 
+                             uint                   width, 
+                             uint                  height)
     {
         mixin(ClientCallback);
         return client.gui_set_size(width, height);
     }
 
-    bool plugin_gui_set_parent(const(clap_plugin_t)* plugin, const(clap_window_t)* window)
+    bool plugin_gui_set_parent(const(clap_plugin_t)* plugin, 
+                               const(clap_window_t)* window)
     {
         mixin(ClientCallback);
         return client.gui_set_parent(window);
     }
 
-    bool plugin_gui_set_transient(const(clap_plugin_t)* plugin, const(clap_window_t)* window)
+    bool plugin_gui_set_transient(const(clap_plugin_t)* plugin, 
+                                  const(clap_window_t)* window)
     {
         mixin(ClientCallback);
         return client.gui_set_transient(window);
     }
 
-    void plugin_gui_suggest_title(const(clap_plugin_t)* plugin, const(char)* title)
+    void plugin_gui_suggest_title(const(clap_plugin_t)* plugin, 
+                                  const(char)*           title)
     {
         mixin(ClientCallback);
         return client.gui_suggest_title(title);
@@ -1691,13 +1744,15 @@ extern(C) static
 
     // state callbacks
 
-    bool plugin_state_save(const(clap_plugin_t)* plugin, const(clap_ostream_t)* stream)
+    bool plugin_state_save(const(clap_plugin_t)*  plugin, 
+                           const(clap_ostream_t)* stream)
     {
         mixin(ClientCallback);
         return client.state_save(stream);
     }
 
-    bool plugin_state_load(const(clap_plugin_t)* plugin, const(clap_istream_t)* stream)
+    bool plugin_state_load(const(clap_plugin_t)*  plugin, 
+                           const(clap_istream_t)* stream)
     {
         mixin(ClientCallback);
         return client.state_load(stream);
@@ -1712,7 +1767,8 @@ extern(C) static
     {
         mixin(ClientCallback);
         return client.preset_load_from_location(location_kind, 
-                                                location, load_key);
+                                                location, 
+                                                load_key);
     }
 
     // audio-port-config callbacks
@@ -1753,12 +1809,14 @@ extern(C) static
         clap_audio_port_info_t *info)
     {
         mixin(ClientCallback);
-        return client.ports_config_info_get(config_id, port_index, is_input, info);
+        return client.ports_config_info_get(config_id, port_index, 
+            is_input, info);
     }
 
     // note-ports callbacks
 
-    uint plugin_note_ports_count(const(clap_plugin_t)* plugin, bool is_input)
+    uint plugin_note_ports_count(const(clap_plugin_t)* plugin, 
+                                 bool                is_input)
     {
         mixin(ClientCallback);
         return client.note_ports_count(is_input);
@@ -1768,9 +1826,9 @@ extern(C) static
     // Returns true on success and stores the result into info.
     // [main-thread]
     bool plugin_note_ports_get(const(clap_plugin_t)* plugin,
-                               uint index,
-                               bool is_input,
-                               clap_note_port_info_t *info)
+                               uint                   index,
+                               bool                is_input,
+                               clap_note_port_info_t*  info)
     {
         mixin(ClientCallback);
         return client.note_ports_get(index, is_input, info);
@@ -1787,17 +1845,24 @@ nothrow @nogc:
     {
         _backRef      = backRef;
         _host         = host;
-        _host_gui     = cast(clap_host_gui_t*)     host.get_extension(host, "clap.gui".ptr);
-        _host_latency = cast(clap_host_latency_t*) host.get_extension(host, "clap.latency".ptr);
-        _host_params  = cast(clap_host_params_t*)  host.get_extension(host, "clap.params".ptr);
-        _host_tail    = cast(clap_host_tail_t*)    host.get_extension(host, "clap.tail".ptr);
-
-        _host_preset  = cast(clap_host_preset_load_t*) host.get_extension(host, CLAP_EXT_PRESET_LOAD.ptr);
-        if (!_host_preset)
-            _host_preset = cast(clap_host_preset_load_t*) host.get_extension(host, CLAP_EXT_PRESET_LOAD_COMPAT.ptr);
+        _host_gui     = cast(clap_host_gui_t*)     
+                        host.get_extension(host, "clap.gui".ptr);
+        _host_latency = cast(clap_host_latency_t*) 
+                        host.get_extension(host, "clap.latency".ptr);
+        _host_params  = cast(clap_host_params_t*)  
+                        host.get_extension(host, "clap.params".ptr);
+        _host_tail    = cast(clap_host_tail_t*)    
+                        host.get_extension(host, "clap.tail".ptr);
+        _host_preset  = cast(clap_host_preset_load_t*) 
+                   host.get_extension(host, CLAP_EXT_PRESET_LOAD.ptr);
+        if (_host_preset)
+            return;
+        _host_preset  = cast(clap_host_preset_load_t*) 
+            host.get_extension(host, CLAP_EXT_PRESET_LOAD_COMPAT.ptr);
     }
 
-    /// Notifies the host that editing of a parameter has begun from UI side.
+    /// Notifies the host that editing of a parameter has begun from 
+    /// UI side.
     override void beginParamEdit(int paramIndex)
     {
         Parameter p = _backRef._client.param(paramIndex);
@@ -1809,7 +1874,8 @@ nothrow @nogc:
 
     /// Notifies the host that a parameter was edited from the UI side.
     /// This enables the host to record automation.
-    /// It is illegal to call `paramAutomate` outside of a `beginParamEdit`/`endParamEdit` pair.
+    /// It is illegal to call `paramAutomate` outside of a 
+    /// `beginParamEdit`/`endParamEdit` pair.
     override void paramAutomate(int paramIndex, float value)
     {
         Parameter p = _backRef._client.param(paramIndex);
@@ -1819,7 +1885,8 @@ nothrow @nogc:
         notifyRequestFlush();
     }
 
-    /// Notifies the host that editing of a parameter has finished from UI side.
+    /// Notifies the host that editing of a parameter has finished 
+    /// from UI side.
     override void endParamEdit(int paramIndex)
     {
         Parameter p = _backRef._client.param(paramIndex);
@@ -1829,21 +1896,26 @@ nothrow @nogc:
         notifyRequestFlush();
     }
 
-    /// Requests to the host a resize of the plugin window's PARENT window, given logical pixels of plugin window.
+    /// Requests to the host a resize of the plugin window's PARENT 
+    /// window, given logical pixels of plugin window.
     ///
-    /// Note: UI widgets and plugin format clients have different coordinate systems.
+    /// Note: UI widgets and plugin format clients have different 
+    ///       coordinate systems.
     ///
     /// Params:
     ///     width New width of the plugin, in logical pixels.
     ///     height New height of the plugin, in logical pixels.
     /// Returns: `true` if the host parent window has been resized.
-    override bool requestResize(int widthLogicalPixels, int heightLogicalPixels)
+    override bool requestResize(int  widthLogicalPixels, 
+                                int heightLogicalPixels)
     {
         if (!_host_gui)
             return false;
         if (widthLogicalPixels < 0 || heightLogicalPixels < 0)
             return false;
-        return _host_gui.request_resize(_host, widthLogicalPixels, heightLogicalPixels);
+        return _host_gui.request_resize(_host, 
+                                        widthLogicalPixels, 
+                                        heightLogicalPixels);
     }
 
     override bool notifyResized()
@@ -1951,9 +2023,9 @@ public:
 nothrow:
 @nogc:
 
-    this(Client client, const(clap_preset_discovery_indexer_t)* indexer)
+    this(Client client, const(clap_preset_discovery_indexer_t)* idxer)
     {
-        _indexer = indexer;
+        _indexer = idxer;
         _client = client;
     }
 
@@ -1978,7 +2050,7 @@ nothrow:
         loc.location = null;
 
         thisPlugin.abi = "clap";
-        thisPlugin.id   = assumeZeroTerminated(_client.CLAPIdentifier);
+        thisPlugin.id  = assumeZeroTerminated(_client.CLAPIdentifier);
 
         // Note: this file extension makes no sense but CLAP
         //       apparently forces us to declare one.
@@ -1992,9 +2064,10 @@ nothrow:
         return true;
     }
 
-    bool get_metadata(uint location_kind,
-                      const(char)* location,
-                      const(clap_preset_discovery_metadata_receiver_t)* metadata_receiver)
+    bool get_metadata(
+        uint                                  location_kind,
+        const(char)*                               location,
+        const(clap_preset_discovery_metadata_receiver_t)* m)
     {
         _presetMutex.lockLazy();
         scope(exit) _presetMutex.unlock();
@@ -2018,12 +2091,12 @@ nothrow:
             char[24] load_key;
             snprintf(load_key.ptr, 24, "%d", n);
             const(char)* nameZ = assumeZeroTerminated(preset.name);
-            if (!metadata_receiver.begin_preset(metadata_receiver, nameZ, load_key.ptr))
+            if (!m.begin_preset(m, nameZ, load_key.ptr))
                 break;
 
             // say this preset is for that plugin
-            metadata_receiver.add_plugin_id(metadata_receiver, &thisPlugin);
-            metadata_receiver.set_flags(metadata_receiver, CLAP_PRESET_DISCOVERY_IS_FACTORY_CONTENT);
+            m.add_plugin_id(m, &thisPlugin);
+            m.set_flags(m, CLAP_PRESET_DISCOVERY_IS_FACTORY_CONTENT);
         }
         return true;
     }
@@ -2038,39 +2111,38 @@ extern(C) static
     enum string PresetCallback =
         `ScopedForeignCallback!(false, true) sc;
         sc.enter();
-        CLAPPresetProvider provobj = cast(CLAPPresetProvider)cast(Object)(provider.provider_data);`;
+        CLAPPresetProvider provobj = cast(CLAPPresetProvider)
+            cast(Object)(provider.provider_data);`;
+
+    alias clap_preset_dp_t = clap_preset_discovery_provider_t;
 
     // plugin callbacks
 
-    bool provider_init(const(clap_preset_discovery_provider_t)* provider)
+    bool provider_init(const(clap_preset_dp_t)* provider)
     {
         mixin(PresetCallback);
         return provobj.init_();
     }
 
-    void provider_destroy(const(clap_preset_discovery_provider_t)* provider)
+    void provider_destroy(const(clap_preset_dp_t)* provider)
     {
         mixin(PresetCallback);
         destroyFree(provobj);
     }
 
-    // reads metadata from the given file and passes them to the metadata receiver
-    // Returns true on success.
-    bool provider_get_metadata(const(clap_preset_discovery_provider_t)* provider,
-                               uint location_kind,
-                               const(char)* location,
-                               const(clap_preset_discovery_metadata_receiver_t)* metadata_receiver)
+    bool provider_get_metadata(
+        const(clap_preset_dp_t)* provider,
+        uint location_kind,
+        const(char)* location,
+        const(clap_preset_discovery_metadata_receiver_t)* mr)
     {
         mixin(PresetCallback);
-        return provobj.get_metadata(location_kind, location, metadata_receiver);
+        return provobj.get_metadata(location_kind, location, mr);
     }
 
-    // Query an extension.
-    // The returned pointer is owned by the provider.
-    // It is forbidden to call it before provider->init().
-    // You can call it within provider->init() call, and after.
-    const(void)* provider_get_extension(const(clap_preset_discovery_provider_t)* provider,
-                                        const(char)* extension_id)
+    const(void)* provider_get_extension(
+        const(clap_preset_dp_t)* provider,
+        const(char)* extension_id)
     {
         return null;
     }
