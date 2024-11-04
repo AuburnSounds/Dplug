@@ -30,6 +30,7 @@ version(CLAP):
 
 import core.stdc.string;
 import core.stdc.config;
+import core.stdc.stdio;
 import dplug.core.runtime;
 import dplug.core.nogc;
 import dplug.core.sync;
@@ -46,6 +47,12 @@ int assumeNoOverflow(uint x) pure @safe
 {
     assert(x <= int.max);
     return x;
+}
+
+void toBufZ(char[] buf, const(char)[] source)
+{
+    snprintf(buf.ptr, buf.length, "%.*s", 
+             cast(int)(source.length), source.ptr);
 }
 
 // id.h
@@ -164,16 +171,25 @@ extern(C)
         __gshared clap_plugin_descriptor_t desc;
 
         desc.clap_version = CLAP_VERSION;
-        desc.id   = assumeZeroTerminated(client.CLAPIdentifier);
-        desc.name = assumeZeroTerminated(client.pluginName);
-        desc.vendor = assumeZeroTerminated(client.vendorName);
-        desc.url = assumeZeroTerminated(client.pluginHomepage);
+
+        __gshared char[128] idZ;
+        __gshared char[128] nameZ;
+        __gshared char[128] vendorZ;
+        __gshared char[256] urlZ;
+        toBufZ(idZ, client.CLAPIdentifier);
+        toBufZ(nameZ, client.pluginName);
+        toBufZ(vendorZ, client.vendorName);
+        toBufZ(urlZ, client.pluginHomepage);       
+        desc.id   = idZ.ptr;
+        desc.name = nameZ.ptr;
+        desc.vendor = vendorZ.ptr;
+        desc.url = urlZ.ptr;
 
         // FUTURE: Dplug doesn't have that, same URL as homepage
         desc.manual_url = desc.url; 
 
         // FUTURE: provide that support URL
-        desc.support_url = desc.url; // Weird crash in Windows debug with in ms-encode assumeZeroTerminated(client.getVendorSupportEmail); 
+        desc.support_url = desc.url;
 
         // Can be __shared, since there is a single plugin in our CLAP client,
         // with a single version.
@@ -278,13 +294,18 @@ extern(C)
 
     const(clap_preset_discovery_provider_descriptor_t)*  get_preset_dicovery_from_client(Client client)
     {
+        __gshared char[128] idFZ;
+        __gshared char[128] vendorZ;
+        toBufZ(idFZ, client.CLAPIdentifierFactory);
+        toBufZ(vendorZ, client.vendorName);
+
         // ID is globally unique, why not. Apparently you can
         // provide presets for other people's products that way.
         __gshared clap_preset_discovery_provider_descriptor_t desc;
         desc.clap_version = CLAP_VERSION;
-        desc.id = assumeZeroTerminated(client.CLAPIdentifierFactory);
+        desc.id = idFZ.ptr;
         desc.name = "Dplug preset provider"; // what an annoying thing to name
-        desc.vendor = assumeZeroTerminated(client.vendorName);
+        desc.vendor = vendorZ.ptr;
         return &desc;
     }
 
