@@ -488,8 +488,12 @@ private:
             return &api;
         }
 
+        bool useAudioPortsConfig = true;
+
         // clap-validator calls audio-ports-config with bad pointers.
-        bool useAudioPortsConfig = _daw != DAW.ClapValidator;
+        // clap-info also crash there.
+        if (_daw == DAW.ClapValidator) useAudioPortsConfig = false;
+        if (_daw == DAW.ClapInfo) useAudioPortsConfig = false;
 
         if (useAudioPortsConfig)
         {
