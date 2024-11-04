@@ -123,7 +123,7 @@ private:
     CLAPHost _host;
 
     // Which DAW is it?
-    DAW _daw; 
+    DAW _daw = DAW.Unknown; 
 
     // Returned to the CLAP api, it's a sort of v-table.
     clap_plugin_t _plugin;
@@ -488,25 +488,33 @@ private:
             return &api;
         }
 
-        if (streq(s, CLAP_EXT_AUDIO_PORTS_CONFIG) == 0)
+        // clap-validator calls audio-ports-config with bad pointers.
+        bool useAudioPortsConfig = _daw != DAW.ClapValidator;
+
+        if (useAudioPortsConfig)
         {
-            __gshared clap_plugin_audio_ports_config_t api;
-            api.count             = &plugin_ports_config_count;
-            api.get               = &plugin_ports_config_get;
-            api.select            = &plugin_ports_config_select;
-            return &api;
+            if (streq(s, CLAP_EXT_AUDIO_PORTS_CONFIG) == 0)
+            {
+                __gshared clap_plugin_audio_ports_config_t api;
+                api.count             = &plugin_ports_config_count;
+                api.get               = &plugin_ports_config_get;
+                api.select            = &plugin_ports_config_select;
+                return &api;
+            }
+
+            if ( streq(s, CLAP_EXT_AUDIO_PORTS_CONFIG_INFO)
+              || streq(s, CLAP_EXT_AUDIO_PORTS_CONFIG_INFO_COMPAT) )
+            {
+                __gshared clap_plugin_audio_ports_config_info_t api;
+                api.current_config    = &plugin_ports_current_config;
+                api.get               = &plugin_ports_config_info_get;
+                return &api;
+            }
         }
 
-        if ( streq(s, CLAP_EXT_AUDIO_PORTS_CONFIG_INFO)
-          || streq(s, CLAP_EXT_AUDIO_PORTS_CONFIG_INFO_COMPAT) )
-        {
-            __gshared clap_plugin_audio_ports_config_info_t api;
-            api.current_config    = &plugin_ports_current_config;
-            api.get               = &plugin_ports_config_info_get;
-            return &api;
-        }
+        bool hasMIDI = _client.receivesMIDI() || _client.sendsMIDI();
 
-        if (streq(s, CLAP_EXT_NOTE_PORTS))
+        if (hasMIDI && streq(s, CLAP_EXT_NOTE_PORTS))
         {
             __gshared clap_plugin_note_ports_t api;
             api.count             = &plugin_note_ports_count;
@@ -1138,14 +1146,11 @@ private:
         mixin(GraphicsMutexLock);
         IGraphics gr = _client.getGraphics();
         int[2] AR    = gr.getPreservedAspectRatio();
-        with(*hints)
-        {
-            can_resize_horizontally = gr.isResizeableHorizontally();
-            can_resize_vertically   = gr.isResizeableVertically();
-            preserve_aspect_ratio   = gr.isAspectRatioPreserved();        
-            aspect_ratio_width      = AR[0];
-            aspect_ratio_height     = AR[1];
-        }
+        hints.can_resize_horizontally = gr.isResizeableHorizontally();
+        hints.can_resize_vertically   = gr.isResizeableVertically();
+        hints.preserve_aspect_ratio   = gr.isAspectRatioPreserved();
+        hints.aspect_ratio_width      = AR[0];
+        hints.aspect_ratio_height     = AR[1];
         return true;
     }
 
@@ -1329,7 +1334,7 @@ private:
         return cast(uint) (legalIOs.length);
     }
 
-    bool ports_config_get(uint index,
+    bool ports_config_get(uint                        index,
                           clap_audio_ports_config_t* config)
     {
         LegalIO[] legalIOs = _client.legalIOs();
@@ -1337,24 +1342,20 @@ private:
             return false;
 
         LegalIO* io = &legalIOs[index];
-
-        with (config)
-        {
-            id = index;
-            // Call that "2-2" for stereo, etc
-            snprintf(name.ptr, CLAP_NAME_SIZE, "%d-%d", 
-                     io.numInputChannels, io.numOutputChannels);
-            int inChannels  = io.numInputChannels;
-            int outChannels = io.numOutputChannels;
-            input_port_count  = inChannels  ? 1 : 0;
-            output_port_count = outChannels ? 1 : 0;
-            has_main_input  = (inChannels != 0);
-            has_main_output = (outChannels != 0);
-            main_input_channel_count  = inChannels;
-            main_output_channel_count = outChannels;
-            main_input_port_type  = portTypeChans(inChannels);
-            main_output_port_type = portTypeChans(outChannels);
-        }
+        config.id = index;
+        // Call that "2-2" for stereo, etc
+        snprintf(config.name.ptr, CLAP_NAME_SIZE, "%d-%d", 
+                 io.numInputChannels, io.numOutputChannels);
+        int inChannels  = io.numInputChannels;
+        int outChannels = io.numOutputChannels;
+        config.input_port_count  = inChannels  ? 1 : 0;
+        config.output_port_count = outChannels ? 1 : 0;
+        config.has_main_input  = (inChannels != 0);
+        config.has_main_output = (outChannels != 0);
+        config.main_input_channel_count  = inChannels;
+        config.main_output_channel_count = outChannels;
+        config.main_input_port_type  = portTypeChans(inChannels);
+        config.main_output_port_type = portTypeChans(outChannels);
         return true;
     }
 
@@ -1779,16 +1780,16 @@ extern(C) static
         return client.ports_config_count();
     }
 
-    bool plugin_ports_config_get(const(clap_plugin_t)* plugin,
-                  uint index,
-                  clap_audio_ports_config_t* config)
+    bool plugin_ports_config_get(const(clap_plugin_t)*      plugin,
+                                 uint                        index,
+                                 clap_audio_ports_config_t* config)
     {
         mixin(ClientCallback);
         return client.ports_config_get(index, config);
     }
 
     bool plugin_ports_config_select(const(clap_plugin_t)* plugin, 
-                                    clap_id config_id)
+                                    clap_id            config_id)
     {
         mixin(ClientCallback);
         return client.ports_config_select(config_id);
