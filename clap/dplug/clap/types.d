@@ -403,26 +403,57 @@ struct clap_plugin_descriptor_t
 
 struct clap_plugin_t 
 {
-    // TODO add back documentation here in the interface instead of client
-
 nothrow @nogc extern(C):
 
     const(clap_plugin_descriptor_t)* desc;
     void *plugin_data; // reserved pointer for the plugin
+
+    // Must be called after creating the plugin.
+    // If init returns false, the host must destroy the plugin instance.
+    // If init returns true, then the plugin is initialized and in the deactivated state.
+    // Unlike in `plugin-factory::create_plugin`, in init you have complete access to the host 
+    // and host extensions, so clap related setup activities should be done here rather than in
+    // create_plugin.
+    // [main-thread]
     bool function(const(clap_plugin_t)* plugin) init;
+
+    // Free the plugin and its resources.
+    // It is required to deactivate the plugin prior to this call.
+    // [main-thread & !active]
     void function(const(clap_plugin_t)* plugin) destroy;
 
-
+    // Activate and deactivate the plugin.
+    // In this call the plugin may allocate memory and prepare 
+    // everything needed for the process call. The process's sample 
+    // rate will be constant and process's frame count will included 
+    // in the [min, max] range, which is bounded by [1, INT32_MAX].
+    // Once activated the latency and port configuration must remain 
+    // constant, until deactivation.
+    // Returns true on success.
+    // [main-thread & !active]
     bool function(const(clap_plugin_t)* plugin,
                   double                sample_rate,
                   uint                  min_frames_count,
                   uint                  max_frames_count) activate;
+
+    // [main-thread & active]
     void function(const(clap_plugin_t)*plugin) deactivate;
 
-
+    // Call start processing before processing.
+    // Returns true on success.
+    // [audio-thread & active & !processing]
     bool function(const(clap_plugin_t)*plugin) start_processing;
+
+    // Call stop processing before sending the plugin to sleep.
+    // [audio-thread & active & processing]
     void function(const(clap_plugin_t)* plugin) stop_processing;
 
+    // - Clears all buffers, performs a full reset of the processing state (filters, oscillators,
+    //   envelopes, lfo, ...) and kills all voices.
+    // - The parameter's value remain unchanged.
+    // - clap_process.steady_time may jump backward.
+    //
+    // [audio-thread & active]
     void function(const(clap_plugin_t)* plugin) reset;
 
     // process audio, events, ...

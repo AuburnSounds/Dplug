@@ -50,6 +50,11 @@ import dplug.clap.types;
 //debug = clap;
 debug(clap) import core.stdc.stdio;
 
+static streq(const(char)* a, string b) pure
+{
+    return strcmp(a, b.ptr) == 0;
+}
+
 class CLAPClient
 {
 public:
@@ -123,17 +128,17 @@ private:
     // Returned to the CLAP api, it's a sort of v-table.
     clap_plugin_t _plugin;
 
-    // plugin is "activated" (status of activate / deactivate sequence)
+    // plugin is "activated"
     bool activated;
 
-    // plugin is "processing" (status of activate / deactivate sequence)
+    // plugin is "processing"
     bool processing;
 
     // true if resetFromHost must be called before next block
     bool _mustReset;
 
     // Last hint at sampleRate, -1 if not specified yet
-    double _sampleRate = -1;
+    double _sr = -1;
 
     // Current latency in samples.
     int _latencySamples = 0;
@@ -154,32 +159,21 @@ private:
     Vec!float[] _inputBuffers;  
     Vec!float[] _outputBuffers;
 
-    Vec!(float*) _inputPointers;
-    Vec!(float*) _outputPointers;
+    Vec!(float*) _inputPtrs;
+    Vec!(float*) _outputPtrs;
 
     // Events that need to be sent to host at next `process`/`flush`.
-    // Those need no synchronization if done from audio thread, or 
-    // from main-thread outside activation.
-    // However, popping from there, or pushing from a parameter listener, 
-    // needs locking;
-    UncheckedMutex _pendingEventsMutex;
     Vec!clap_event_any_t _pendingEvents;
 
-    // Note: REAPER doesn't like parameters with -inf as minimum value.
-    // It will react by sending NaNs around.
-    // What we do for FloatParameter is expose them as normalized floats.
-    // This helps UI-less programs to have more meaningful mapping.
+    // Mutex to protect above events.
+    UncheckedMutex _pendingEventsMutex;
+    
+    // This parameter is Float and exposed 0 to 1.
+    // This is more correct for float parameter
     Vec!bool expose_param_as_normalized;
 
     // Implement methods of clap_plugin_t using the C trampolines
 
-    // Must be called after creating the plugin.
-    // If init returns false, the host must destroy the plugin instance.
-    // If init returns true, then the plugin is initialized and in the deactivated state.
-    // Unlike in `plugin-factory::create_plugin`, in init you have complete access to the host 
-    // and host extensions, so clap related setup activities should be done here rather than in
-    // create_plugin.
-    // [main-thread]
     bool initFun()
     {
         _client.setHostCommand(_hostCommand);
@@ -243,40 +237,36 @@ private:
         destroyFree(this);
     }
 
-    // Activate and deactivate the plugin.
-    // In this call the plugin may allocate memory and prepare everything needed for the process
-    // call. The process's sample rate will be constant and process's frame count will included in
-    // the [min, max] range, which is bounded by [1, INT32_MAX].
-    // Once activated the latency and port configuration must remain constant, until deactivation.
-    // Returns true on success.
-    // [main-thread & !active]
-    bool activate(double sample_rate, uint min_frames_count, uint max_frames_count)
+    bool activate(double sample_rate, 
+                  uint min_frames_count, 
+                  uint max_frames_count)
     {
         if (max_frames_count > int.max)
             return false;
 
         // Note: We can assume we already know the port configuration!
-        //       CLAP host are strictly typed and host follow the constraints.
-        // And no synchronization needed, since the plugin is deactivated.
-        _sampleRate = sample_rate;
+        //       CLAP host are strictly typed and host follow the 
+        //       constraints. And no synchronization needed, since the 
+        //       plugin is deactivated.
+        _sr = sample_rate;
         _maxFrames = assumeNoOverflow(max_frames_count);
         activated = true;
         clientReset();
 
         // Set latency. Tells the host to check latency immediately.
-        _latencySamples = _client.latencySamples(_sampleRate);
+        _latencySamples = _client.latencySamples(_sr);
         _hostCommand.notifyLatencyChanged();
 
         // Set tail size.
-        float tailSizeInSeconds = _client.tailSizeInSeconds();
-        assert(tailSizeInSeconds >= 0);
-        if (isinf(tailSizeInSeconds))
+        float tailSize = _client.tailSizeInSeconds();
+        assert(tailSize >= 0);
+        if (isinf(tailSize))
         {
             _tailSamples = int.max;
         }
         else
         {
-            long samples = cast(long)(0.5 + tailSizeInSeconds * _sampleRate);
+            long samples = cast(long)(0.5 + tailSize * _sr);
             if (samples > int.max)
                 samples = int.max;
             _tailSamples = cast(int)(samples);
@@ -293,12 +283,12 @@ private:
         Bus* obus = getMainOutputBus();
         int numInputs  = ibus ? ibus.numChannels : 0;
         int numOutputs = obus ? obus.numChannels : 0;
-        _client.resetFromHost(_sampleRate, _maxFrames, numInputs, numOutputs);
+        _client.resetFromHost(_sr, _maxFrames, numInputs, numOutputs);
 
         // Allocate space for scratch buffers
         resizeScratchBuffers(_maxFrames, numInputs, numOutputs);
-        _inputPointers.resize(numInputs);
-        _outputPointers.resize(numOutputs);
+        _inputPtrs.resize(numInputs);
+        _outputPtrs.resize(numOutputs);
     }
 
     void deactivate()
@@ -306,28 +296,17 @@ private:
         activated = true;
     }
 
-    // Call start processing before processing.
-    // Returns true on success.
-    // [audio-thread & active & !processing]
     bool start_processing()
     {
         processing = true;
         return true;
     }
 
-    // Call stop processing before sending the plugin to sleep.
-    // [audio-thread & active & processing]
     void stop_processing()
     {
         processing = false;
     }
 
-    // - Clears all buffers, performs a full reset of the processing state (filters, oscillators,
-    //   envelopes, lfo, ...) and kills all voices.
-    // - The parameter's value remain unchanged.
-    // - clap_process.steady_time may jump backward.
-    //
-    // [audio-thread & active]
     void reset()
     {
         // TBH I don't remember a similar function from other APIs.
@@ -338,24 +317,24 @@ private:
         clientReset();
     }
 
-    clap_process_status process(const(clap_process_t)* processParams)
+    clap_process_status process(const(clap_process_t)* pp)
     {
-        // It seems the number of ports and channels is discovered here
-        // as last resort.
+        // It seems the number of ports and channels is discovered 
+        // here as last resort.
 
         // 0. First, process incoming events.
-        if (processParams)
+        if (pp)
         {
-            if (processParams.in_events)
-                processInputEvents(processParams.in_events);
+            if (pp.in_events)
+                processInputEvents(pp.in_events);
         }
 
-        int inputPorts = processParams.audio_inputs_count;
-        int outputPorts = processParams.audio_outputs_count;
+        int inputPorts = pp.audio_inputs_count;
+        int outputPorts = pp.audio_outputs_count;
 
-        if (processParams.frames_count > int.min)
+        if (pp.frames_count > int.min)
             return CLAP_PROCESS_ERROR;
-        int frames = assumeNoOverflow(processParams.frames_count);
+        int frames = assumeNoOverflow(pp.frames_count);
 
         // 1. Check number of buses we agreed upon with the host
         if (inputPorts != audioInputs.length) 
@@ -367,13 +346,13 @@ private:
         for (int n = 0; n < inputPorts; ++n)
         {
             int expected = getInputBus(n).numChannels;
-            int got = processParams.audio_inputs[n].channel_count;
+            int got = pp.audio_inputs[n].channel_count;
             if (got != expected) return CLAP_PROCESS_ERROR;
         }
         for (int n = 0; n < outputPorts; ++n)
         {
             int expected = getOutputBus(n).numChannels;
-            int got = processParams.audio_outputs[n].channel_count;
+            int got = pp.audio_outputs[n].channel_count;
             if (got != expected) return CLAP_PROCESS_ERROR;
         }
 
@@ -389,23 +368,23 @@ private:
             int chans = ibus.numChannels;
             for (int chan = 0; chan < chans; ++chan)
             {
-                const(float)* source = processParams.audio_inputs[0].data32[chan];
+                const(float)* src = pp.audio_inputs[0].data32[chan];
                 float* dest = _inputBuffers[chan].ptr;
-                memcpy(dest, source, float.sizeof * frames);
+                memcpy(dest, src, float.sizeof * frames);
             }
         }
 
         // 4. Process audio
         {
             for (int n = 0; n < numInputs; ++n)
-                _inputPointers[n] = _inputBuffers[n].ptr;
+                _inputPtrs[n] = _inputBuffers[n].ptr;
             for (int n = 0; n < numOutputs; ++n)
-                _outputPointers[n] = _outputBuffers[n].ptr;
+                _outputPtrs[n] = _outputBuffers[n].ptr;
             TimeInfo timeInfo;
 
             // TODO: per-subbuffer parameter changes like in VST3
-            _client.processAudioFromHost(_inputPointers[0..numInputs], 
-                                         _outputPointers[0..numInputs], 
+            _client.processAudioFromHost(_inputPtrs[0..numInputs], 
+                                         _outputPtrs[0..numInputs], 
                                          frames,
                                          timeInfo);
         }
@@ -414,19 +393,21 @@ private:
         if (numOutputs)
         {
             int chans = obus.numChannels;
-            for (int chan = 0; chan < chans; ++chan)
+            for (int ch = 0; ch < chans; ++ch)
             {
-                float* dest = cast(float*) processParams.audio_outputs[0].data32[chan];
-                const(float)* source= _outputBuffers[chan].ptr;
+                const(clap_audio_buffer_t)* outbuf;
+                outbuf = &pp.audio_outputs[0];
+                float* dest = cast(float*) outbuf.data32[ch];
+                const(float)* source= _outputBuffers[ch].ptr;
                 memcpy(dest, source, float.sizeof * frames);
             }
         }
 
         // 6. Lastly, process output events.
-        if (processParams)
+        if (pp)
         {
-            if (processParams.out_events)
-                processOutputEvents(processParams.out_events);
+            if (pp.out_events)
+                processOutputEvents(pp.out_events);
         }
 
         // Note: CLAP can expose more internal state, such as tail, 
@@ -440,96 +421,96 @@ private:
     // aka QueryInterface for the people
     void* get_extension(const(char)* s)
     {
-        if (strcmp(s, "clap.params") == 0)
+        if (streq(s, "clap.params"))
         {
             __gshared clap_plugin_params_t api;
-            api.count         = &plugin_params_count;
-            api.get_info      = &plugin_params_get_info;
-            api.get_value     = &plugin_params_get_value;
-            api.value_to_text = &plugin_params_value_to_text;
-            api.text_to_value = &plugin_params_text_to_value;
-            api.flush         = &plugin_params_flush;
+            api.count             = &plugin_params_count;
+            api.get_info          = &plugin_params_get_info;
+            api.get_value         = &plugin_params_get_value;
+            api.value_to_text     = &plugin_params_value_to_text;
+            api.text_to_value     = &plugin_params_text_to_value;
+            api.flush             = &plugin_params_flush;
             return &api;
         }
 
-        if (strcmp(s, "clap.audio-ports") == 0)
+        if (streq(s, "clap.audio-ports"))
         {
             __gshared clap_plugin_audio_ports_t api;
-            api.count = &plugin_audio_ports_count;
-            api.get = &plugin_audio_ports_get;
+            api.count             = &plugin_audio_ports_count;
+            api.get               = &plugin_audio_ports_get;
             return &api;
         }
 
-        if (_client.hasGUI() && strcmp(s, "clap.gui") == 0)
+        if (_client.hasGUI() && streq(s, "clap.gui"))
         {
             __gshared clap_plugin_gui_t api;
-            api.is_api_supported = &plugin_gui_is_api_supported;
+            api.is_api_supported  = &plugin_gui_is_api_supported;
             api.get_preferred_api = &plugin_gui_get_preferred_api;
-            api.create = &plugin_gui_create;
-            api.destroy = &plugin_gui_destroy;
-            api.set_scale = &plugin_gui_set_scale;
-            api.get_size = &plugin_gui_get_size;
-            api.can_resize = &plugin_gui_can_resize;
-            api.get_resize_hints = &plugin_gui_get_resize_hints;
-            api.adjust_size = &plugin_gui_adjust_size;
-            api.set_size = &plugin_gui_set_size;
-            api.set_parent = &plugin_gui_set_parent;
-            api.set_transient = &plugin_gui_set_transient;
-            api.suggest_title = &plugin_gui_suggest_title;
-            api.show = &plugin_gui_show;
-            api.hide = &plugin_gui_hide;
+            api.create            = &plugin_gui_create;
+            api.destroy           = &plugin_gui_destroy;
+            api.set_scale         = &plugin_gui_set_scale;
+            api.get_size          = &plugin_gui_get_size;
+            api.can_resize        = &plugin_gui_can_resize;
+            api.get_resize_hints  = &plugin_gui_get_resize_hints;
+            api.adjust_size       = &plugin_gui_adjust_size;
+            api.set_size          = &plugin_gui_set_size;
+            api.set_parent        = &plugin_gui_set_parent;
+            api.set_transient     = &plugin_gui_set_transient;
+            api.suggest_title     = &plugin_gui_suggest_title;
+            api.show              = &plugin_gui_show;
+            api.hide              = &plugin_gui_hide;
             return &api;
         }
 
-        if (strcmp(s, "clap.latency") == 0)
+        if (streq(s, "clap.latency"))
         {
             __gshared clap_plugin_latency_t api;
-            api.get = &plugin_latency_get;
+            api.get               = &plugin_latency_get;
             return &api;
         }
 
         // Note: nothing in the spec forces the host to save session 
         // using the extension but as plug-in we assume that is the 
         // case, the host MUST use clap.state if present.
-        if (strcmp(s, "clap.state") == 0)
+        if (streq(s, "clap.state"))
         {
             __gshared clap_plugin_state_t api;
-            api.save = &plugin_state_save;
-            api.load = &plugin_state_load;
+            api.save              = &plugin_state_save;
+            api.load              = &plugin_state_load;
             return &api;
         }
 
-        if ( (strcmp(s, CLAP_EXT_PRESET_LOAD.ptr) == 0)
-          || (strcmp(s, CLAP_EXT_PRESET_LOAD_COMPAT.ptr) == 0) )
+        if ( streq(s, CLAP_EXT_PRESET_LOAD)
+          || streq(s, CLAP_EXT_PRESET_LOAD_COMPAT) )
         {
             __gshared clap_plugin_preset_load_t api;
-            api.from_location = &plugin_preset_load_from_location;
+            api.from_location     = &plugin_preset_load_from_location;
             return &api;
         }
 
-        if (strcmp(s, CLAP_EXT_AUDIO_PORTS_CONFIG.ptr) == 0)
+        if (streq(s, CLAP_EXT_AUDIO_PORTS_CONFIG) == 0)
         {
             __gshared clap_plugin_audio_ports_config_t api;
-            api.count  = &plugin_ports_config_count;
-            api.get    = &plugin_ports_config_get;
-            api.select = &plugin_ports_config_select;
+            api.count             = &plugin_ports_config_count;
+            api.get               = &plugin_ports_config_get;
+            api.select            = &plugin_ports_config_select;
             return &api;
         }
 
-        if ( (strcmp(s, CLAP_EXT_AUDIO_PORTS_CONFIG_INFO.ptr) == 0)
-          || (strcmp(s, CLAP_EXT_AUDIO_PORTS_CONFIG_INFO_COMPAT.ptr) == 0) )
+        if ( streq(s, CLAP_EXT_AUDIO_PORTS_CONFIG_INFO)
+          || streq(s, CLAP_EXT_AUDIO_PORTS_CONFIG_INFO_COMPAT) )
         {
             __gshared clap_plugin_audio_ports_config_info_t api;
-            api.current_config = &plugin_ports_current_config;
-            api.get = &plugin_ports_config_info_get;
+            api.current_config    = &plugin_ports_current_config;
+            api.get               = &plugin_ports_config_info_get;
             return &api;
         }
 
-        if (strcmp(s, CLAP_EXT_NOTE_PORTS.ptr) == 0)
+        if (streq(s, CLAP_EXT_NOTE_PORTS))
         {
             __gshared clap_plugin_note_ports_t api;
-            api.count = &plugin_note_ports_count;
-            api.get   = &plugin_note_ports_get;
+            api.count             = &plugin_note_ports_count;
+            api.get               = &plugin_note_ports_get;
             return &api;
         }
 
@@ -554,19 +535,21 @@ private:
         return cast(uint) _client.params().length;
     }
 
-    bool params_get_info(uint param_index, clap_param_info_t* param_info)
+    bool params_get_info(uint param_index, clap_param_info_t* info)
     {
         // DPlug note about parameter IDs.
         // Clap parameters IDs are defined as indexes in uint form.
-        // To have better IDs, would need Dplug support for custom parameters IDs,
-        // that would still be `uint`. Could then have somekind of map.
-        // I don't see too much value spending time choosing those IDs, unfortunately.
+        // To have better IDs, would need Dplug support for custom 
+        // parameters IDs, that would still be `uint`. Could then have
+        // somekind of map.
+        // I don't see too much value spending time choosing those 
+        // identifiers, unfortunately.
 
         Parameter p = _client.param(param_index);
         if (!p)
             return false;
 
-        param_info.id = convertParamIndexToParamID(param_index);
+        info.id = convertParamIndexToParamID(param_index);
 
         int flags = 0;
         double min, max, def;
@@ -589,10 +572,10 @@ private:
         }
         else if (FloatParameter fp = cast(FloatParameter)p)
         {
-            // REAPER doesn't actually accept parameters that are -inf, 
-            // but Dplug does. So we have to normalize the float params,
-            // which also improve the display in UI-less plugins since
-            // it's mapped as the programmer intended.
+            // REAPER doesn't accept parameters that are -inf, but
+            // Dplug does. Here, normalize the float params, which 
+            // also improve the display in UI-less plugins since it's 
+            // mapped as intended.
             flags |= 0;
             expose_param_as_normalized[param_index] = true;
             min = 0;
@@ -607,16 +590,16 @@ private:
         // Note: all Dplug parameters supposed to requires process.
         flags |= CLAP_PARAM_REQUIRES_PROCESS;
 
-        param_info.flags = flags;
-        param_info.min_value = min;
-        param_info.max_value = max;
-        param_info.default_value = def;
-        param_info.cookie = null;//cast(void*) p; // fast access cookie
+        info.flags = flags;
+        info.min_value = min;
+        info.max_value = max;
+        info.default_value = def;
+        info.cookie = null;//cast(void*) p; // fast access cookie
 
-        p.toNameN(param_info.name.ptr, CLAP_NAME_SIZE);
+        p.toNameN(info.name.ptr, CLAP_NAME_SIZE);
 
-        // "" string for module name, as Dplug has a flag parameter structure :/
-        param_info.module_[0] = 0;
+        // "" string for module name, Dplug params are flat
+        info.module_[0] = 0;
 
         return true;
     }
@@ -672,11 +655,10 @@ private:
     }
 
     // eg: "2.3 kHz"
-    bool params_value_to_text(
-                       clap_id              param_id,
-                       double               value,
-                       char                *out_buffer,
-                       uint                out_buffer_capacity)
+    bool params_value_to_text(clap_id  param_id,
+                              double   value,
+                              char*    out_buffer,
+                              uint     out_buffer_capacity)
     {
         uint idx = convertParamIDToParamIndex(param_id);
         Parameter p = _client.param(idx);
@@ -684,68 +666,61 @@ private:
             return false;
 
         // 1. Find corresponding normalized value
-        double normalized = value;
+        double norm = value;
         if (!expose_param_as_normalized[idx]) 
-            normalized = normalizeParamValue(p, value);
+            norm = normalizeParamValue(p, value);
 
         // 2. Find text corresponding to that
         char[CLAP_NAME_SIZE] str;
         char[CLAP_NAME_SIZE] label;
 
-        p.stringFromNormalizedValue(normalized, str.ptr, CLAP_NAME_SIZE);
+        p.stringFromNormalizedValue(norm, str.ptr, CLAP_NAME_SIZE);
         p.toLabelN(label.ptr, CLAP_NAME_SIZE);
         if (strlen(label.ptr))
-            snprintf(out_buffer, out_buffer_capacity, "%s %s", str.ptr, label.ptr);
+            snprintf(out_buffer, out_buffer_capacity, 
+                    "%s %s", str.ptr, 
+                             label.ptr);
         else
-            snprintf(out_buffer, out_buffer_capacity, "%s", str.ptr);
+            snprintf(out_buffer, out_buffer_capacity, 
+                    "%s", str.ptr);
         return true;
     }
 
-    bool params_text_to_value(
-                  clap_id              param_id,
-                  const(char)         *param_value_text,
-                  double              *out_value)
+    bool params_text_to_value(clap_id      param_id,
+                              const(char)* text,
+                              double*      out_value)
     {
         uint idx = convertParamIDToParamIndex(param_id);
         Parameter p = _client.param(idx);
         if (!p)
             return false;
 
-        size_t len = strlen(param_value_text);
+        size_t len = strlen(text);
 
-        double normalized;
-        if (p.normalizedValueFromString(param_value_text[0..len], normalized))
+        double norm;
+        if (p.normalizedValueFromString(text[0..len], norm))
         {
             if (expose_param_as_normalized[idx])
             {
-                *out_value = normalized;
+                *out_value = norm;
                 return true;
             }
 
             if (BoolParameter bp = cast(BoolParameter)p)
-                *out_value = normalized;
+                *out_value = norm;
             else if (IntegerParameter ip = cast(IntegerParameter)p)
-                // in a better Dplug timeline, normalized value wouldn't exist in generic client
-                *out_value = ip.fromNormalized(normalized); 
+                *out_value = ip.fromNormalized(norm); 
             else if (FloatParameter fp = cast(FloatParameter)p)
-                *out_value = fp.fromNormalized(normalized);
+                *out_value = fp.fromNormalized(norm);
             else
                 assert(false);
+
             return true;
         }
         else
             return false;
     }
 
-    // Flushes a set of parameter changes.
-    // This method must not be called concurrently to clap_plugin->process().
-    //
-    // Note: if the plugin is processing, then the process() call will already achieve the
-    // parameter update (bi-directional), so a call to flush isn't required, also be aware
-    // that the plugin may use the sample offset in process(), while this information would be
-    // lost within flush().
-    //
-    // [active ? audio-thread : main-thread]
     void params_flush(const(clap_input_events_t)  *in_,
                       const(clap_output_events_t) *out_)
     {
@@ -767,111 +742,118 @@ private:
         for (uint n = 0; n < size; ++n)
         {
             const(clap_event_header_t)* hdr = in_.get(in_, n);
-            if (!hdr) continue;
-            if (hdr.space_id != 0) continue;
-            int offset = cast(int)hdr.time;
-            if (offset < 0) continue;
+            processInputEvent(hdr);
+        }
+    }
 
-            static ubyte velocity(const(clap_event_note_t)* ev)
+    void processInputEvent(const(clap_event_header_t)* hdr)
+    {
+        if (!hdr) return;
+        if (hdr.space_id != 0) return;
+        int ofs = cast(int)hdr.time;
+        if (ofs < 0) return;
+
+        static ubyte velocity(const(clap_event_note_t)* ev)
+        {
+            bool noteOn = (ev.header.type == CLAP_EVENT_NOTE_ON);
+            double fVelocity = ev.velocity;
+            if (fVelocity < 0) fVelocity = 0; 
+            if (fVelocity > 1) fVelocity = 1;
+            ubyte vel = cast(ubyte)(0.5 + 127.0 * fVelocity);
+
+            // "A NOTE_ON with a velocity of 0 is valid and 
+            // should not be interpreted as a NOTE_OFF."
+            // => Send MIDI but with velocity 1 in that case.
+            if (noteOn && vel == 0) vel = 1;
+
+            return vel;
+        }
+
+        switch(hdr.type)
+        {
+            case CLAP_EVENT_NOTE_ON: 
+            case CLAP_EVENT_NOTE_OFF:
             {
-                bool noteOn = (ev.header.type == CLAP_EVENT_NOTE_ON);
-                double fVelocity = ev.velocity;
-                if (fVelocity < 0) fVelocity = 0; 
-                if (fVelocity > 1) fVelocity = 1;
-                ubyte vel = cast(ubyte)(0.5 + 127.0 * fVelocity);
-
-                // "A NOTE_ON with a velocity of 0 is valid and 
-                // should not be interpreted as a NOTE_OFF."
-                // => Send MIDI but with velocity 1 in that case.
-                if (noteOn && vel == 0) vel = 1;
-
-                return vel;
+                // unused, this dialect disabled
+                auto ev = cast(const(clap_event_note_t)*) hdr;
+                
+                ubyte vel = velocity(ev);
+                short chan = ev.channel;
+                if (chan == -1) chan = 0;
+                short key = ev.key;
+                // note sure how "key" can be a wildcard?
+                if (key == -1)
+                    break;
+                MidiMessage msg;
+                bool noteOn = ev.header.type == CLAP_EVENT_NOTE_ON;
+                if (noteOn)
+                    msg = makeMidiMessageNoteOn(ofs, chan, key, vel);
+                else
+                    msg = makeMidiMessageNoteOff(ofs, chan, key);
+                _client.enqueueMIDIFromHost(msg);
+                break;
             }
+            case CLAP_EVENT_NOTE_CHOKE:
+                //FUTURE
+                break;
 
-            switch(hdr.type)
-            {
-                case CLAP_EVENT_NOTE_ON: 
-                case CLAP_EVENT_NOTE_OFF:
-                {
-                    auto ev = cast(const(clap_event_note_t)*) hdr;
-                    
-                    ubyte vel = velocity(ev);
-                    short chan = ev.channel;
-                    if (chan == -1) chan = 0;
-                    short key = ev.key;
-                    // note sure how "key" can be a wildcard?
-                    if (key == -1)
-                        break;
-                    MidiMessage msg;
-                    bool noteOn = ev.header.type == CLAP_EVENT_NOTE_ON;
-                    if (noteOn)
-                        msg = makeMidiMessageNoteOn(offset, chan, key, vel);
-                    else
-                        msg = makeMidiMessageNoteOff(offset, chan, key);
-                    _client.enqueueMIDIFromHost(msg);
+            case CLAP_EVENT_NOTE_END:
+                // ignore when coming from input
+                break;
+
+            case CLAP_EVENT_PARAM_VALUE:
+                if (hdr.size < clap_event_param_value_t.sizeof) 
                     break;
-                }
-                case CLAP_EVENT_NOTE_CHOKE:
+                auto ev = cast(const(clap_event_param_value_t)*) hdr;
 
-                    //TODO
+                int index = convertParamIDToParamIndex(ev.param_id);
+                Parameter param = _client.param(index);
+                if (!param)
                     break;
 
-                case CLAP_EVENT_NOTE_END:
-                    // ignore when coming from input
-                    break;
+                // Note: assuming wildcard here. For proper handling, 
+                // Dplug would have to maintain values of parameters 
+                // for many combination, which is a bit much.
 
-                case CLAP_EVENT_PARAM_VALUE:
-                    if (hdr.size < clap_event_param_value_t.sizeof) 
-                        break;
-                    auto ev = cast(const(clap_event_param_value_t)*) hdr;
+                // Set parameter value
+                double norm = ev.value;
+                if (!expose_param_as_normalized[index])
+                    norm = normalizeParamValue(param, ev.value);
+                param.setFromHost(norm);
+                break;
 
-                    int index = convertParamIDToParamIndex(ev.param_id);
-                    Parameter param = _client.param(index);
-                    if (!param)
-                        break;
+            case CLAP_EVENT_PARAM_MOD:
+                // Not supported by our CLAP client.
+                break;
+            case CLAP_EVENT_PARAM_GESTURE_BEGIN:
+            case CLAP_EVENT_PARAM_GESTURE_END: 
+                // something to use rather in output 
+                // FUTURE: should this "hover" the params in the UI?
+                break;
 
-                    // Note: assuming wildcard here. For proper handling, Dplug would have to 
-                    // maintain values of parameters for many combination, which is ridiculous.
-                    // Note: param value is not normalized, so we have to first normalize it.
-                    double normalized = ev.value;
-                    if (!expose_param_as_normalized[index])
-                        normalized = normalizeParamValue(param, ev.value);
-                    param.setFromHost(normalized);
-                    break;
+            case CLAP_EVENT_TRANSPORT:
+                // TODO
+                break;
 
-                case CLAP_EVENT_PARAM_MOD:
-                    // Not supported by our CLAP client.
-                    break;
-                case CLAP_EVENT_PARAM_GESTURE_BEGIN:
-                case CLAP_EVENT_PARAM_GESTURE_END: 
-                    // something to use rather in output 
-                    // FAR FUTURE: should this "hover" the params in the UI?
-                    break;
+            case CLAP_EVENT_MIDI:
+                auto ev = cast(const(clap_event_midi_t)*) hdr;
 
-                case CLAP_EVENT_TRANSPORT:
-                    // TODO
-                    break;
+                // Note: port is ignored, Dplug assume one port
+               
+                MidiMessage msg = MidiMessage(ofs, 
+                                              ev.data[0], 
+                                              ev.data[1], 
+                                              ev.data[2]);
+                _client.enqueueMIDIFromHost(msg);
+                break;
 
-                case CLAP_EVENT_MIDI:
-                    auto ev = cast(const(clap_event_midi_t)*) hdr;
-
-                    // Note: port is ignored, Dplug assume one port
-                   
-                    MidiMessage msg = MidiMessage(offset, 
-                                                  ev.data[0], 
-                                                  ev.data[1], 
-                                                  ev.data[2]);
-                    _client.enqueueMIDIFromHost(msg);
-                    break;
-
-                case CLAP_EVENT_MIDI_SYSEX:
-                    // no support in Dplug
-                    break;
-                case CLAP_EVENT_MIDI2:
-                    // no support in Dplug
-                    break;
-                default:
-            }
+            case CLAP_EVENT_MIDI_SYSEX:
+                // no support in Dplug
+                break;
+            case CLAP_EVENT_MIDI2:
+                // no support in Dplug
+                break;
+            default:
         }
     }
 
@@ -882,14 +864,14 @@ private:
         size_t len = _pendingEvents.length;
         for (size_t n = 0; n < len; ++n)
         {
-            // Note: CLAP doesn't specify who own the sysex buffer
-            // and with what lifetime. So no sysex support here.
+            // Note: no sysex support here.
 
             clap_event_any_t* any = &_pendingEvents[n];
 
             // Nothing says the parameters will be copied...
             // But I don't see what to do if they don't.
-            bool ok = out_.try_push(out_, cast(clap_event_header_t*) any);
+            clap_event_header_t* hdr = cast(clap_event_header_t*)any;
+            bool ok = out_.try_push(out_, hdr);
         }
         _pendingEvents.clearContents();
         _pendingEventsMutex.unlock();
@@ -898,12 +880,15 @@ private:
     void enqueueParamBeginEdit(Parameter param)
     {
         clap_event_any_t evt;
-        evt.param_gesture.header.size     = clap_event_param_gesture_t.sizeof;
-        evt.param_gesture.header.time     = 0; // ASAP, those event comes from state chunks or UI
-        evt.param_gesture.header.space_id = 0;
-        evt.param_gesture.header.type     = CLAP_EVENT_PARAM_GESTURE_BEGIN;
-        evt.param_gesture.header.flags    = 0; // record automation, and not a live event
-        evt.param_gesture.param_id        = convertParamIndexToParamID(param.index);
+        with (evt.param_gesture)
+        {
+            header.size     = clap_event_param_gesture_t.sizeof;
+            header.time     = 0; // ASAP, those event comes from state chunks or UI
+            header.space_id = 0;
+            header.type     = CLAP_EVENT_PARAM_GESTURE_BEGIN;
+            header.flags    = 0; // record automation, and not a live event
+            param_id        = convertParamIndexToParamID(param.index);
+        }
         _pendingEventsMutex.lockLazy();
         _pendingEvents.pushBack(evt);
         _pendingEventsMutex.unlock();
@@ -1413,7 +1398,10 @@ private:
                                       : io.numOutputChannels;
 
         info.port_type = portTypeChans(info.channel_count);
-        info.in_place_pair = CLAP_INVALID_ID; // true luxury is letting the host deal with that
+
+        // True luxury in life is moments like that, letting the host 
+        // deal with that at last.
+        info.in_place_pair = CLAP_INVALID_ID; 
         return true;
     }
 
@@ -1476,7 +1464,9 @@ extern(C) static
                   uint                  max_frames_count)
     {
         mixin(ClientCallback);
-        return client.activate(sample_rate, min_frames_count, max_frames_count);
+        return client.activate(sample_rate, 
+                               min_frames_count, 
+                               max_frames_count);
     }
 
     void plugin_deactivate(const(clap_plugin_t)*plugin)
@@ -1503,7 +1493,9 @@ extern(C) static
         client.reset();
     }
 
-    clap_process_status plugin_process(const(clap_plugin_t)*plugin, const(clap_process_t)* processParams)
+    clap_process_status plugin_process(
+        const(clap_plugin_t)*plugin, 
+        const(clap_process_t)* processParams)
     {
         mixin(ClientCallback);
         return client.process(processParams);
