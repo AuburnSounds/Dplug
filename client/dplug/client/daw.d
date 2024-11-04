@@ -172,7 +172,8 @@ enum DAW
     VSTHost,
     VST3TestHost,
     Ardour,
-    ClapValidator
+    ClapValidator,
+    ClapInfo
     // These hosts don't report the host name:
     // EnergyXT2
     // MiniHost
@@ -213,6 +214,7 @@ DAW identifyDAW(const(char*) s) pure nothrow @nogc
     if (hasSubstring(s, "ardour")) return DAW.Ardour;
     if (hasSubstring(s, "standalone")) return DAW.Standalone;
     if (hasSubstring(s, "clap-validator")) return DAW.ClapValidator;
+    if (hasSubstring(s, "clap-info")) return DAW.ClapInfo;
     return DAW.Unknown;
 }
 

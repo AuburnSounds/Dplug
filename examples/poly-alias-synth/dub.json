@@ -20,6 +20,7 @@
         "dplug:vst2": { "path": "../.." },
         "dplug:vst3": { "path": "../.." },
         "dplug:lv2": { "path": "../.."},
+        "dplug:clap": { "path": "../.."},
         "dplug:flp": { "path": "../.."}
     },
 
@@ -37,6 +38,11 @@
         {
             "name": "LV2",
             "versions": ["LV2"],
+            "targetType": "dynamicLibrary"
+        },
+        {
+            "name": "CLAP",
+            "versions": ["CLAP"],
             "targetType": "dynamicLibrary"
         },
         {

@@ -192,7 +192,7 @@ extern(C)
             g_features[nFeatures++] = feature.ptr;
         }
         bool isSynth  =  client.isSynth;
-        bool isEffect = !client.isSynth;        
+        bool isEffect = !client.isSynth;
         if (isSynth) addFeature(CLAP_PLUGIN_FEATURE_INSTRUMENT);
         if (isSynth && client.isLegalIO(0, 1)) addFeature( CLAP_PLUGIN_FEATURE_MONO );
         if (isSynth && client.isLegalIO(0, 2)) addFeature( CLAP_PLUGIN_FEATURE_STEREO );
@@ -321,7 +321,10 @@ extern(C)
         const(clap_preset_discovery_provider_descriptor_t)* desc = get_preset_dicovery_from_client(client);
 
         if (strcmp(provider_id, desc.id) != 0)
+        {
+            destroyFree(client);
             return null;
+        }
 
         // Note: take ownership of that Client
         CLAPPresetProvider provider = mallocNew!CLAPPresetProvider(client, indexer);
@@ -332,7 +335,7 @@ extern(C)
         provdesc.destroy       = &provider_destroy;
         provdesc.get_metadata  = &provider_get_metadata;
         provdesc.get_extension = &provider_get_extension;
-        return &provdesc;   
+        return &provdesc;
     }
 }
 
