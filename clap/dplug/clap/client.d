@@ -493,6 +493,15 @@ private:
             return &api;
         }
 
+        if ( streq(s, CLAP_EXT_CONFIGURABLE_AUDIO_PORTS)
+          || streq(s, CLAP_EXT_CONFIGURABLE_AUDIO_PORTS_COMPAT) )
+        {
+            __gshared clap_plugin_configurable_audio_ports_t api;
+            api.can_apply_configuration = &plugin_conf_can_apply_config;
+            api.apply_configuration     = &plugin_conf_apply_config;
+            return &api;
+        }
+
         // Was disabled by default. Seen crash with almost all CLAP 
         // hosts: REAPER, Bitwig, clap-info, clap-validator.
         // Perhaps our implementation is wrong.
@@ -1502,6 +1511,89 @@ private:
         }
         return true;
     }
+
+    // configurable audio ports
+
+    bool conf_can_apply_config(
+        const(clap_audio_port_configuration_request_t)* requests,
+        uint request_count)
+    {
+        int ioIndex = matchLegalIO(requests, request_count);
+        if (ioIndex == -1)
+            return false;
+
+        // Yes, we found a legalIO that can do that.
+        return true;
+    }
+
+    bool conf_apply_config(
+        const(clap_audio_port_configuration_request_t)* requests,
+        uint request_count)
+    {
+        int ioIndex = matchLegalIO(requests, request_count);
+        if (ioIndex == -1)
+            return false;
+
+        // Note: legalIOs index are same as config clap_id
+        return ports_config_select(ioIndex);
+    }
+
+    int matchLegalIO(
+        const(clap_audio_port_configuration_request_t)* requests,
+        uint request_count)
+    {
+        LegalIO[] legalIOs = _client.legalIOs();
+        int bestIndex = -1;
+        int bestScore = -1;
+
+        foreach(size_t index, io; legalIOs)
+        {
+            int score = 0;
+
+            // match each of the requests with &&
+
+            for (uint n = 0; n < request_count; ++n)
+            {
+                auto r = &requests[n];
+
+                // Does that port exist?
+                Bus* b = getBus(r.is_input, r.port_index);
+                if (!b)
+                {
+                    if (r.channel_count != 0)
+                    {
+                        score = -1; // fail, expected some channels
+                        break;
+                    }
+                    else
+                        continue; // bus is matching that zero chan
+                }
+
+                if (r.port_index != 0)
+                {
+                    score = -1; // fail, no support for multiple ports
+                    break;
+                }
+
+                int chan = r.is_input ? io.numInputChannels : io.numOutputChannels;
+                if (chan == r.channel_count)
+                {
+                    // good number of channel
+                    score += 1;
+                }
+
+                // Note: ignoring port_type or port_details here
+            }
+
+            if (score > bestScore)
+            {
+                bestIndex = cast(int) index;
+                bestScore = score;
+            }
+        }
+
+        return bestIndex; // return choosen legalIO
+    }
 }
 
 extern(C) static
@@ -1867,6 +1959,28 @@ extern(C) static
     {
         mixin(ClientCallback);
         return client.note_ports_get(index, is_input, info);
+    }
+
+    // configurable-audio-ports callbacks
+
+    bool plugin_conf_can_apply_config(
+        const(clap_plugin_t)* plugin,
+        const(clap_audio_port_configuration_request_t)* requests,
+        uint request_count)
+    {
+        mixin(ClientCallback);
+        return client.conf_can_apply_config(requests,
+                                            request_count);
+    }
+
+    bool plugin_conf_apply_config(
+        const(clap_plugin_t)* plugin,
+        const(clap_audio_port_configuration_request_t)* requests,
+        uint request_count)
+    {
+        mixin(ClientCallback);
+        return client.conf_apply_config(requests,
+                                        request_count);
     }
 }
 
