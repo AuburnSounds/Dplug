@@ -488,7 +488,10 @@ private:
             return &api;
         }
 
-        bool useAudioPortsConfig = true;
+        // Was disabled by default. Seen crash with almost all CLAP 
+        // hosts: REAPER, Bitwig, clap-info, clap-validator.
+        // Perhaps our implementation is wrong.
+        bool useAudioPortsConfig = false;
 
         // clap-validator calls audio-ports-config with bad pointers.
         // clap-info also crash there.
