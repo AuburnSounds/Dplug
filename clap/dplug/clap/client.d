@@ -374,6 +374,11 @@ private:
             }
         }
 
+        // 3.b Clear output MIDI message from the queue.
+        if (_client.sendsMIDI)
+            _client.clearAccumulatedOutputMidiMessages();
+
+
         // 4. Process audio
         {
             for (int n = 0; n < numInputs; ++n)
@@ -890,6 +895,28 @@ private:
         }
         _pendingEvents.clearContents();
         _pendingEventsMutex.unlock();
+
+        // Next, enqueue MIDI output messages (if any)
+        if (_client.sendsMIDI)
+        {
+            const(MidiMessage)[] messages;
+            messages = _client.getAccumulatedOutputMidiMessages();
+            foreach(ref msg; messages)
+            {
+                clap_event_midi_t ev;
+                ev.header.size     = clap_event_midi_t.sizeof;
+                ev.header.time     = msg.offset();
+                ev.header.space_id = 0;
+                ev.header.type     = CLAP_EVENT_MIDI;
+                ev.header.flags    = 0; // not live, automation
+                ev.port_index      = 0; // one MIDI port in Dplug
+                ev.data[0..3]      = 0;
+                msg.toBytes(ev.data.ptr, 3);
+
+                bool ok = out_.try_push(out_, &ev.header);
+                // ignore if failure
+            }
+        }
     }
 
     void enqueueParamBeginEdit(Parameter param)
