@@ -384,7 +384,7 @@ private:
 
             // TODO: per-subbuffer parameter changes like in VST3
             _client.processAudioFromHost(_inputPtrs[0..numInputs], 
-                                         _outputPtrs[0..numInputs], 
+                                         _outputPtrs[0..numOutputs], 
                                          frames,
                                          timeInfo);
         }
