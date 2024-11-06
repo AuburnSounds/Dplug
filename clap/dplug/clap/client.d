@@ -446,17 +446,19 @@ private:
                     }
 
                     // 2. Process count frames
+                    bool doNotSplit = true;
                     _client.processAudioFromHost(_inputPtrs[0..numInputs],
                                                  _outputPtrs[0..numOutputs],
                                                  frames,
-                                                 _timeInfo);
+                                                 _timeInfo,
+                                                 doNotSplit);
                     for (int n = 0; n < numInputs; ++n)
                         _inputPtrs[n] += count;
                     for (int n = 0; n < numOutputs; ++n)
                         _outputPtrs[n] += count;
                     start += count;
                     _timeInfo.timeInSamples += count;
-                }    
+                }
                 assert(remain == 0);
             }
             else
