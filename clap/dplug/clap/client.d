@@ -317,16 +317,44 @@ private:
         clientReset();
     }
 
+    static struct ParamTrack
+    {
+    nothrow @nogc:
+        Parameter param;
+        int time;
+        double value; // normalized
+
+        bool setIfBetween(int start, int stop)
+        {
+            if (time >= start && time < stop)
+            {
+                param.setFromHost(value);
+                return true;
+            }
+            return false;
+        }
+    }
+    Vec!ParamTrack _tracks;
+
     clap_process_status process(const(clap_process_t)* pp)
     {
+        // Split audio buffers and send parameters values to stick to their more.
+        enum bool splitBuffers = false;
+
         // It seems the number of ports and channels is discovered 
         // here as last resort.
+
+        _tracks.clearContents();
 
         // 0. First, process incoming events.
         if (pp)
         {
+            bool applyParamsNow = !splitBuffers;
             if (pp.in_events)
-                processInputEvents(pp.in_events);
+                processInputEvents(pp.in_events, applyParamsNow);
+
+            // in splitBuffers, _tracks now contain param changes 
+            // for this buffer
 
              processTransportEvent(pp.transport);
         }
@@ -380,6 +408,7 @@ private:
         if (_client.sendsMIDI)
             _client.clearAccumulatedOutputMidiMessages();
 
+        
 
         // 4. Process audio
         {
@@ -388,12 +417,56 @@ private:
             for (int n = 0; n < numOutputs; ++n)
                 _outputPtrs[n] = _outputBuffers[n].ptr;
 
-            // TODO: per-subbuffer parameter changes like in VST3
-            _client.processAudioFromHost(_inputPtrs[0..numInputs], 
-                                         _outputPtrs[0..numOutputs], 
-                                         frames,
-                                         _timeInfo);
-            _timeInfo.timeInSamples += frames;
+            int splitMaxFrames = _client.getBufferSplitMaxFrames();
+            if (splitMaxFrames > 512) splitMaxFrames = 512;
+
+            // See Issue 368, we don't want to set parameters too 
+            // much in advance.
+            // https://github.com/AuburnSounds/Dplug/issues/368
+            if (splitMaxFrames == 0) splitMaxFrames = 512;
+
+            if (splitBuffers)
+            {
+                int start = 0;
+                int remain = frames;
+                assert(frames >= 0);
+
+                while (remain > 0)
+                {
+                    int count = remain;
+                    if (count > splitMaxFrames)
+                        count = splitMaxFrames;
+                    int stop = start + count;
+
+                    // 1. Apply param changes in the future count frames
+                    //    PERF: partial traversal
+                    foreach(ParamTrack t; _tracks[])
+                    {
+                        t.setIfBetween(start, stop);
+                    }
+
+                    // 2. Process count frames
+                    _client.processAudioFromHost(_inputPtrs[0..numInputs],
+                                                 _outputPtrs[0..numOutputs],
+                                                 frames,
+                                                 _timeInfo);
+                    for (int n = 0; n < numInputs; ++n)
+                        _inputPtrs[n] += count;
+                    for (int n = 0; n < numOutputs; ++n)
+                        _outputPtrs[n] += count;
+                    start += count;
+                    _timeInfo.timeInSamples += count;
+                }    
+                assert(remain == 0);
+            }
+            else
+            {
+                _client.processAudioFromHost(_inputPtrs[0..numInputs],
+                                             _outputPtrs[0..numOutputs],
+                                             frames,
+                                             _timeInfo);
+                _timeInfo.timeInSamples += frames;
+            }
         }
 
         // 5. Copy to output
@@ -755,11 +828,12 @@ private:
     void params_flush(const(clap_input_events_t)  *in_,
                       const(clap_output_events_t) *out_)
     {
-        processInputEvents(in_);
+        processInputEvents(in_, true);
         processOutputEvents(out_);
     }
 
-    void processInputEvents(const(clap_input_events_t)  *in_)
+    void processInputEvents(const(clap_input_events_t)  *in_,
+                            bool setParametersImmediately)
     {
         if (in_ == null)
             return;
@@ -773,11 +847,15 @@ private:
         for (uint n = 0; n < size; ++n)
         {
             const(clap_event_header_t)* hdr = in_.get(in_, n);
-            processInputEvent(hdr);
+            processInputEvent(hdr, setParametersImmediately);
         }
     }
 
-    void processInputEvent(const(clap_event_header_t)* hdr)
+    // Process input events.
+    // If setParametersImmediately is true, set the parameters now
+    // else keep them in _tracks for later.
+    void processInputEvent(const(clap_event_header_t)* hdr,
+                           bool setParametersImmediately)
     {
         if (!hdr) return;
         if (hdr.space_id != 0) return;
@@ -850,7 +928,19 @@ private:
                 double norm = ev.value;
                 if (!expose_param_as_normalized[index])
                     norm = normalizeParamValue(param, ev.value);
-                param.setFromHost(norm);
+
+                if (setParametersImmediately)
+                {   
+                    param.setFromHost(norm);
+                }
+                else
+                {
+                    ParamTrack track;
+                    track.param = param;
+                    track.time  = hdr.time;
+                    track.value = norm;
+                    _tracks.pushBack(track);
+                }
                 break;
 
             case CLAP_EVENT_PARAM_MOD:
