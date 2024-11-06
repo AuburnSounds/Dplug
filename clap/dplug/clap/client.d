@@ -327,6 +327,8 @@ private:
         {
             if (pp.in_events)
                 processInputEvents(pp.in_events);
+
+             processTransportEvent(pp.transport);
         }
 
         int inputPorts = pp.audio_inputs_count;
@@ -385,13 +387,13 @@ private:
                 _inputPtrs[n] = _inputBuffers[n].ptr;
             for (int n = 0; n < numOutputs; ++n)
                 _outputPtrs[n] = _outputBuffers[n].ptr;
-            TimeInfo timeInfo;
 
             // TODO: per-subbuffer parameter changes like in VST3
             _client.processAudioFromHost(_inputPtrs[0..numInputs], 
                                          _outputPtrs[0..numOutputs], 
                                          frames,
-                                         timeInfo);
+                                         _timeInfo);
+            _timeInfo.timeInSamples += frames;
         }
 
         // 5. Copy to output
@@ -861,7 +863,8 @@ private:
                 break;
 
             case CLAP_EVENT_TRANSPORT:
-                // TODO
+                auto ev = cast(const(clap_event_transport_t)*) hdr;
+                processTransportEvent(ev);
                 break;
 
             case CLAP_EVENT_MIDI:
@@ -884,6 +887,25 @@ private:
                 break;
             default:
         }
+    }
+
+    TimeInfo _timeInfo;
+
+    void processTransportEvent(const(clap_event_transport_t)* ev)
+    {
+        if (ev is null)
+            return;
+
+        if (ev.flags & CLAP_TRANSPORT_HAS_TEMPO)
+            _timeInfo.tempo = ev.tempo;
+
+        if (ev.flags & CLAP_TRANSPORT_HAS_SECONDS_TIMELINE)
+        {
+            long timeSamples = cast(long)(ev.song_pos_seconds * cast(double)_sr);
+            _timeInfo.timeInSamples = timeSamples;
+        }
+
+        _timeInfo.hostIsPlaying = (ev.flags & CLAP_TRANSPORT_IS_PLAYING) != 0;
     }
 
     void processOutputEvents(const(clap_output_events_t)  *out_)

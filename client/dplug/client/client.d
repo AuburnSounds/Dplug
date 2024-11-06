@@ -207,8 +207,7 @@ struct TimeInfo
     double tempo = 120;
 
     /// Current time from the beginning of the song in samples.
-    /// This time can easily be negative, since eg. in REAPER
-    /// you can change song beginning with "Project start time" settings.
+    /// This time can be negative, which is normal at beginning of a song.
     long timeInSamples = 0;
 
     /// Whether the host sequencer is currently playing

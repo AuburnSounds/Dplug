@@ -550,7 +550,9 @@ struct clap_process_t
 
     // time info at sample 0
     // If null, then this is a free running host, no transport events will be provided
-    const(void)*/*clap_event_transport_t*/ *transport;
+    // Port: CLAP spec doesn't say when *transport contradict an event
+    //       in in_events.
+    const(clap_event_transport_t) *transport;
 
     // Audio buffers, they must have the same count as specified
     // by clap_plugin_audio_ports->count().
