@@ -666,7 +666,7 @@ class DplugBuildBuiltCorrectlyException : Exception
     }
 }
 
-Plugin readPluginDescription(string rootDir, bool quiet)
+Plugin readPluginDescription(string rootDir, bool quiet, bool verbose)
 {
     string dubJsonPath = to!string(buildPath(rootDir, "dub.json").array);
     string dubSDLPath = to!string(buildPath(rootDir, "dub.sdl").array);
@@ -962,7 +962,7 @@ Plugin readPluginDescription(string rootDir, bool quiet)
     }
     catch(Exception e)
     {
-        if (!quiet) info("Missing \"iconPath-windows\" in plugin.json (eg: \"gfx/myIcon.ico\")");
+        if (verbose) info("Missing \"iconPath-windows\" in plugin.json (eg: \"gfx/myIcon.ico\")");
     }
 
     try
@@ -971,7 +971,7 @@ Plugin readPluginDescription(string rootDir, bool quiet)
     }
     catch(Exception e)
     {
-        if (!quiet) info("Missing \"iconPath-osx\" in plugin.json (eg: \"gfx/myIcon.png\")");
+        if (verbose) info("Missing \"iconPath-osx\" in plugin.json (eg: \"gfx/myIcon.png\")");
     }
 
     // Mandatory keys, but with workarounds

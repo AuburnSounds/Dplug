@@ -353,7 +353,7 @@ int main(string[] args)
         if (compiler_x86_64 is null)
             compiler_x86_64 = compiler;
 
-        Plugin plugin = readPluginDescription(rootDir, quiet);
+        Plugin plugin = readPluginDescription(rootDir, quiet, verbose);
 
         // Get configurations
         string[] configurations;

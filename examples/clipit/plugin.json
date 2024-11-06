@@ -9,6 +9,8 @@
     "publicVersion": "1.0.0",
     "CFBundleIdentifierPrefix": "com.wittyaudio",
 
+    "licensePath": "../license.md",
+
     "comment-READ-THIS": [
         "When creating a plug-in, the hasGUI key can be set to false in order to have",
         "an UI-less plugin"
