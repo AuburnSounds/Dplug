@@ -82,6 +82,7 @@ Being stable and relatively bug-free is deemed more important to us than impleme
   - [Faust](https://github.com/ctrecordings/dplug-faust-example) language integration.
   - Easy SIMD compatible with both `x86`, `x86_64`, and `arm64` with same codebase.
   - Fast 2D software rasterizer in `dplug:canvas`, no OpenGL headaches.
+  - Alternative 2D software rasterizer in `canvasity`.
   - `Wren` scripting for faster UI authoring.
   - Optional Physically Based Rendering (PBR).
   - Image support: `PNG`, `JPEG`, `QOI`, and specially designed `QOIX` codec.

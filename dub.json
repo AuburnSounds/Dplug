@@ -90,9 +90,9 @@
         },
         {
             "name": "core",
-            "sourcePaths": 
-            [ 
-                "core/dplug/core" 
+            "sourcePaths":
+            [
+                "core/dplug/core"
             ],
 
             "importPaths": [ "core" ],
@@ -101,9 +101,9 @@
                 "intel-intrinsics": "~>1.0"
             },
 
-            "buildTypes": 
+            "buildTypes":
             {
-                "unittest-release": 
+                "unittest-release":
                 {
                     "buildOptions": ["unittests", "optimize", "inline"]
                 }
@@ -113,9 +113,9 @@
         {
             "name": "dsp",
 
-            "sourcePaths": 
-            [ 
-                "dsp/dplug/dsp" 
+            "sourcePaths":
+            [
+                "dsp/dplug/dsp"
             ],
 
             "importPaths": [ "dsp" ],
@@ -124,9 +124,9 @@
                 "intel-intrinsics": "~>1.0"
             },
 
-            "buildTypes": 
+            "buildTypes":
             {
-                "unittest-release": 
+                "unittest-release":
                 {
                     "buildOptions": ["unittests", "optimize", "inline"]
                 }
@@ -135,9 +135,9 @@
         {
             "name": "fft",
 
-            "sourcePaths": 
-            [ 
-                "fft/dplug/fft" 
+            "sourcePaths":
+            [
+                "fft/dplug/fft"
             ],
 
             "importPaths": [ "fft" ],
@@ -146,9 +146,9 @@
                 "dplug:dsp": "*",
                 "intel-intrinsics": "~>1.0"
             },
-            "buildTypes": 
+            "buildTypes":
             {
-                "unittest-release": 
+                "unittest-release":
                 {
                     "buildOptions": ["unittests", "optimize", "inline"]
                 }
@@ -184,7 +184,8 @@
                 "dplug:core": "*",
                 "dplug:math": "*",
                 "intel-intrinsics": "~>1.0",
-                "gamut": ">=3.0.0 <4.0.0"
+                "gamut": ">=3.0.0 <4.0.0",
+                "stb_image_resize2-d": "~>1.0"
             },
             "subConfigurations": {
                 "gamut": "audio-plugin"

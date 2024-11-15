@@ -439,7 +439,8 @@ private:
                     int stop = start + count;
 
                     // 1. Apply param changes in the future count frames
-                    //    PERF: partial traversal
+                    //    PERF: partial traversal. This is slower than it should,
+                    //          since host give us ordered CLAP events (well, it should).
                     foreach(ParamTrack t; _tracks[])
                     {
                         t.setIfBetween(start, stop);

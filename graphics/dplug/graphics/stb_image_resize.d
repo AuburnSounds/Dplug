@@ -154,6 +154,13 @@ Copyright: (c) Guillaume Piolat (2021)
 module dplug.graphics.stb_image_resize;
 
 
+enum DPLUG_USE_STB_IMAGE_RESIZE_V2 = false;
+
+
+static if (!DPLUG_USE_STB_IMAGE_RESIZE_V2)
+{
+ 
+
 import core.stdc.stdlib: malloc, free;
 import core.stdc.string: memset;
 
@@ -2613,3 +2620,5 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ------------------------------------------------------------------------------
 */
+
+}
