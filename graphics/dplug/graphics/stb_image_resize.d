@@ -154,7 +154,7 @@ Copyright: (c) Guillaume Piolat (2021)
 module dplug.graphics.stb_image_resize;
 
 
-enum DPLUG_USE_STB_IMAGE_RESIZE_V2 = false;
+enum DPLUG_USE_STB_IMAGE_RESIZE_V2 = true;
 
 
 static if (!DPLUG_USE_STB_IMAGE_RESIZE_V2)
