@@ -173,8 +173,9 @@ enum DAW
     VST3TestHost,
     Ardour,
     ClapValidator,
-    ClapInfo
-    // These hosts don't report the host name:
+    ClapInfo,
+    OBSStudio
+    // These hosts don't report the host name (maybe they use vendor string?)
     // EnergyXT2
     // MiniHost
 }
@@ -218,3 +219,10 @@ DAW identifyDAW(const(char*) s) pure nothrow @nogc
     return DAW.Unknown;
 }
 
+// For those DAW that uses the vendor string to put their name in
+// Sometimes useful when identifyDAW fails and return DAW.Unknown
+DAW identifyDAWWithVendorString(const(char*) s) pure nothrow @nogc
+{
+    if (hasSubstring(s, "obs studio")) return DAW.OBSStudio;
+    return DAW.Unknown;
+}

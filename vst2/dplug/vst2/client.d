@@ -507,7 +507,16 @@ private:
                         _graphicsMutex.lock();
 
                         int widthLogicalPixels, heightLogicalPixels;
-                        if (_client.getGUISize(&widthLogicalPixels, &heightLogicalPixels))
+
+                        bool isOBS = _host.getDAW() == DAW.OBSStudio;
+
+                        bool ok;
+                        if (isOBS)
+                            ok = _client.getDesiredGUISize(&widthLogicalPixels, &heightLogicalPixels);
+                        else
+                            ok = _client.getGUISize(&widthLogicalPixels, &heightLogicalPixels);
+
+                        if (ok)
                         {
                             _graphicsMutex.unlock();
                             _editRect.top = 0;
@@ -515,7 +524,6 @@ private:
                             _editRect.right = cast(short)(widthLogicalPixels);
                             _editRect.bottom = cast(short)(heightLogicalPixels);
                             *cast(ERect**)(ptr) = &_editRect;
-
                             return 1;
                         }
                         else
@@ -1212,8 +1220,11 @@ nothrow:
     /// Request plugin window resize.
     override bool requestResize(int width, int height) nothrow @nogc
     {
-        bool isAbletonLive = getDAW() == DAW.AbletonLive; // #DAW-specific
-        if (canDo(HostCaps.SIZE_WINDOW) || isAbletonLive)
+        DAW daw = getDAW();
+        bool isAbletonLive = daw == DAW.AbletonLive; // #DAW-specific
+        bool isOBS = daw == DAW.OBSStudio;
+
+        if (canDo(HostCaps.SIZE_WINDOW) || isAbletonLive || isOBS)
         {
             return (callback(audioMasterSizeWindow, width, height, null, 0.0f) != 0);
         }
@@ -1243,7 +1254,15 @@ nothrow:
 
     override DAW getDAW() nothrow @nogc
     {
-        return identifyDAW(productString());
+        DAW daw = identifyDAW(productString());
+
+        // Issue #863
+        // OBS Studio can't be arsed to identify correctly, is uses 
+        // audioMasterGetVendorString instead of audioMasterGetProductString.
+        if (daw == DAW.Unknown)
+            daw = identifyDAWWithVendorString(vendorString());
+
+        return daw;
     }
 
     override PluginFormat getPluginFormat()
@@ -1256,6 +1275,12 @@ nothrow:
         int res = cast(int)callback(audioMasterGetVendorString, 0, 0, _vendorStringBuf.ptr, 0.0f);
         if (res == 1)
         {
+            // Force lowercase
+            for (char* p =  _vendorStringBuf.ptr; *p != '\0'; ++p)
+            {
+                if (*p >= 'A' && *p <= 'Z')
+                    *p += ('a' - 'A');
+            }
             return _vendorStringBuf.ptr;
         }
         else

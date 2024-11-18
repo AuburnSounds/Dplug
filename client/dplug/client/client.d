@@ -439,6 +439,20 @@ nothrow:
             return false;
     }
 
+    /// Only allowed for client implementation.
+    final bool getDesiredGUISize(int* widthLogicalPixels, int* heightLogicalPixels) nothrow @nogc
+    {
+        createGraphicsLazily();
+        auto graphics = (cast(IGraphics)_graphics);
+        if (graphics)
+        {
+            graphics.getDesiredGUISize(widthLogicalPixels, heightLogicalPixels);
+            return true;
+        }
+        else
+            return false;
+    }
+
     /// Close the plugin UI if one was opened.
     /// Note: OBS Studio will happily call effEditClose without having called effEditOpen.
     /// Only allowed for client implementation.

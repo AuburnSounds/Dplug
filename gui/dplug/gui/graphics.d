@@ -72,8 +72,10 @@ nothrow:
 
         // Find what size the UI should at first opening.
         _sizeConstraints.suggestDefaultSize(&_currentUserWidth, &_currentUserHeight);
-        _currentLogicalWidth = _currentUserWidth;
+        _currentLogicalWidth  = _currentUserWidth;
         _currentLogicalHeight = _currentUserHeight;
+        _desiredLogicalWidth  = _currentUserWidth;
+        _desiredLogicalHeight = _currentUserHeight;
 
         int numThreads = 0; // auto
 
@@ -222,8 +224,14 @@ nothrow:
 
     override void getGUISize(int* widthLogicalPixels, int* heightLogicalPixels)
     {
-        *widthLogicalPixels = _currentLogicalWidth;
+        *widthLogicalPixels  = _currentLogicalWidth;
         *heightLogicalPixels = _currentLogicalHeight;
+    }
+
+    override void getDesiredGUISize(int* widthLogicalPixels, int* heightLogicalPixels)
+    {
+        *widthLogicalPixels  = _desiredLogicalWidth;
+        *heightLogicalPixels = _desiredLogicalHeight;
     }
 
     override bool isResizeable()
@@ -498,12 +506,21 @@ package:
     final bool requestUIResize(int widthLogicalPixels,
                                int heightLogicalPixels)
     {
+        _desiredLogicalWidth  = widthLogicalPixels;
+        _desiredLogicalHeight = heightLogicalPixels;
+
         // If it's already the same logical size, nothing to do.
         if ( (widthLogicalPixels == _currentLogicalWidth)
             &&  (heightLogicalPixels == _currentLogicalHeight) )
             return true;
 
+        // Note: the client might ask back the plugin size inside this call!
+        // Hence why we have the concept of "desired" size.
         bool parentWasResized = _client.requestResize(widthLogicalPixels, heightLogicalPixels);
+
+        // We do not "desire" something else than the current situation, at this point this is in our hands.
+        _desiredLogicalWidth  = _currentLogicalWidth;
+        _desiredLogicalHeight = _currentLogicalHeight;
 
         // We are be able to early-exit here in VST3.
         // This is because once a VST3 host has resized the parent window, it calls a callback
@@ -581,6 +598,13 @@ protected:
     // This is the size seen by the host/window.
     int _currentLogicalWidth = 0;
     int _currentLogicalHeight = 0;
+
+    // The _desired_ size in pixels of the plugin interface.
+    // It is only different from _currentLogicalWidth / _currentLogicalHeight 
+    // during a resize (since the host could query the desired size there).
+    // Not currently well separated unfortunately, it is seldom used.
+    int _desiredLogicalWidth = 0;
+    int _desiredLogicalHeight = 0;
 
     // The _internal_ size in pixels of our UI.
     // This is not the same as the size seen by the window ("logical").

@@ -36,6 +36,13 @@ nothrow:
     /// Get the current plugin UI size in logical pixels.
     abstract void getGUISize(int* widthLogicalPixels, int* heightLogicalPixels);
 
+    /// Get the desired plugin UI size in logical pixels.
+    /// Basically while a plugin is resized, its desired UI size might not match the "current" plugin size.
+    /// We makes this super rare, and only to fix resize problems.
+    /// Typically used when the host want to resize a window itself.
+    /// FUTURE: deemphasize getGUISize vs getDesiredGUISize.
+    abstract void getDesiredGUISize(int* widthLogicalPixels, int* heightLogicalPixels);
+
     /// Used by CLAP and VST3.
     /// Returns: `true` if plugin is resizeable in terms of logical pixels.
     abstract bool isResizeable();
