@@ -57,8 +57,8 @@ string convertArchToDUBFlag(Arch arch, OS targetOS) pure
 {
     final switch(arch) with (Arch)
     {
-        case x86:    return "--arch=x86 ";
-        case x86_64: return "--arch=x86_64 ";
+        case x86:    return "x86 ";
+        case x86_64: return "x86_64 ";
 
         // Explanation: the dub and ldc2 bundled on Raspberry Pi OS build to the right arch by default
         // aka: arm-linux-gnueabihf
@@ -68,9 +68,9 @@ string convertArchToDUBFlag(Arch arch, OS targetOS) pure
         case arm64:
         {
             if (targetOS == OS.macOS)
-                return "--arch=arm64-apple-macos ";
+                return "arm64-apple-macos ";
             else
-                return "--arch=aarch64 ";
+                return "aarch64 ";
         }  
 
         case universalBinary: assert(false);

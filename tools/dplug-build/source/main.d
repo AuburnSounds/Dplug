@@ -102,6 +102,7 @@ void usage()
     flag("--no-color", "Disable colored output", null, null);
     flag("--parallel", "Use dub --parallel", null, null);
     flag("--redub", "Use redub instead of dub", null, null);
+    flag("--reggae", "Use reggae+ninja instead of dub (must be in PATH)", null, null);
     flag("--root", "Path where plugin.json is", null, "current working directory");
     flag("--installer", "Make an installer " ~ "                   (Windows, macOS)".lred, null, null);
     flag("--notarize", "Notarize the installer " ~ "                       (macOS)".lred, null, null);
@@ -163,6 +164,7 @@ int main(string[] args)
         bool skipRegistry = false;
         bool parallel = false;
         bool redub = false;
+        bool reggae = false;
         bool legacyPT10 = false;
         bool finalFlag = false;
         string prettyName = null;
@@ -299,6 +301,8 @@ int main(string[] args)
                 publish = true;
             else if (arg == "--redub")
                 redub = true;
+            else if (arg == "--reggae")
+                reggae = true;
             else if (arg == "--auval")
             {
                 publish = true; // Need publishing to use auval
@@ -589,7 +593,7 @@ int main(string[] args)
                         pathOverriden = false;
                     }
 
-                    buildPlugin(targetOS, compilerPath, pathOverriden, config, build, arch, rootDir, verbose, force, combined, quiet, skipRegistry, parallel, redub);
+                    buildPlugin(targetOS, compilerPath, pathOverriden, config, build, arch, rootDir, verbose, force, combined, quiet, skipRegistry, parallel, redub, reggae);
                     double bytes = getSize(plugin.dubOutputFileName()) / (1024.0 * 1024.0);
                     cwritefln("    =&gt; Build OK, binary size = %0.1f mb, available in %s".lgreen, bytes, normalizedPath("./" ~ path));
                     cwriteln();
@@ -1504,7 +1508,7 @@ void buildPlugin(OS targetOS,
                  string compiler, bool pathOverriden, string config, string build, Arch arch, 
                  string rootDir,
                  bool verbose, bool force, bool combined, bool quiet, 
-                 bool skipRegistry, bool parallel,  bool useRedub)
+                 bool skipRegistry, bool parallel,  bool useRedub, bool useReggae)
 {
     cwritefln("*** Building configuration %s with %s%s, %s arch...", 
               config, 
@@ -1532,9 +1536,50 @@ void buildPlugin(OS targetOS,
         environment["DFLAGS"] = "-fvisibility=hidden -dllimport=none";
     }
 
+    if (useReggae && useRedub)
+        throw new Exception("Can't use --redub and --reggae at the same time");
+
+    if (useReggae)
+    {
+        // force reggae and ninja build
+        if (force)
+        {
+            rmdirRecurse(rootDir ~ "/.reggae");
+            std.file.remove(rootDir ~ "/.ninja_log");
+        }
+
+        // Note: reggae doesn't seem to have a --root argument
+        {
+            auto cwd = getcwd;
+            rootDir.chdir;
+            scope(exit) cwd.chdir;
+
+            string cmd = format("reggae --dub-build-type %s --dflags=\"--flto=thin\" --dc %s --dub-arch %s%s%s %s",
+                                build,
+                                compiler,
+                                convertArchToDUBFlag(arch, targetOS),
+                                (combined ? " --all-at-once" : ""),
+                                (config ? " --dub-config " ~ config : ""),
+                                escapeShellArgument(rootDir)
+                                );
+            safeCommand(cmd);
+        }
+
+        // Call ninja. Normally reggae is like a cmake that generates ninja files, so you'd just need to 
+        // call "ninja" to rebuild your plugin. That can work, but you would only get the plugin binary, which
+        // is not sufficient.
+        {
+            string cmd = format("ninja %s%s", 
+                                (rootDir != "." ? " -C " ~ escapeShellArgument(rootDir) : ""),
+                                (verbose ? " -v" : "") );
+            safeCommand(cmd);
+        }
+        return;
+    }
+
     string dubBinary = useRedub ? "redub" : "dub";
 
-    string cmd = format("%s build --build=%s %s--compiler=%s%s%s%s%s%s%s%s%s",
+    string cmd = format("%s build --build=%s --arch=%s--compiler=%s%s%s%s%s%s%s%s%s",
         dubBinary,
         build, 
         convertArchToDUBFlag(arch, targetOS),
