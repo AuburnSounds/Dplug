@@ -136,6 +136,22 @@ jobs:
         ${{ env.DplugProcess }} $BuiltLib -t 10
       working-directory: ./examples/clipit
 
+    ## Template Plugin
+    - name: Build template plug-in
+      run: |
+        if ("${{ matrix.os }}" -like 'windows*') {
+          $Plugins = "-c CLAP -c VST3"
+          $BuiltLib = "./builds/Windows-64b-CLAP/Witty Audio CLIP It.clap"
+        } elseif ("${{ matrix.os }}" -like 'macOS*') {
+          $Plugins = "-c CLAP -c VST3 -c AU"
+          $BuiltLib = "./builds/macOS-64b-CLAP/Witty Audio CLIP It.clap/Contents/MacOS/Witty Audio CLIP It"
+        } elseif ("${{ matrix.os }}" -like 'ubuntu*') {
+          $Plugins = "-c CLAP"
+          $BuiltLib = "./builds/Linux-64b-CLAP/Witty Audio CLIP It.clap"
+        }
+        $esc = '--%'
+        ${{ env.DPlugBuild }} -a ${{ matrix.arch }} $esc $Plugins
+      working-directory: ./examples/template
 
     # Upload
     # This task uploads the builds directory that contains all artifacts produced by dplug-build
