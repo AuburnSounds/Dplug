@@ -1,0 +1,13 @@
+{
+    "pluginName":               "Template",
+    "publicVersion":            "1.0.0",
+    "pluginUniqueID":           "WiTe",
+    "pluginHomepage":           "https://www.wittyaudio.com/Template",
+    "hasGUI":                   true,
+    "category":                 "effectOther",
+
+    "vendorName":               "Witty Audio",
+    "vendorUniqueID":           "Wity",
+    "vendorSupportEmail":       "support@wittyaudio.com",
+    "CFBundleIdentifierPrefix": "com.wittyaudio"
+}

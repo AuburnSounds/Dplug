@@ -1,0 +1,65 @@
+{
+    "name": "template",
+
+    "license":                 "public domain",
+    "copyright":               "none",
+
+    "importPaths":             [ "source" ],
+    "sourcePaths":             [ "source" ],
+    "stringImportPaths":       [ "gfx", "fonts", "." ],
+
+    "dflags-linux-dmd":        [ "-defaultlib=libphobos2.a" ],
+    "dflags-osx-ldc":          [ "-static" ],
+    "dflags-linux-ldc":        [ "-link-defaultlib-shared=false" ],
+    "dflags-linux-x86_64-ldc": [ "-fvisibility=hidden" ],
+    "dflags-windows-ldc":      [ "-mscrtlib=libcmt",
+                                 "-fvisibility=hidden",
+                                 "-link-defaultlib-shared=false" ],
+
+    "dependencies":
+    {
+        "dplug:gui":           "~>14.7",
+        "dplug:flat-widgets":  "~>14.7",
+        "dplug:vst3":          "~>14.7",
+        "dplug:au":            "~>14.7",
+        "dplug:clap":          "~>14.7"
+    },
+
+    "targetType": "dynamicLibrary",
+
+    "configurations": [
+        {
+            "name": "CLAP",
+            "versions": [ "CLAP" ],
+            "lflags-osx-ldc": [
+                "-exported_symbols_list",
+                "$PACKAGE_DIR/source/module-clap.lst",
+                "-dead_strip"
+            ],
+            "lflags-linux-ldc": [
+                "--version-script=$PACKAGE_DIR/source/module-clap.ver"
+            ]
+        },
+        {
+            "name": "VST3",
+            "versions": [ "VST3" ],
+            "lflags-osx-ldc": [
+                "-exported_symbols_list",
+                "$PACKAGE_DIR/source/module-vst3.lst",
+                "-dead_strip"
+            ],
+            "lflags-linux-ldc": [
+                "--version-script=$PACKAGE_DIR/source/module-vst3.ver"
+            ]
+        },
+        {
+            "name": "AU",
+            "versions": [ "AU" ],
+            "lflags-osx-ldc": [
+                "-exported_symbols_list",
+                "$PACKAGE_DIR/source/module-au.lst",
+                "-dead_strip"
+            ]
+        }
+    ]
+}
