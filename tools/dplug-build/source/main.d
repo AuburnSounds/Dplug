@@ -89,9 +89,9 @@ void usage()
     cwriteln();
     cwriteln("────────── <on_blue> FLAGS </> ────────── 😸🚩".white);
     cwriteln();
-    flag("-a --arch", "Select target architectures", "x86 | x86_64 | arm64 | all", "Windows=&gt;x86_64   macOS=&gt;all   Linux=&gt;x86_64");
+    flag("-a --arch", "Select target architectures", "x86 | x86_64 | arm64 | all", "Windows=&gt;x86_64  macOS=&gt;all  Linux=&gt;x86_64");
     flag("-b --build", "Select DUB build type", null, "debug");
-    flag("-c --config", "Select DUB configs. Known prefix needed", "VST2x | VST3x | AUx | AAXx | LV2x | FLPx", "first one found");
+    flag("-c --config", "Select DUB configs. Known prefix needed", "VST2x | VST3x | AUx | AAXx | LV2x | CLAPx\n                            | FLPx", "first one found");
     flag("--compiler", "Select D compiler", null, "ldc2");
     flag("--compiler-x86_64", " Force compiler for x86_64 architecture", null, "same as --compiler");
     flag("--combined", "Combined build", null, null);
@@ -101,7 +101,7 @@ void usage()
     flag("-v --verbose", "Verbose output", null, null);
     flag("--no-color", "Disable colored output", null, null);
     flag("--parallel", "Use dub --parallel", null, null);
-    flag("--redub", "Use redub instead of dub", null, null);
+    flag("--redub",  "Use redub instead of dub (must be in PATH)", null, null);
     flag("--reggae", "Use reggae+ninja instead of dub (must be in PATH)", null, null);
     flag("--root", "Path where plugin.json is", null, "current working directory");
     flag("--installer", "Make an installer " ~ "                   (Windows, macOS)".lred, null, null);
@@ -127,7 +127,7 @@ void usage()
     cwriteln;
     cwriteln("──────────── <on_blue> LORE </> ──────────── 😸📖".white);
     cwriteln;
-    cwriteln("  dplug-build".lcyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's\n  prefix: " ~ `"VST2" | "VST3" | "AU" | "AAX" | "LV2" | "FLP".`.yellow);
+    cwriteln("  dplug-build".lcyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's\n  prefix: " ~ `"VST2" | "VST3" | "AU" | "AAX" | "LV2" | "CLAP" | "FLP".`.yellow);
     cwriteln("  The name(s) used with " ~ "-c --config".lcyan ~ " must exist in your " ~ "dub.json".lcyan ~ " file.");
     cwriteln();
     cwriteln("  dplug-build".lcyan ~ " needs a " ~ "plugin.json".lcyan ~ " file and will help write it.");
