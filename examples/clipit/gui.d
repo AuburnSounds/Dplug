@@ -56,13 +56,13 @@ nothrow:
 
         _inputGainKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramInputGain), knobImage, numFrames);
         addChild(_inputGainKnob);
-        
+
         _clipKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramClip), knobImage, numFrames);
         addChild(_clipKnob);
-        
+
         _outputGainKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramOutputGain), knobImage, numFrames);
         addChild(_outputGainKnob);
-        
+
         _mixKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramMix), knobImage, numFrames);
         addChild(_mixKnob);
 
@@ -72,7 +72,7 @@ nothrow:
 
         addChild(_modeSwitch = mallocNew!UIImageSwitch(context(), cast(BoolParameter) _client.param(paramMode), switchOnImage, switchOffImage));       
 
-        addChild(_resizerHint = mallocNew!UIWindowResizer(context()));        
+        addChild(_resizerHint = mallocNew!UIWindowResizer(context()));
     }
 
     override void reflow()
