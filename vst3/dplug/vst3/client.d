@@ -1932,7 +1932,7 @@ nothrow:
         scope(exit) _graphicsMutex.unlock();
 
         int widthLogicalPixels, heightLogicalPixels;
-        if (_vst3Client._client.getGUISize(&widthLogicalPixels, &heightLogicalPixels))
+        if (_vst3Client._client.getDesiredGUISize(&widthLogicalPixels, &heightLogicalPixels))
         {
             size.left = 0;
             size.top = 0;
