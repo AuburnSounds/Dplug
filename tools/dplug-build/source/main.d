@@ -1037,6 +1037,11 @@ int main(string[] args)
                         // Simply copy the file
                         fileMove(plugin.dubOutputFileName, path ~ "/" ~ plugin.prettyName ~ ".so");
                     }
+                    else if (configIsCLAP(config)) // CLAP special case
+                    {
+                        // Simply copy the file, rename to .clap
+                        fileMove(plugin.dubOutputFileName, path ~ "/" ~ plugin.prettyName ~ ".clap");
+                    }
                 }
                 else if (targetOS == OS.macOS)
                 {
