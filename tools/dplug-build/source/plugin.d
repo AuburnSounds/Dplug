@@ -1213,10 +1213,12 @@ string makePListFile(Plugin plugin, string config, bool hasIcon, bool isAudioCom
         CFBundleIdentifier = plugin.getAAXBundleIdentifier();
     else if (configIsLV2(config))
         CFBundleIdentifier = plugin.getLV2BundleIdentifier();
+    else if (configIsCLAP(config))
+        CFBundleIdentifier = plugin.getCLAPBundleIdentifier();
     else if (configIsFLP(config))
         CFBundleIdentifier = plugin.getFLPBundleIdentifier();
     else
-        throw new Exception("Configuration name given by --config must start with \"VST\", \"VST3\", \"AU\", \"AAX\", \"LV2\", or \"FLP\"");
+        throw new Exception("Configuration name given by --config must start with \"VST\", \"VST3\", \"AU\", \"AAX\", \"LV2\", \"CLAP\", or \"FLP\"");
 
     // Doesn't seem useful at all
     //addKeyString("CFBundleName", plugin.prettyName);
