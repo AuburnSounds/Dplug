@@ -1190,10 +1190,20 @@ private:
     bool gui_is_api_supported(const(char)*api, bool is_floating)
     {
         if (is_floating) return false;
-        version(Windows) return streq(api, CLAP_WINDOW_API_WIN32);
-        version(OSX)     return streq(api, CLAP_WINDOW_API_COCOA);
-        version(linux)   return streq(api, CLAP_WINDOW_API_X11);
-        return false;
+        version(Windows)
+        {
+            return streq(api, CLAP_WINDOW_API_WIN32);
+        }
+        else version(OSX)
+        {
+            return streq(api, CLAP_WINDOW_API_COCOA);
+        }
+        else version(linux)
+        {
+            return streq(api, CLAP_WINDOW_API_X11);
+        }
+        else
+            return false;
     }
 
     bool gui_get_preferred_api(const(char)** api, bool* is_floating) 
