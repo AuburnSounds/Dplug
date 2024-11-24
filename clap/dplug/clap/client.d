@@ -1210,21 +1210,22 @@ private:
     {
         *is_floating = false;
         version(Windows) 
-            { 
-                *api = CLAP_WINDOW_API_WIN32.ptr;
-                return true; 
-            }
-        version(OSX)     
-            { 
-                *api = CLAP_WINDOW_API_COCOA.ptr;
-                return true; 
-            }
-        version(linux)   
-            { 
-                *api = CLAP_WINDOW_API_X11.ptr;
-                return true; 
-            }
-        return false;
+        { 
+            *api = CLAP_WINDOW_API_WIN32.ptr;
+            return true; 
+        }
+	else version(OSX)     
+        { 
+            *api = CLAP_WINDOW_API_COCOA.ptr;
+            return true; 
+        }
+	else version(linux)   
+        { 
+            *api = CLAP_WINDOW_API_X11.ptr;
+            return true; 
+        }
+	else
+	    return false;
     }
 
     GraphicsBackend gui_backend       = GraphicsBackend.autodetect;
