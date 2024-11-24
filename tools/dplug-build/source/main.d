@@ -1292,7 +1292,6 @@ int main(string[] args)
 
                         if (configIsVST2(config))
                         {
-
                             pkgIdentifier = plugin.pkgBundleVST2();
                             pkgFilename   = plugin.pkgFilenameVST2();
                             title = "VST 2.4 plug-in";
@@ -1325,13 +1324,13 @@ int main(string[] args)
                         {
                             pkgIdentifier = plugin.pkgBundleCLAP();
                             pkgFilename   = plugin.pkgFilenameCLAP();
-                            title = "FLStudio plug-in";
+                            title = "CLAP plug-in";
                         }
                         else if (configIsFLP(config))
                         {
                             pkgIdentifier = plugin.pkgBundleFLP();
                             pkgFilename   = plugin.pkgFilenameFLP();
-                            title = "FLStudio plug-in";
+                            title = "FL Studio plug-in";
                         }
                         else
                             assert(false, "unsupported plugin format");
