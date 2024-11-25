@@ -871,19 +871,19 @@ void createViewFromImageRef(COLOR)(ref Image view, ImageRef!COLOR source)
 {
     static if (is(COLOR == RGBA))
     {
-        view.createViewFromData(source.pixels, source.w, source.h, PixelType.rgba8, cast(int)source.pitch);
+        view.createView(source.pixels, source.w, source.h, PixelType.rgba8, cast(int)source.pitch);
     }
     else static if (is(COLOR == RGB))
     {
-        view.createViewFromData(source.pixels, source.w, source.h, PixelType.rgb8, cast(int)source.pitch);
+        view.createView(source.pixels, source.w, source.h, PixelType.rgb8, cast(int)source.pitch);
     }
     else static if (is(COLOR == L8))
     {
-        view.createViewFromData(source.pixels, source.w, source.h, PixelType.l8, cast(int)source.pitch);
+        view.createView(source.pixels, source.w, source.h, PixelType.l8, cast(int)source.pitch);
     }
     else static if (is(COLOR == L16))
     {
-        view.createViewFromData(source.pixels, source.w, source.h, PixelType.l16, cast(int)source.pitch);
+        view.createView(source.pixels, source.w, source.h, PixelType.l16, cast(int)source.pitch);
     }
     else
         static assert(false);

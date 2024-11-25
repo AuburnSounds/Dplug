@@ -184,7 +184,7 @@
                 "dplug:core": "*",
                 "dplug:math": "*",
                 "intel-intrinsics": "~>1.0",
-                "gamut": ">=3.0.0 <4.0.0",
+                "gamut": ">=3.1.2 <4.0.0",
                 "stb_image_resize2-d": "~>1.0"
             },
             "subConfigurations": {
