@@ -8,7 +8,7 @@
 
 
 
-### Alt. Examples
+### Other Examples
 
 **Beware!** Those examples are less authoritative/maintained than `clipit`, `distort`, and `template`:
    * `examples/ms-encode`: simplest plugin for tutorial purpose, without UI.
