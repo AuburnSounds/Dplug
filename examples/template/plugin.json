@@ -5,6 +5,7 @@
     "pluginHomepage":           "https://www.wittyaudio.com/Template",
     "hasGUI":                   true,
     "category":                 "effectOther",
+    "licensePath":              "license.md",
 
     "vendorName":               "Witty Audio",
     "vendorUniqueID":           "Wity",

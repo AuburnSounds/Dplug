@@ -884,7 +884,7 @@ Plugin readPluginDescription(string rootDir, bool quiet, bool verbose)
     }
     catch(Exception e)
     {
-        if (!quiet) info("Missing \"licensePath\" in plugin.json (eg: \"license.txt\")");
+        if (!quiet) info("Missing \"licensePath\" in plugin.json (eg: \"license.md\")");
     }
 
     try
