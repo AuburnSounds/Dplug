@@ -4,6 +4,7 @@
     "importPaths": [ "." ],
     "sourcePaths": [ "." ],
     "stringImportPaths": [ "." ],
+    "targetPath": "builds/dub",
 
     "targetType": "dynamicLibrary",
 

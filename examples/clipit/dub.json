@@ -5,6 +5,7 @@
     "importPaths": [ "source" ],
     "sourcePaths": [ "source" ],
     "stringImportPaths": ["gfx", "."],
+    "targetPath": "builds/dub",
 
     "copyright": "none",
 

@@ -7,6 +7,7 @@
     "importPaths":             [ "source" ],
     "sourcePaths":             [ "source" ],
     "stringImportPaths":       [ "gfx", "fonts", "." ],
+    "targetPath":              "builds/dub",
 
     "dflags-linux-dmd":        [ "-defaultlib=libphobos2.a" ],
     "dflags-osx-ldc":          [ "-static" ],
