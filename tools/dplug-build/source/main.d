@@ -595,7 +595,8 @@ int main(string[] args)
 
                     buildPlugin(targetOS, compilerPath, pathOverriden, config, build, arch, rootDir, verbose, force, combined, quiet, skipRegistry, parallel, redub, reggae);
                     double bytes = getSize(plugin.dubOutputFileName()) / (1024.0 * 1024.0);
-                    cwritefln("    =&gt; Build OK, binary size = %0.1f mb, available in %s".lgreen, bytes, normalizedPath("./" ~ path));
+                    string formatName = stripFormat(config);
+                    cwritefln("    =&gt; %s plug-in built in %s (size = %0.1f mb)".lgreen, formatName, normalizedPath("./" ~ path), bytes);
                     cwriteln();
                 }
 

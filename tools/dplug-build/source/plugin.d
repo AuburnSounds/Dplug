@@ -117,6 +117,21 @@ string stripConfig(string config) pure nothrow @nogc
     return null;
 }
 
+// from a valid configuration name, extracts the format part of the name
+// Typically configuration would be like: "VST-FULL" => "VST" or "AAX-FREE" => "AAX".
+// Used for display.
+string stripFormat(string config) pure nothrow @nogc
+{
+    if (config.length >= 4 && config[0..4] == "VST3") return config[0..4];
+    if (config.length >= 4 && config[0..4] == "VST2") return config[0..4];
+    if (config.length >= 2 && config[0..2] == "AU")   return config[0..2];
+    if (config.length >= 3 && config[0..3] == "AAX")  return config[0..3];
+    if (config.length >= 3 && config[0..3] == "LV2")  return config[0..3];
+    if (config.length >= 3 && config[0..3] == "FLP")  return config[0..3];
+    if (config.length >= 4 && config[0..4] == "CLAP") return config[0..4];
+    return null;
+}
+
 bool configIsVST3(string config) pure nothrow @nogc
 {
     return config.length >= 4 && config[0..4] == "VST3";
