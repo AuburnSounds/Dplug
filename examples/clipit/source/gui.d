@@ -88,7 +88,7 @@ nothrow:
         _clipKnob.position       = rectangle(308, 101, 128, 128).scaleByFactor(S);
         _outputGainKnob.position = rectangle(70, 320, 128, 128).scaleByFactor(S);
         _mixKnob.position        = rectangle(308, 320, 128, 128).scaleByFactor(S);
- 
+
         _modeSwitch.position = rectangle(380, 28, 50, 20).scaleByFactor(S);
 
         _bassSlider.position = rectangle(208, 27, 96, 24).scaleByFactor(S);

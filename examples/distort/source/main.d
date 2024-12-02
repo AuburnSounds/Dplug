@@ -9,7 +9,7 @@ import dplug.core,
 import gui;
 import ar;
 
-// This define entry points for plugin formats, 
+// This define entry points for plugin formats,
 // depending on which version identifiers are defined.
 mixin(pluginEntryPoints!DistortClient);
 
@@ -22,7 +22,27 @@ enum : int
     paramOnOff,
 }
 
-/// Example mono/stereo distortion plugin.
+/**
+    A small distortion plug-in named Distort!
+
+    It demonstrates:
+        - parameters
+        - I/O settings (mono or stereo)
+        - basic presets
+        - latency reporting
+        - using biquads from dplug:dsp
+        - custom UI widgets and custom DSP
+        - drawing with `dplug:canvas` and `canvasity`
+        - resizeable UI
+        - basic DSP->UI feedback
+        - use of `dplug:pbr-widgets`
+
+    To go further:
+        - Examples:     ClipIt and Template.
+        - FAQ:          https://dplug.org/tutorials
+        - Inline Doc:   https://dplug.dpldocs.info/dplug.html
+*/
+
 final class DistortClient : dplug.client.Client
 {
 public:
@@ -117,7 +137,7 @@ nothrow:
         _outputRMS.reallocBuffer(maxFrames);
 
         foreach(channel; 0..2)
-        {            
+        {
             _hpState[channel].initialize();
         }
     }

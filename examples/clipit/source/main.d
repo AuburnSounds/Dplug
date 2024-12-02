@@ -27,8 +27,23 @@ enum : int
     paramBassBoost
 }
 
+/**
+    A small clipper plug-in named ClipIt!
 
-/// Example mono/stereo distortion plugin.
+    It demonstrates:
+         - parameters
+         - I/O settings (mono or stereo)
+         - presets
+         - buffer-split
+         - using biquads from dplug:dsp
+         - resizeable UI
+         - use of dplug:flat-widgets
+
+    To go further:
+        - Examples:     Distort and Template.
+        - FAQ:          https://dplug.org/tutorials
+        - Inline Doc:   https://dplug.dpldocs.info/dplug.html
+*/
 final class ClipitClient : dplug.client.Client
 {
 public:
@@ -204,6 +219,5 @@ private:
 
     float _sampleRate;
     BiquadDelay[2] _bassFilter;
-    
 }
 

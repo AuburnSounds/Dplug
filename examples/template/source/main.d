@@ -5,6 +5,14 @@ import gui;
 
 mixin(pluginEntryPoints!MyClient);
 
+/**
+    This is a barebones and empty plug-in that does nothing.
+
+    To go further:
+        - Examples:     Distort and ClipIt.
+        - FAQ:          https://dplug.org/tutorials
+        - Inline Doc:   https://dplug.dpldocs.info/dplug.html
+*/
 final class MyClient : Client
 {
 public:
@@ -24,7 +32,11 @@ nothrow:
         auto params = makeVec!Parameter();
 
         // ...
-        // Add parameters here
+        // Add parameters here.
+        //
+        // See `dplug.client.params` module, and other examples.
+        // Example: 
+        //     params ~= mallocNew!BoolParameter(0, "bypass", false);
         // ...
 
         return params.releaseData();
@@ -36,7 +48,7 @@ nothrow:
                         int numOutputs)
     {
         // ...
-        // Add DSP initialization here
+        // Add DSP initialization here.
         // ...
     }
 
