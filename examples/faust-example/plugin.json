@@ -1,0 +1,15 @@
+{
+    "$schema": "https://raw.githubusercontent.com/AuburnSounds/dplug/master/plugin-schema.json",
+    "vendorName": "Witty Audio",
+    "vendorUniqueID": "Wity",
+    "vendorSupportEmail": "support@wittyaudio.com",
+    "pluginName": "Faust Example",
+    "pluginHomepage": "https://www.wittyaudio.com/FaustExample",
+    "pluginUniqueID": "WiFe",
+    "publicVersion": "1.0.0",
+    "CFBundleIdentifierPrefix": "com.wittyaudio",
+    "hasGUI": true,
+    "category": "effectReverb",
+
+    "licensePath": "LICENSE.md"
+}
