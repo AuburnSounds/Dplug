@@ -3,7 +3,7 @@
 Dplug is an audio plugin framework.
 
 Its core value proposition is abstracting over:
-- the various plugin formats. Dplug implements 5 plugin "clients" and 1 plugin "host".
+- the various plugin formats. Dplug implements 7 plugin "clients" and 1 plugin "host".
 - the various OS windowing
 
 so that developers can focus on a portable codebase for audio software.
