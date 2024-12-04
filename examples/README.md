@@ -4,8 +4,7 @@
      This one explains how to build an UI using `dplug:flat-widgets`.
    * `examples/distort`: A distortion plugin, with a PBR UI.
      This one explains how to use `TimedFIFO` for UI feedback, `Canvas`, `ImageKnob`, Wren scripting, custom widgets that draw to both Raw and PBR layer.
-
-
+   * `examples/faust-example`: A FreeVerb example using Faust.
 
 
 ### Other Examples

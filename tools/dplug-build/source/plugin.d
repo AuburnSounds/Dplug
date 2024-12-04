@@ -235,6 +235,16 @@ struct Plugin
 
     PluginCategory category;
 
+
+    // <faust things>
+    // See faust-example for usage in plugin.json
+    string[] faustSourceFiles;
+    string[] faustFlags;
+    string faustOutput;
+    string faustClassName;
+    bool hasFaust() { return faustSourceFiles.length != 0; }
+    // </faust things>
+
     string prettyName() pure const nothrow
     {
         return vendorName ~ " " ~ pluginName;
@@ -1068,15 +1078,6 @@ Plugin readPluginDescription(string rootDir, bool quiet, bool verbose)
         throw new Exception("\"publicVersion\" should follow the form x.y.z with 3 integers (eg: \"1.0.0\")");
     }
 
-    bool toBoolean(JSONValue value)
-    {
-        if (value.type == jsonTrue)
-            return true;
-        if (value.type == jsonFalse)
-            return false;
-        throw new Exception("Expected a boolean");
-    }
-
     try
     {
         result.isSynth = toBoolean(rawPluginFile["isSynth"]);
@@ -1183,6 +1184,17 @@ Plugin readPluginDescription(string rootDir, bool quiet, bool verbose)
     {
         result.wrapConfigGUID = null;
     }
+
+    // <faust>
+    if ("faustSourceFiles" in rawPluginFile)
+        result.faustSourceFiles = jsonStringArray("faustSourceFiles", rawPluginFile["faustSourceFiles"]);
+    if ("faustFlags" in rawPluginFile)
+        result.faustFlags ~= jsonStringArray("faustFlags", rawPluginFile["faustFlags"]);
+    if ("faustOutput" in rawPluginFile)
+        result.faustOutput = jsonString("faustOutput", rawPluginFile["faustOutput"]);
+    if ("faustClassName" in rawPluginFile)
+        result.faustClassName = jsonString("faustClassName", rawPluginFile["faustClassName"]);
+    // </faust>
 
     return result;
 }
@@ -1485,4 +1497,41 @@ string makeRSRC_with_Rez(Plugin plugin, Arch arch, bool verbose)
     cwritefln("    =&gt; Written %s bytes.".lgreen, getSize(rsrcPath));
     cwriteln();
     return rsrcPath;
+}
+
+bool toBoolean(JSONValue value)
+{
+    if (value.type == jsonTrue)
+        return true;
+    if (value.type == jsonFalse)
+        return false;
+    throw new Exception("Expected a boolean");
+}
+
+string jsonString(const(char)[] keyName, JSONValue value)
+{
+    if (value.type == JSONType.string)
+    {
+        return value.str;
+    }
+    else
+        throw new Exception(format("Key %s should be a string", keyName));
+}
+
+string[] jsonStringArray(const(char)[] arrayName, JSONValue value)
+{
+    if (value.type == JSONType.array)
+    {
+        string[] res;
+        JSONValue[] arr = value.array;
+
+        for (size_t n = 0; n < arr.length; ++n)
+        {
+            string keyName = format("%s[%s]", arrayName, n);
+            res ~= jsonString(keyName, arr[n]);
+        }
+        return res;
+    }
+    else
+        throw new Exception("Key %s should be a string array");
 }

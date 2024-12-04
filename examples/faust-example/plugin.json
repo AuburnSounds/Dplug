@@ -11,5 +11,11 @@
     "hasGUI": true,
     "category": "effectReverb",
 
-    "licensePath": "LICENSE.md"
+    "licensePath": "LICENSE.md",
+
+    "comment-faust": "Use these keys to control the faust compiler invoked by dplug-build",
+    "faustSourceFiles": ["dsp/freeverb.dsp"],
+    "faustFlags":       ["-double"],
+    "faustOutput":      "source/freeverb.d",
+    "faustClassName":   "Freeverb"
 }

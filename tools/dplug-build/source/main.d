@@ -1415,6 +1415,45 @@ int main(string[] args)
             }
         }
 
+        // (optional) Faust compilation step.
+        if (plugin.hasFaust)
+        {
+            if (!quiet) cwritefln("*** Faust compilation... ");
+
+            string faustBinary = "faust";
+            if (!plugin.faustOutput)
+                throw new Exception("Should have a \"faustOutput\" variable in plugin.json");
+
+            string className = plugin.faustClassName;
+            string sources = "";
+            foreach(sourceRel; plugin.faustSourceFiles)
+            {
+                string sourceAbs = buildPath(rootDir, sourceRel).array.to!string;
+                sources ~= " " ~ escapeShellArgument(sourceAbs);
+            }
+            string flags = " ";
+            foreach(f; plugin.faustFlags)
+            {
+                flags ~= f ~ " ";
+            }
+            string outputAbs;
+            if (plugin.faustOutput)
+            {
+                outputAbs = buildPath(rootDir, plugin.faustOutput).array.to!string;
+            }
+            else
+                throw new Exception("Should have a \"faustOutput\" variable in plugin.json");
+
+            string cmd = format("%s%s -lang dlang -a dplug.d -cn %s -vec%s -o %s", 
+                                faustBinary,
+                                sources,
+                                plugin.faustClassName,
+                                flags,
+                                outputAbs);
+            safeCommand(cmd);
+            if (!quiet) cwritefln(" =&gt; OK\n".lgreen);
+        }
+
         // Build various configuration
         foreach(config; configurations)
             buildAndPackage(config, archs, iconPathOSX);

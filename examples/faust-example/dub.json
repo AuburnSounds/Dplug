@@ -31,10 +31,6 @@
 
     "targetType": "dynamicLibrary",
 
-    "preBuildCommands": [
-        "faust dsp/freeverb.dsp -lang dlang -a dplug.d -cn Freeverb -vec -o source/freeverb.d"
-    ],
-
     "configurations": [
         {
             "name": "CLAP",
