@@ -202,6 +202,30 @@
             "description": "For PACE signing, the PACE wrap configuration ID to use. Create one in the PACE Central interface. Supports $VAR syntax.",
             "id": "/properties/wrapConfigGUID",
             "type": "string"
+        },
+
+        "faustSourceFiles": {
+            "description": "Faust source files to build with faust compiler",
+            "id": "/properties/faustSourceFiles",
+            "type": "array"
+        },
+
+        "faustFlags": {
+            "description": "Additional faust compiler flags",
+            "id": "/properties/faustFlags",
+            "type": "array"
+        },
+
+        "faustOutput": {
+            "description": "D output of the Faust compiler",
+            "id": "/properties/faustOutput",
+            "type": "string"
+        },
+
+        "faustClassName": {
+            "description": "Class name for the D output of the Faust compiler",
+            "id": "/properties/faustClassName",
+            "type": "string"
         }
     }
 }
