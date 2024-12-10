@@ -666,7 +666,20 @@ public:
     {
         super(index, name, "", 0, cast(int)(possibleValues.length) - 1, defaultValue);
 
-        _possibleValues = possibleValues;
+        // Duplicate all strings internally to avoid disappearing strings.
+        _possibleValues.resize(possibleValues.length);
+        foreach(size_t n, string label; possibleValues)
+        {
+            _possibleValues[n] = mallocDupZ(label);
+        }
+    }
+
+    ~this()
+    {
+        foreach(size_t n, const(char)[] label; _possibleValues[])
+        {
+            freeSlice(cast(char[]) label); // const_cast
+        }
     }
 
     override void toStringN(char* buffer, size_t numBytes)
@@ -702,13 +715,13 @@ public:
         return false;
     }
 
-    final string getValueString(int n) nothrow @nogc
+    final const(char)[] getValueString(int n) nothrow @nogc
     {
         return _possibleValues[n];
     }
 
 private:
-    const(string[]) _possibleValues;
+    Vec!(char[]) _possibleValues;
 }
 
 /// A float parameter
