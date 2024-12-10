@@ -1,58 +1,134 @@
 /**
-DSP utility functions. 
+    DSP utility functions.
+    They are a range of math function usual in DSP.
 
-Copyright: Guillaume Piolat 2015-2016.
-License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+    Copyright: Guillaume Piolat 2015-2024.
+    License:   http://www.boost.org/LICENSE_1_0.txt
 */
 module dplug.core.math;
 
 import std.math;
+version(LDC) import ldc.intrinsics;
 
-version(LDC)
-{
-    import ldc.intrinsics;
-}
+nothrow @nogc:
 
+
+/**
+    TAU is two times PI.
+*/
 immutable real TAU = PI * 2;
 
-/// Map linearly x from the range [a, b] to the range [c, d]
-T linmap(T)(T value, T a, T b, T c, T d) pure nothrow @nogc
+
+/**
+    Map linearly x from the range [a, b] to the range [c, d].
+*/
+T linmap(T)(T value, T a, T b, T c, T d) pure
 {
     return c + (d - c) * (value - a) / (b - a);
 }
+unittest
+{
+    double f = linmap(0.5f, 0.0, 2.0, 4.0, 5.0);
+    assert( f == 4.25 );
+}
 
-/// map [0..1] to [min..max] logarithmically
-/// min and max must be all > 0, t in [0..1]
-/// Note: you can totally have a max that is smaller than min.
-///       In this cases, the range mapped with more accuracy are still small values.
-T logmap(T)(T t, T min, T max) pure nothrow @nogc
+
+/**
+    Map the `[0..1]` range to `[min..max]` logarithmically.
+
+    Params:
+        t   Interpolating value from [0 to 1]. UB if out of range.
+        min Value corresponding to t = 0. Must be > 0.
+        max Value corresponding to t = 1. Must be > 0.
+
+    Note: You can totally have a max that is smaller than min.
+          In this case, the range mapped with more accuracy will be
+          small values (around `max` not `min`).
+*/
+T logmap(T)(T t, T min, T max) pure
 {
     assert(min > 0 && max > 0);
-    T ratio = max / min;
     return min * exp(t * log(max / min));
 }
-
-/// Hermite interpolation.
-T hermite(T)(T frac_pos, T xm1, T x0, T x1, T x2) pure nothrow @nogc
+unittest
 {
-    T c = (x1 - xm1) * 0.5f;
-    T v = x0 - x1;
-    T w = c + v;
-    T a = w + v + (x2 - x0) * 0.5f;
-    T b_neg = w + a;
-    return ((((a * frac_pos) - b_neg) * frac_pos + c) * frac_pos + x0);
+    assert(isClose(logmap!float(0.5f, 2.0f, 200.0f), 20.0f));
 }
 
-/// Converts from dB to linear gain.
-/// Precision: This uses fast_exp which under normal conditions has a peak 
-/// error under -135dB over the useful range.
-float convertDecibelToLinearGain(float dB) pure nothrow @nogc
+
+/**
+    Gets a factor for making exponential decay curves, which are also
+    the same thing as a 6dB/oct lowpass filter.
+
+    Params:
+        timeConstantSecs Time after which the amplitude is only 37%
+                         of the original.
+        samplerate       Sampling rate.
+
+    Returns:
+        Multiplier for this RC time constant and sampling rate.
+        Use it like this: `smoothed += (v - smoothed) * result;`
+
+    Note:
+        Using `fast_exp` yield a decay-factor within -180 dB
+        (at 384000hz) of the one obtained with `expm1`.
+        The alleged inaccuracies of plain exp just did not show up so
+        we don't prefer `expm1` anymore. This doesn't change the
+        length of an iterated envelope like `ExpSmoother`.
+        Actually, small variations of a decay factor often results in
+        a misleadingly large RMS difference, that doesn't actually
+        change the sound quality.
+*/
+double expDecayFactor(double timeConstantSecs,
+                      double samplerate) pure
+{
+    return 1.0 - fast_exp(-1.0 / (timeConstantSecs * samplerate));
+}
+
+
+/**
+    Map from MIDI notes to frequency (Hz).
+*/
+float convertMIDINoteToFrequency(float note) pure
+{
+    return 440.0f * pow(2.0, (note - 69.0f) / 12.0f);
+}
+
+
+/**
+    Map from frequency (Hz) to MIDI notes.
+*/
+float convertFrequencyToMIDINote(float frequency) pure
+{
+    return 69.0f + 12.0f * log2(frequency / 440.0f);
+}
+
+
+/**
+    Converts from decibels (dB) to linear gain (aka. voltage).
+
+    Params:
+        x Value in decibels. Can be -infinity.
+
+    Returns:
+        A voltage value, linear gain.
+
+    Note:    0 dB is 1.0 in linear gain.
+            -6 dB is 0.5 in linear gain.
+          -inf dB is 0.0 in linear gain.
+
+    Precision: This uses fast_exp which under normal conditions has a
+               peak error under -135dB over the useful range.
+               However, keep in mind that different exp function sound
+               differently when modulated.
+*/
+float convertDecibelToLinearGain(float dB) pure @safe
 {
     static immutable float ln10_20 = cast(float)LN10 / 20;
     return fast_exp(dB * ln10_20);
 }
 ///ditto
-double convertDecibelToLinearGain(double dB) pure nothrow @nogc
+double convertDecibelToLinearGain(double dB) pure @safe
 {
     static immutable double ln10_20 = cast(double)LN10 / 20;
     return fast_exp(dB * ln10_20);
@@ -63,16 +139,30 @@ unittest
     assert(convertDecibelToLinearGain(-double.infinity) == 0);
 }
 
-/// Converts from linear gain to dB.
-/// Precision: This uses fast_exp which under normal conditions has a peak 
-/// error under -135dB over the useful range.
-float convertLinearGainToDecibel(float x) pure nothrow @nogc
+
+/**
+    Converts from linear gain (voltage) to decibels (dB).
+
+    Params:
+        x Linear gain. Must be >= 0.
+
+    Returns:
+        A decibel value.
+
+    Note: 1.0 linear gain is    0 dB in decibels.
+          0.5 linear gain is   -6 dB in decibels.
+          0.0 linear gain is -inf dB in decibels.
+
+    Precision: This uses `fast_exp` which under normal conditions has
+               a peak error under -135dB over the useful range.
+*/
+float convertLinearGainToDecibel(float x) pure @safe
 {
     static immutable float f20_ln10 = 20 / cast(float)LN10;
     return fast_log(x) * f20_ln10;
 }
 ///ditto
-double convertLinearGainToDecibel(double x) pure nothrow @nogc
+double convertLinearGainToDecibel(double x) pure @safe
 {
     static immutable double f20_ln10 = 20 / cast(double)LN10;
     return fast_log(x) * f20_ln10;
@@ -83,158 +173,75 @@ unittest
     assert(convertLinearGainToDecibel(0.0) == -double.infinity);
 }
 
-/// Converts from power to dB. 
-/// Instantaneous power is the squared amplitude of a signal, and can be a 
-/// nice domain to work in at times.
-/// Precision: This uses fast_exp which under normal conditions has a peak error under -135dB over the useful range.
-float convertPowerToDecibel(float x) pure nothrow @nogc
+/**
+    Converts a power value to decibels (dB).
+
+    Instantaneous power is the squared amplitude of a signal, and can
+    be a nice domain to work in at times.
+
+    Precision: This uses `fast_exp` which under normal conditions has
+               a peak error under -135 dB over the useful range.
+*/
+float convertPowerToDecibel(float x) pure @safe
 {
     // Explanation:
-    //   20.log10(amplitude) 
-    // = 20.log10(sqrt(power)) 
+    //   20.log10(amplitude)
+    // = 20.log10(sqrt(power))
     // = 20.log10( 10^(0.5 * log10(power) )
     // = 10.log10(power)
     static immutable float f10_ln10 = 10 / cast(float)LN10;
     return fast_log(x) * f10_ln10;
 }
 ///ditto
-double convertPowerToDecibel(double x) pure nothrow @nogc
+double convertPowerToDecibel(double x) pure @safe
 {
     static immutable double f10_ln10 = 10 / cast(double)LN10;
     return fast_log(x) * f10_ln10;
 }
 
-/// Is this integer odd?
-bool isOdd(T)(T i) pure nothrow @nogc @safe
+
+/// Linear interpolation, akin to GLSL's mix.
+S lerp(S, T)(S a, S b, T t) pure
+    if (is(typeof(t * b + (1 - t) * a) : S))
 {
-    return (i & 1) != 0;
+    return t * b + (1 - t) * a;
 }
 
-/// Is this integer even?
-bool isEven(T)(T i) pure nothrow @nogc @safe
+/// Same as GLSL smoothstep function.
+/// See: http://en.wikipedia.org/wiki/Smoothstep
+T smoothStep(T)(T a, T b, T t) pure
 {
-    return (i & 1) == 0;
-}
-
-/// Returns: true of i is a power of 2.
-bool isPowerOfTwo(int i) pure nothrow @nogc @safe
-{
-    assert(i >= 0);
-    return (i != 0) && ((i & (i - 1)) == 0);
-}
-
-/// Returns: x, multiple of powerOfTwo, so that x >= n.
-size_t nextMultipleOf(size_t n, size_t powerOfTwo) pure nothrow @nogc @safe
-{
-    // check power-of-two
-    assert( (powerOfTwo != 0) && ((powerOfTwo & (powerOfTwo - 1)) == 0));
-
-    size_t mask = ~(powerOfTwo - 1);
-    return (n + powerOfTwo - 1) & mask;
-}
-
-unittest
-{
-    assert(nextMultipleOf(0, 4) == 0);
-    assert(nextMultipleOf(1, 4) == 4);
-    assert(nextMultipleOf(2, 4) == 4);
-    assert(nextMultipleOf(3, 4) == 4);
-    assert(nextMultipleOf(4, 4) == 4);
-    assert(nextMultipleOf(5, 4) == 8);
-}
-
-
-/// Computes next power of 2.
-/// Returns: N so that N is a power of 2 and N >= i.
-/// Note: This function is not equivalent to the builtin `std.math.nextPow2` when the input is a power of 2.
-int nextPow2HigherOrEqual(int i) pure nothrow @nogc
-{
-    int v = i - 1;
-    v |= v >> 1;
-    v |= v >> 2;
-    v |= v >> 4;
-    v |= v >> 8;
-    v |= v >> 16;
-    v++;
-    return v;
-}
-
-///ditto
-long nextPow2HigherOrEqual(long i) pure nothrow @nogc
-{
-    long v = i - 1;
-    v |= v >> 1;
-    v |= v >> 2;
-    v |= v >> 4;
-    v |= v >> 8;
-    v |= v >> 16;
-    v |= v >> 32;
-    v++;
-    return v;
-}
-
-/// Returns: x so that (1 << x) >= i
-int iFloorLog2(int i) pure nothrow @nogc
-{
-    assert(i >= 1);
-    int result = 0;
-    while (i > 1)
+    if (t <= a)
+        return 0;
+    else if (t >= b)
+        return 1;
+    else
     {
-        i = i / 2;
-        result = result + 1;
+        T x = (t - a) / (b - a);
+        return x * x * (3 - 2 * x);
     }
-    return result;
 }
 
-/// Mapping from MIDI notes to frequency.
-float convertMIDINoteToFrequency(float note) pure nothrow @nogc
-{
-    return 440.0f * pow(2.0, (note - 69.0f) / 12.0f);
-}
 
-/// Mapping from frequency to MIDI notes.
-float convertFrequencyToMIDINote(float frequency) pure nothrow @nogc
-{
-    return 69.0f + 12.0f * log2(frequency / 440.0f);
-}
-
-/// Fletcher and Munson equal-loudness curve
-/// Reference: Xavier Serra thesis (1989).
-T equalLoudnessCurve(T)(T frequency) pure nothrow @nogc
-{
-    T x = cast(T)0.05 + 4000 / frequency;
-    return x * ( cast(T)10 ^^ x);
-}
-
-/// Cardinal sine
-T sinc(T)(T x) pure nothrow @nogc
+/**
+    Normalized sinc function.
+    Returns: `sin(PI*x)/(PI*x)`.
+*/
+T sinc(T)(T x) pure
 {
     if (cast(T)(1) + x * x == cast(T)(1))
         return 1;
     else
         return sin(cast(T)PI * x) / (cast(T)PI * x);
 }
-
-/// Gets a factor for making exponential decay curves, which are the same thing
-/// as a 6dB/oct lowpass filter.
-///
-/// Returns: Multiplier for this RC time constant and sampling rate.
-///
-/// Params:
-///    timeConstantInSeconds = Time after which the amplitude is only 37% of the original.
-///    samplerate = Sampling rate.
-///
-/// Note: Using `fast_exp` yield a decay-factor within -180 dB (at 384000hz) of the one obtained with `expm1`.
-///       The alleged "innacuracies" of plain exp just did not show up so we don't prefer `expm1` anymore.
-///       It doesn't change the length of an iterated envelope like `ExpSmoother`.
-///
-double expDecayFactor(double timeConstantInSeconds, double samplerate) pure nothrow @nogc
+unittest
 {
-    return 1.0 - fast_exp(-1.0 / (timeConstantInSeconds * samplerate));
+    assert(sinc(0.0) == 1.0);
 }
 
+
 /// Give back a phase between -PI and PI
-T normalizePhase(T)(T phase) nothrow @nogc if (is(T == float) || is(T == double))
+T normalizePhase(T)(T phase) if (is(T == float) || is(T == double))
 {
     static if (D_InlineAsm_Any)
     {
@@ -243,9 +250,9 @@ T normalizePhase(T)(T phase) nothrow @nogc if (is(T == float) || is(T == double)
         asm nothrow @nogc
         {
             fld k_TAU;    // TAU
-            fld result;    // phase | TAU
+            fld result;   // phase | TAU
             fprem1;       // normalized(phase) | TAU
-            fstp result;   // TAU
+            fstp result;  // TAU
             fstp ST(0);   //
         }
         return result;
@@ -260,47 +267,39 @@ T normalizePhase(T)(T phase) nothrow @nogc if (is(T == float) || is(T == double)
         return res;
     }
 }
-
 unittest
 {
     assert(isClose(normalizePhase!float(0.1f), 0.1f));
     assert(isClose(normalizePhase!float(TAU + 0.1f), 0.1f));
-
     assert(isClose(normalizePhase!double(-0.1f), -0.1f));
     assert(isClose(normalizePhase!double(-TAU - 0.1f), -0.1f));
 }
 
-/// Quick and dirty sawtooth for testing purposes.
-T rawSawtooth(T)(T x) nothrow @nogc
-{
-    return normalizePhase(x) / (cast(T)PI);
-}
 
-/// Quick and dirty triangle for testing purposes.
-T rawTriangle(T)(T x) nothrow @nogc
-{
-    return 1 - normalizePhase(x) / cast(T)PI_2;
-}
+/**
+    Hermite interpolation.
 
-/// Quick and dirty square for testing purposes.
-T rawSquare(T)(T x) nothrow @nogc
-{
-    return normalizePhase(x) > 0 ? 1 : -1;
-}
+    Params:
+        f_pos Position of interpolation between (0 to 1).
+              0 means at position x0, 1 at position x1.
+        xm1   Value of f(x-1)
+        x0    Value of f(x)
+        x1    Value of f(x+1)
+        x2    Value of f(x+2)
 
-T computeRMS(T)(T[] samples) pure nothrow @nogc
+    Returns:
+        An interpolated value corresponding to `f(x0 + f_pos)`.
+*/
+T hermiteInterp(T)(T f_pos, T xm1, T x0, T x1, T x2) pure
 {
-    double sum = 0;
-    foreach(sample; samples)
-        sum += sample * sample;
-    return sqrt(sum / cast(int)samples.length);
+    T c = (x1 - xm1) * 0.5f;
+    T v = x0 - x1;
+    T w = c + v;
+    T a = w + v + (x2 - x0) * 0.5f;
+    T b_neg = w + a;
+    return ((((a * f_pos) - b_neg) * f_pos + c) * f_pos + x0);
 }
-
-unittest
-{
-    double[] d = [4, 5, 6];
-    computeRMS(d);
-}
+deprecated("Renamed to hermiteInterp") alias hermite = hermiteInterp;
 
 
 version(D_InlineAsm_X86)
@@ -314,23 +313,26 @@ else
 
 version(LDC)
 {
-    // Note: wrapper functions wouldn't work (depend on inlining), 
+    // Note: wrapper functions wouldn't work (depend on inlining),
     //       it's much more reliable to use alias for speed gain.
 
     // Gives considerable speed improvement over `std.math.exp`.
     // Exhaustive testing for 32-bit `float` shows
     // Relative accuracy is within < 0.0002% of std.math.exp
     // for every possible input.
-    // So a -120 dB inaccuracy, and -140dB the vast majority of the time.
-    alias fast_exp = llvm_exp; 
+    // So a -120 dB inaccuracy, and -140dB the vast majority of the
+    // time.
+    alias fast_exp = llvm_exp;
 
 
     alias fast_log = llvm_log;
 
-    // Note: fast_pow with a float argument (`powf`) can be a lot faster that with a double argument.
+    // Note: fast_pow with a float argument (`powf`) can be a lot
+    // faster that with a double argument.
     alias fast_pow = llvm_pow;
 
-    // Gives measurable speed improvement at audio-rate, without change for any input.
+    // Gives measurable speed improvement at audio-rate, without
+    // change for any input.
     alias fast_fabs = llvm_fabs;
 
 
@@ -363,40 +365,135 @@ else
     alias fast_trunc = trunc;
     alias fast_round = round;
 
-    alias fast_sqrt = sqrt; // Undefined behaviour for operands below -0
+    alias fast_sqrt = sqrt; // UB for operands below -0
     alias fast_sin = sin;
     alias fast_cos = cos;
 }
 
+
+/**
+    Compute the next higher multiple of a pow^2 number.
+
+    Returns:
+        `x`, multiple of `powerOfTwo`, so that `x >= n`.
+*/
+size_t nextMultipleOf(size_t n, size_t powerOfTwo) pure @safe
+{
+    // FUTURE: why is it here in dplug:core?
+
+    // check power-of-two
+    assert((powerOfTwo != 0) && ((powerOfTwo & (powerOfTwo-1)) == 0));
+
+    size_t mask = ~(powerOfTwo - 1);
+    return (n + powerOfTwo - 1) & mask;
+}
 unittest
 {
-    assert(isClose(fast_exp2(0.1), std.math.exp2(0.1)));
+    assert(nextMultipleOf(0, 4) == 0);
+    assert(nextMultipleOf(1, 4) == 4);
+    assert(nextMultipleOf(2, 4) == 4);
+    assert(nextMultipleOf(3, 4) == 4);
+    assert(nextMultipleOf(4, 4) == 4);
+    assert(nextMultipleOf(5, 4) == 8);
 }
 
-/// Linear interpolation, akin to GLSL's mix.
-S lerp(S, T)(S a, S b, T t) pure nothrow @nogc 
-    if (is(typeof(t * b + (1 - t) * a) : S))
+
+/**
+    Computes next power of 2.
+
+    Returns:
+        `N` so that `N` is a power of 2 and `N >= i`.
+
+    Note: This function is NOT equivalent to the builtin
+          `std.math.nextPow2` when the input is a power of 2.
+*/
+int nextPow2HigherOrEqual(int i) pure
 {
-    return t * b + (1 - t) * a;
+    int v = i - 1;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v++;
+    return v;
+}
+///ditto
+long nextPow2HigherOrEqual(long i) pure
+{
+    long v = i - 1;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v |= v >> 32;
+    v++;
+    return v;
+}
+unittest
+{
+    assert(nextPow2HigherOrEqual(0) == 0);
+    assert(nextPow2HigherOrEqual(64) == 64);
+    assert(nextPow2HigherOrEqual(65L) == 128);
 }
 
-/// Same as GLSL smoothstep function.
-/// See: http://en.wikipedia.org/wiki/Smoothstep
-T smoothStep(T)(T a, T b, T t) pure nothrow @nogc 
+
+/// Returns: true of i is a power of 2.
+bool isPowerOfTwo(int i) pure @safe
 {
-    if (t <= a)
-        return 0;
-    else if (t >= b)
-        return 1;
-    else
+    assert(i >= 0);
+    return (i != 0) && ((i & (i - 1)) == 0);
+}
+
+
+
+// -------- LINE OF DEPRECATION AREA -----------
+
+/**
+    Integer log, rounds towards -inf.
+
+    Returns: x so that (1 << x) >= i
+
+    FUTURE: Why is that in dplug:core?
+*/
+deprecated("Will be removed in Dplug v15") 
+int iFloorLog2(int i) pure @safe
+{
+    assert(i >= 1);
+    int result = 0;
+    while (i > 1)
     {
-        T x = (t - a) / (b - a);
-        return x * x * (3 - 2 * x);
+        i = i / 2;
+        result = result + 1;
     }
+    return result;
+}
+
+/// Fletcher and Munson equal-loudness curve
+/// Reference: Xavier Serra thesis (1989).
+deprecated("equalLoudnessCurve will be removed in Dplug v15")
+T equalLoudnessCurve(T)(T frequency) pure
+{
+    T x = cast(T)0.05 + 4000 / frequency;
+    return x * ( cast(T)10 ^^ x);
+}
+
+/// Is this integer odd?
+deprecated bool isOdd(T)(T i) pure @safe
+{
+    return (i & 1) != 0;
+}
+
+/// Is this integer even?
+deprecated bool isEven(T)(T i) pure @safe
+{
+    return (i & 1) == 0;
 }
 
 /// SSE approximation of reciprocal square root.
-T inverseSqrt(T)(T x) pure nothrow @nogc if (is(T : float) || is(T: double))
+deprecated("Use _mm_rcp_ss or 1/sqrt(x) instead")
+T inverseSqrt(T)(T x) @nogc if (is(T : float) || is(T: double))
 {
     version(AsmX86)
     {
@@ -404,11 +501,11 @@ T inverseSqrt(T)(T x) pure nothrow @nogc if (is(T : float) || is(T: double))
         {
             float result;
 
-            asm pure nothrow @nogc 
+            asm pure nothrow @nogc
             {
-                movss XMM0, x; 
-                rsqrtss XMM0, XMM0; 
-                movss result, XMM0; 
+                movss XMM0, x;
+                rsqrtss XMM0, XMM0;
+                movss result, XMM0;
             }
             return result;
         }
@@ -419,21 +516,46 @@ T inverseSqrt(T)(T x) pure nothrow @nogc if (is(T : float) || is(T: double))
         return 1 / sqrt(x);
 }
 
-unittest
-{
-    assert(abs( inverseSqrt!float(1) - 1) < 1e-3 );
-    assert(abs( inverseSqrt!double(1) - 1) < 1e-3 );
-}
-
-/// Computes a normalized frequency form a frequency.
-float convertFrequencyToNormalizedFrequency(float frequencyHz, float samplingRate) pure nothrow @nogc
+deprecated("use frequencyHz * samplingRate instead")
+float convertFrequencyToNormalizedFrequency(float frequencyHz,
+                                            float samplingRate) pure
 {
     return frequencyHz / samplingRate;
 }
 
-/// Computes a frequency.
-float convertNormalizedFrequencyToFrequency(float frequencyCyclesPerSample, float samplingRate) pure nothrow @nogc
+deprecated("use freqCyclesPerSample * samplingRate instead")
+float convertNormalizedFrequencyToFrequency(float freqCyclesPerSample,
+                                            float samplingRate) pure
 {
-    return frequencyCyclesPerSample * samplingRate;
+    return freqCyclesPerSample * samplingRate;
 }
 
+/// Quick and dirty sawtooth for testing purposes.
+deprecated("rawSawtooth will be removed in Dplug v15")
+T rawSawtooth(T)(T x)
+{
+    return normalizePhase(x) / (cast(T)PI);
+}
+
+/// Quick and dirty triangle for testing purposes.
+deprecated("rawTriangle will be removed in Dplug v15")
+T rawTriangle(T)(T x)
+{
+    return 1 - normalizePhase(x) / cast(T)PI_2;
+}
+
+/// Quick and dirty square for testing purposes.
+deprecated("rawSquare will be removed in Dplug v15")
+T rawSquare(T)(T x)
+{
+    return normalizePhase(x) > 0 ? 1 : -1;
+}
+
+deprecated("computeRMS will be removed in Dplug v15")
+T computeRMS(T)(T[] samples) pure
+{
+    double sum = 0;
+    foreach(sample; samples)
+        sum += sample * sample;
+    return sqrt(sum / cast(int)samples.length);
+}

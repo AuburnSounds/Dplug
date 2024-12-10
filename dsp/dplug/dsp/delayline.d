@@ -153,7 +153,7 @@ nothrow:
             T x0  = pData[iPart  ];
             T x1  = pData[iPart+1];
             T x2  = pData[iPart+2];
-            return hermite!T(fPart, xm1, x0, x1, x2);
+            return hermiteInterp!T(fPart, xm1, x0, x1, x2);
         }
 
         /// Third-order spline interpolation

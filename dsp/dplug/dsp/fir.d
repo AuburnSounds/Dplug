@@ -61,6 +61,16 @@ void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate) no
 /// Generates a hilbert transformer impulse, centered on floor(output.length / 2).
 void generateHilbertTransformer(T)(T[] outImpulse, WindowDesc windowDesc, double samplerate) nothrow @nogc
 {
+    static bool isOdd(int i) pure nothrow @nogc @safe
+    {
+        return (i & 1) != 0;
+    }
+
+    static bool isEven(int i) pure nothrow @nogc @safe
+    {
+        return (i & 1) == 0;
+    }
+
     int size = cast(int)(outImpulse.length);
     assert(isOdd(size));
     int center = size / 2;
