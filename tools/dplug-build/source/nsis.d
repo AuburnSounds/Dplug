@@ -238,10 +238,10 @@ void generateWindowsInstaller(string outputDir,
             content ~= "  ${IfNot} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
             content ~= "    Abort\n";
             content ~= "  ${Else}\n";
-            foreach(int FLMajor; [12, 20, 21, 22, 23, 24])
+            foreach(int FLMajor; [12, 20, 21, 22, 23, 2024, 2025, 2026, 2027])
             {
                 // If the FL directory exist, becomes the one directory.
-                // If FL changes its plugin layout, or exceed FL 24, it will need to be redone.
+                // If FL changes its plugin layout, or exceed FL 2027, it will need to be redone.
                 content ~= format(`  IfFileExists "$PROGRAMFILES64\Image-Line\FL Studio %s\*.*" yesFL%s noFL%s` ~"\n", FLMajor, FLMajor, FLMajor);
                 content ~= format(`      yesFL%s:` ~"\n", FLMajor);
                 if (plugin.isSynth)
