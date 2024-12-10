@@ -40,9 +40,21 @@ public void inverseFFT(T)(Complex!T[] buffer) nothrow @nogc
 // PERF: use pfft instead would be much faster
 private void FFT_internal(T, FFTDirection direction)(Complex!T[] buffer) pure nothrow @nogc
 {
+    static int intFloorLog2(int i) pure nothrow @nogc @safe
+    {
+        assert(i >= 1);
+        int result = 0;
+        while (i > 1)
+        {
+            i = i / 2;
+            result = result + 1;
+        }
+        return result;
+    }
+
     int size = cast(int)(buffer.length);
     assert(isPowerOfTwo(size));
-    int m = iFloorLog2(size);
+    int m = intFloorLog2(size);
 
     Complex!T* pbuffer = buffer.ptr;
 
