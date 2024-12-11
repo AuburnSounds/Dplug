@@ -201,7 +201,9 @@ nothrow:
         return mallocNew!DistortGUI(this);
     }
 
-    version(futureBinState)
+    version(legacyBinState)
+    {}
+    else
     {
         /// Important: See documentation in `Client.saveState`.
         ///            Right now saving extra state is fraught with peril!

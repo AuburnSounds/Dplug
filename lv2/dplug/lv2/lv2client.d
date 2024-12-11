@@ -81,7 +81,9 @@ nothrow:
         _eventsInput = null;
         _eventsOutput = null;
         _latencySamples = 0;
-        version(futureBinState)
+        version(legacyBinState)
+        {}
+        else
             initializeStateChunkTypeURI();
     }
 
@@ -139,7 +141,9 @@ nothrow:
         _callResetOnNextRun = true;
 
         const(char)* stateChunkURIZ = "unused".ptr;
-        version(futureBinState)
+        version(legacyBinState)
+        {}
+        else
         {
             stateChunkURIZ = stateChunkTypeURI.ptr;
         }
@@ -581,7 +585,9 @@ nothrow:
     /// Get the URI used for state chunk type.
     /// The slice has a terminal zero afterwards.
     /// eg: "https://www.wittyaudio.com/Destructatorizer57694469#stateBinary"
-    version(futureBinState)
+    version(legacyBinState)
+    {}
+    else
     {
         const(char)[] getStateBinaryURI()
         {
@@ -706,7 +712,9 @@ private:
     // Current time info, eventually extrapolated when data is missing.
     TimeInfo _currentTimeInfo;
 
-    version(futureBinState)
+    version(legacyBinState)
+    {}
+    else
     {
         Vec!ubyte _lastStateBinary;
         Vec!ubyte _lastStateBinaryBase64;
@@ -747,8 +755,12 @@ nothrow:
     LV2_URID timeBPM;
     LV2_URID timeSpeed;
 
-    version(futureBinState)
+    version(legacyBinState)
+    {}
+    else
+    {
         LV2_URID stateBinary;
+    }
 
     void initialize(LV2_URID_Map* uridMap, const(char)* stateBinaryURIZ)
     {
@@ -765,8 +777,12 @@ nothrow:
         timeFrame    = uridMap.map(uridMap.handle, LV2_TIME__frame);
         timeBPM      = uridMap.map(uridMap.handle, LV2_TIME__beatsPerMinute);
         timeSpeed    = uridMap.map(uridMap.handle, LV2_TIME__speed);
-        version(futureBinState)
+        version(legacyBinState)
+        {}
+        else
+        {
             stateBinary  = uridMap.map(uridMap.handle, stateBinaryURIZ);
+        }
     }
 }
 

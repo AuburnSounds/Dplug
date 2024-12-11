@@ -308,7 +308,9 @@ nothrow:
             _midiOutFromUIMutex = makeMutex();
         }
 
-        version(futureBinState)
+        version(legacyBinState)
+        {}
+        else
         {
             // Snapshot default extra state here, before any preset is created, so that `makeDefaultPreset`
             // can work even if called multiple times.
@@ -662,7 +664,9 @@ nothrow:
     {
         // Should this preset have extra state data?
         const(ubyte)[] stateData = null;
-        version(futureBinState)
+        version(legacyBinState)
+        {}
+        else
         {
             // Note: the default state data is called early, so if you plan to call 
             // `defaultStateData` outside of buildPresets, it will have odd restrictions.
@@ -1015,7 +1019,9 @@ nothrow:
         return _hostCommand.getPluginFormat();
     }
 
-    version(futureBinState)
+    version(legacyBinState)
+    {}
+    else
     {
         /**
             Write the extra state of plugin in a chunk, so that the host can restore that later.
@@ -1154,7 +1160,9 @@ private:
     // Output MIDI messages, if any, are accumulated there.
     Vec!MidiMessage _outputMidiMessages;
 
-    version(futureBinState)
+    version(legacyBinState)
+    {}
+    else
     {
         /// Stores the extra state data (from a `saveState` call) from when the plugin was newly
         /// instantiated. This is helpful, in order to synthesize presets, and also because some 

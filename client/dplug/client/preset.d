@@ -29,21 +29,30 @@ enum uint DPLUG_MAGIC = 0xB20BA92;
 
 /// I can see no reason why Dplug shouldn't be able to maintain
 /// state chunks backward-compatibility with older versions in the future.
-/// However, never say never.
-/// This number will be incremented for every backward-incompatible change.
-version(futureBinState) enum int DPLUG_SERIALIZATION_MAJOR_VERSION = 1;
-else enum int DPLUG_SERIALIZATION_MAJOR_VERSION = 0;
+/// And indeed the major version was bumped for "binState" change but was
+/// compatible in the end, it could have been a minor change.
+version(legacyBinState)
+{
+    enum int DPLUG_SERIALIZATION_MAJOR_VERSION = 0;
+}
+else
+{
+    enum int DPLUG_SERIALIZATION_MAJOR_VERSION = 1;
+}
 
 /// This number will be incremented for every backward-compatible change
 /// that is significant enough to bump a version number
 enum int DPLUG_SERIALIZATION_MINOR_VERSION = 0;
 
-// Compilation failures for futureBinState in combinations that don't work (yet!)
-version(futureBinState) 
+// Compilation failures for combinations that can't work
+// binState needs VST2 chunk if VST2 is used.
+version(legacyBinState)
+{}
+else
 {
     version(VST2)
     {
-        version(legacyVST2Chunks) static assert(0, "futureBinState requires futureVST2Chunks for VST2!");
+        version(legacyVST2Chunks) static assert(0, "bin state requires VST2 chunks for VST2!");
     }
 }
 
@@ -87,10 +96,15 @@ public:
         _name = newName.mallocDupZ;
     }
 
-    version(futureBinState) void setStateData(ubyte[] data) nothrow @nogc
+    version(legacyBinState)
+    {}
+    else
     {
-        clearData();
-        _stateData = data.mallocDup;
+        void setStateData(ubyte[] data) nothrow @nogc
+        {
+            clearData();
+            _stateData = data.mallocDup;
+        }
     }
 
     void saveFromHost(Client client) nothrow @nogc
@@ -101,7 +115,9 @@ public:
             _normalizedParams[i] = param.getNormalized();
         }
 
-        version(futureBinState)
+        version(legacyBinState)
+        {}
+        else
         {{
             clearData(); // Forget possible existing _stateData
             Vec!ubyte chunk;
@@ -125,7 +141,9 @@ public:
             }
         }
 
-        version(futureBinState)
+        version(legacyBinState)
+        {}
+        else
         {
             // loadFromHost seems to best effort, no error reported on parse failure
             client.loadState(_stateData); 
@@ -142,9 +160,14 @@ public:
         return _normalizedParams;
     }
 
-    version(futureBinState) ubyte[] getStateData() nothrow @nogc
+    version(legacyBinState)
+    {}
+    else
     {
-        return _stateData;
+        ubyte[] getStateData() nothrow @nogc
+        {
+            return _stateData;
+        }
     }
 
 private:
@@ -321,10 +344,16 @@ nothrow:
         else
             _current = presetIndex;
 
-        version(futureBinState) 
+        version(legacyBinState)
+        {
+            loadChunkV1(chunk, err);
+            if (*err)
+                return;
+        }
+        else
         {
             // Binary state future tag.
-            if (mVersion == 0) 
+            if (mVersion == 0)
             {
                 loadChunkV1(chunk, err);
                 if (*err)
@@ -336,13 +365,6 @@ nothrow:
                 if (*err)
                     return;
             }
-        }
-        else
-        {
-
-            loadChunkV1(chunk, err);
-            if (*err)
-                return;
         }
 
         *err = false;
@@ -367,7 +389,9 @@ private:
         *err = false;
     }
 
-    version(futureBinState)
+    version(legacyBinState)
+    {}
+    else
     {
         // Loads chunk with binary save state
         void loadChunkV2(ref const(ubyte)[] chunk, bool* err) nothrow @nogc
@@ -393,8 +417,21 @@ private:
             *err = false;
         }
     }
-    
-    version(futureBinState) 
+
+    version(legacyBinState)
+    {
+        // Writes chunk with V1 method
+        void writeStateChunk(ref Vec!ubyte chunk) nothrow @nogc
+        {
+            writeChunkHeader(chunk, 0);
+            auto params = _client.params();
+            chunk.writeLE!int(_current);
+            chunk.writeLE!int(cast(int)params.length);
+            foreach(param; params)
+                chunk.writeLE!float(param.getNormalized());
+        }
+    }
+    else
     {
         // Writes preset chunk with V2 method
         void writeStateChunk(ref Vec!ubyte chunk) nothrow @nogc
@@ -420,24 +457,24 @@ private:
             ubyte[] indexPos = chunk.ptr[chunkLenIndex.. chunkLenIndex+4];
             indexPos.writeLE!int(cast(int)(after - before));
         }
-    } else {
+    }
 
+    version(legacyBinState)
+    {
         // Writes chunk with V1 method
-        void writeStateChunk(ref Vec!ubyte chunk) nothrow @nogc
+        void writePresetChunkData(ref Vec!ubyte chunk, int presetIndex) nothrow @nogc
         {
             writeChunkHeader(chunk, 0);
 
-            auto params = _client.params();
+            auto p = preset(presetIndex);
+            chunk.writeLE!int(presetIndex);
 
-            chunk.writeLE!int(_current);
-
-            chunk.writeLE!int(cast(int)params.length);
-            foreach(param; params)
-                chunk.writeLE!float(param.getNormalized());
+            chunk.writeLE!int(cast(int)p._normalizedParams.length);
+            foreach(param; p._normalizedParams)
+                chunk.writeLE!float(param);
         }
     }
-
-    version(futureBinState) 
+    else
     {
         // Writes preset chunk with V2 method
         void writePresetChunkData(ref Vec!ubyte chunk, int presetIndex) nothrow @nogc
@@ -450,24 +487,9 @@ private:
             chunk.writeLE!int(cast(int)p._normalizedParams.length);
             foreach(param; p._normalizedParams)
                 chunk.writeLE!float(param);
-            
+
             chunk.writeLE!int(cast(int)p._stateData.length);
             chunk.pushBack(p._stateData[0..$]);
-        }
-    }
-    else
-    {
-        // Writes chunk with V1 method
-        void writePresetChunkData(ref Vec!ubyte chunk, int presetIndex) nothrow @nogc
-        {
-            writeChunkHeader(chunk, 0);
-
-            auto p = preset(presetIndex);
-            chunk.writeLE!int(presetIndex);
-
-            chunk.writeLE!int(cast(int)p._normalizedParams.length);
-            foreach(param; p._normalizedParams)
-                chunk.writeLE!float(param);
         }
     }
 

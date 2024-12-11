@@ -77,7 +77,9 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
     manifest ~= "@prefix ui: <http://lv2plug.in/ns/extensions/ui#>.\n";
     manifest ~= "@prefix pset: <http://lv2plug.in/ns/ext/presets#>.\n";
     manifest ~= "@prefix opts: <http://lv2plug.in/ns/ext/options#>.\n";
-    version(futureBinState)
+    version(legacyBinState)
+    {}
+    else
     {
         manifest ~= "@prefix owl: <http://www.w3.org/2002/07/owl#>.\n";
         manifest ~= "@prefix state: <http://lv2plug.in/ns/ext/state#>.\n";
@@ -107,7 +109,9 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
 
     String paramString;
 
-    version(futureBinState)
+    version(legacyBinState)
+    {}
+    else
     {
 
     manifest ~=
@@ -142,7 +146,9 @@ vendor:stateBinary
         manifest ~= strVendorName;
         manifest ~= " ] ;\n";
         manifest ~= "    lv2:requiredFeature opts:options ,\n";
-    /*    version(futureBinState)
+    /*    version(legacyBinState)
+        {}
+        else
         {
             manifest ~= "    state:loadDefaultState ,\n";
         } */
@@ -151,7 +157,9 @@ vendor:stateBinary
         // We do not provide such an interface
         //manifest ~= "    lv2:extensionData <" ~ LV2_OPTIONS__interface ~ "> ; \n";
 
-        version(futureBinState)
+        version(legacyBinState)
+        {}
+        else
         {
             manifest ~= "    lv2:extensionData <http://lv2plug.in/ns/ext/state#interface> ;\n";
         }
@@ -186,7 +194,9 @@ vendor:stateBinary
         manifest ~= strPresetName;
         manifest ~= " ;\n";
 
-        version(futureBinState)
+        version(legacyBinState)
+        {}
+        else
         {{
             // Encode state buffer to base64.
             const(ubyte)[] stateData = preset.getStateData();

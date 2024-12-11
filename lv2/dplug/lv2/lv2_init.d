@@ -254,7 +254,9 @@ extern(C) nothrow @nogc
         void* feature = null;
         debug(debugLV2Client) debugLogf(">extension_data: %s", uri);
 
-        version(futureBinState)
+        version(legacyBinState)
+        {}
+        else
         {
             static immutable LV2_State_Interface lv2StateInterface = LV2_State_Interface(&state_save, &state_restore);
             if (!strcmp(uri, LV2_STATE__interface)) {
@@ -353,7 +355,9 @@ extern(C) nothrow @nogc
         //debug(debugLV2Client) debugLog("<port_event");
     }
 
-    version(futureBinState)
+    version(legacyBinState)
+    {}
+    else
     {
 
         // Save plugin state (beyond the port values).
