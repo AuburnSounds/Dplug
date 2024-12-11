@@ -93,8 +93,6 @@ nothrow @nogc:
 
     /// Get tail size in seconds. Precise semantics TBD.
     double getTailSizeInSeconds();
-
-    deprecated("Use destroyPluginHost() instead") void close();
 }
 
 

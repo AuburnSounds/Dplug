@@ -833,7 +833,7 @@ nothrow:
         return _zOrder;
     }
 
-    // TODO: how to deprecate that? Wren will stumble upon every deprecated fields unfortunately.
+    // TODO: how to depreciate that? Wren will stumble upon every deprecated fields unfortunately.
     alias setZOrder = zOrder;
 
     final void zOrder(int zOrder)

@@ -53,7 +53,7 @@ alias ImageDest = ImageRef!RGBA;
 
 /// dplug:canvas used to have CSS color parsing, now it's in 
 /// `colors` package
-deprecated("Use parseCSSColor and package colors instead") 
+deprecated("Use parseCSSColor and package colors instead. This will be removed in Dplug v16") 
 bool parseHTMLColor(const(char)[] htmlColorString, 
                     out RGBA outColor, 
                     out string error) pure nothrow @nogc @safe

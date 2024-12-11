@@ -44,16 +44,10 @@ struct TTimeSigInfo
     int PPQ;
 }
 
-deprecated alias HINSTANCE = void*;
-deprecated alias HMENU = void*;
-deprecated alias DWORD = uint;
-deprecated alias HWND = void*;
 alias HANDLE = void*;
-deprecated enum MAX_PATH = 256;
 alias ULONG = uint;
 alias HRESULT = c_long;
-deprecated alias ULARGE_INTEGER = ulong;
-deprecated alias LARGE_INTEGER = long;
+
 
 // plugin flags
 enum int FPF_Generator         = 1;        // plugin is a generator (not effect)

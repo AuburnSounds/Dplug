@@ -163,31 +163,6 @@ void fillRect(bool CHECKED=true, V, COLOR)(auto ref V v, int x1, int y1, int x2,
         v.fillRect!CHECKED(x1+1, y1+1, x2-1, y2-1, b);
 }
 
-/// Unchecked! Make sure area is bounded.
-deprecated void uncheckedFloodFill(V, COLOR)(auto ref V v, int x, int y, COLOR c)
-    if (isDirectView!V && is(COLOR : ViewColor!V))
-{
-    v.floodFillPtr(&v[x, y], c, v[x, y]);
-}
-
-deprecated private void floodFillPtr(V, COLOR)(auto ref V v, COLOR* pp, COLOR c, COLOR f)
-    if (isDirectView!V && is(COLOR : ViewColor!V))
-{
-    COLOR* p0 = pp; while (*p0==f) p0--; p0++;
-    COLOR* p1 = pp; while (*p1==f) p1++; p1--;
-    auto stride = v.scanline(1).ptr-v.scanline(0).ptr;
-    for (auto p=p0; p<=p1; p++)
-        *p = c;
-    p0 -= stride; p1 -= stride;
-    for (auto p=p0; p<=p1; p++)
-        if (*p == f)
-            v.floodFillPtr(p, c, f);
-    p0 += stride*2; p1 += stride*2;
-    for (auto p=p0; p<=p1; p++)
-        if (*p == f)
-            v.floodFillPtr(p, c, f);
-}
-
 void fillCircle(V, COLOR)(auto ref V v, int x, int y, int r, COLOR c)
     if (isWritableView!V && is(COLOR : ViewColor!V))
 {

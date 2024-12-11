@@ -457,7 +457,7 @@ bool isPowerOfTwo(int i) pure @safe
 
     FUTURE: Why is that in dplug:core?
 */
-deprecated("Will be removed in Dplug v15") 
+deprecated("Will be removed in Dplug v16") 
 int iFloorLog2(int i) pure @safe
 {
     assert(i >= 1);
@@ -472,7 +472,7 @@ int iFloorLog2(int i) pure @safe
 
 /// Fletcher and Munson equal-loudness curve
 /// Reference: Xavier Serra thesis (1989).
-deprecated("equalLoudnessCurve will be removed in Dplug v15")
+deprecated("equalLoudnessCurve will be removed in Dplug v16")
 T equalLoudnessCurve(T)(T frequency) pure
 {
     T x = cast(T)0.05 + 4000 / frequency;
@@ -531,27 +531,27 @@ float convertNormalizedFrequencyToFrequency(float freqCyclesPerSample,
 }
 
 /// Quick and dirty sawtooth for testing purposes.
-deprecated("rawSawtooth will be removed in Dplug v15")
+deprecated("rawSawtooth will be removed in Dplug v16")
 T rawSawtooth(T)(T x)
 {
     return normalizePhase(x) / (cast(T)PI);
 }
 
 /// Quick and dirty triangle for testing purposes.
-deprecated("rawTriangle will be removed in Dplug v15")
+deprecated("rawTriangle will be removed in Dplug v16")
 T rawTriangle(T)(T x)
 {
     return 1 - normalizePhase(x) / cast(T)PI_2;
 }
 
 /// Quick and dirty square for testing purposes.
-deprecated("rawSquare will be removed in Dplug v15")
+deprecated("rawSquare will be removed in Dplug v16")
 T rawSquare(T)(T x)
 {
     return normalizePhase(x) > 0 ? 1 : -1;
 }
 
-deprecated("computeRMS will be removed in Dplug v15")
+deprecated("computeRMS will be removed in Dplug v16")
 T computeRMS(T)(T[] samples) pure
 {
     double sum = 0;

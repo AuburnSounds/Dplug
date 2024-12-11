@@ -909,7 +909,7 @@ int main(string[] args)
                         else
                         {
                             // Simply copy the file, single file .vst3
-                            // which is deprecated normally and on the way out
+                            // which is depreciated normally and on the way out
                             string appendBitnessVST3(string prettyName, string originalPath)
                             {
                                 if (arch == Arch.x86_64)
