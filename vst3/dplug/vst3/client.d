@@ -85,7 +85,9 @@ nothrow:
         for (int i = 0; i < _maxInputs; ++i)
             _inputScratchBuffers[i] = makeVec!float();
 
-        version(futureVST3MIDICC)
+        version(legacyVST3MIDICC)
+        {}
+        else
             initializeMIDICCValues();
     }
 
@@ -193,13 +195,13 @@ nothrow:
                 // Impact of that change unknown! Is it safe to pass from channelCount = 1 to 16?
                 // Should we even expose 16 MIDI channels for instruments that are not multi-part?
                 // FUTURE: more bus control, providing MIDI channel count in plugin.json
-                version(futureVST3MIDICC)
+                version(legacyVST3MIDICC)
                 {
-                    channelCount = NUM_MIDI_CHANNELS_INPUT;
+                    channelCount = 1;
                 }
                 else
                 {
-                    channelCount = 1;
+                    channelCount = NUM_MIDI_CHANNELS_INPUT;
                 }
                 setName("MIDI Input"w);
                 busType = kMain;
@@ -821,7 +823,9 @@ nothrow:
 
     void setParamValue(ParamID id, ParamValue value)
     {
-        version(futureVST3MIDICC)
+        version(legacyVST3MIDICC)
+        {}
+        else
         {
             int midiChan;
             int cc;
@@ -982,7 +986,9 @@ nothrow:
         // Add 2 because bypass and program change fake parameters
         int vst3ParamsCount = cast(int)(_client.params.length) + 2;
 
-        version(futureVST3MIDICC)
+        version(legacyVST3MIDICC)
+        {}
+        else
         {
             if (_client.receivesMIDI)
                 vst3ParamsCount += NUM_MIDICC_PARAMETERS;
@@ -1000,7 +1006,9 @@ nothrow:
             return kResultFalse;
 
         // Is it a fake MIDI CC parameter?
-        version(futureVST3MIDICC)
+        version(legacyVST3MIDICC)
+        {}
+        else
         {
             if (_client.receivesMIDI)
             {
@@ -1080,7 +1088,9 @@ nothrow:
     {
         debug(logVST3Client) debugLog(">getParamStringByValue".ptr);
 
-        version(futureVST3MIDICC)
+        version(legacyVST3MIDICC)
+        {}
+        else
         {
             int midiChan;
             int cc;            
@@ -1163,7 +1173,9 @@ nothrow:
             return len;
         }
 
-        version(futureVST3MIDICC)
+        version(legacyVST3MIDICC)
+        {}
+        else
         {
             int midiChan;
             int cc;
@@ -1275,10 +1287,12 @@ nothrow:
         debug(logVST3Client) debugLog(">getParamNormalized".ptr);
         debug(logVST3Client) scope(exit) debugLog("<getParamNormalized".ptr);
 
-        version(futureVST3MIDICC)
+        version(legacyVST3MIDICC)
+        {}
+        else
         {
             int midiChan;
-            int cc;            
+            int cc;
             if (isMIDIInputCCParameter(id, midiChan, cc))
             {
                 return midiCCValue(midiChan, cc);
@@ -1312,7 +1326,9 @@ nothrow:
         debug(logVST3Client) debugLog(">setParamNormalized".ptr);
         debug(logVST3Client) scope(exit) debugLog("<setParamNormalized".ptr);
 
-        version(futureVST3MIDICC)
+        version(legacyVST3MIDICC)
+        {}
+        else
         {
             int midiChan;
             int cc;
@@ -1407,7 +1423,11 @@ nothrow:
                                                                  CtrlNumber midiControllerNumber, 
                                                                  ref ParamID id)
     {
-        version(futureVST3MIDICC)
+        version(legacyVST3MIDICC)
+        {
+            return kResultFalse;
+        }
+        else
         {
             if (midiControllerNumber > 129)
                 return kResultFalse;
@@ -1418,10 +1438,6 @@ nothrow:
             id = PARAM_ID_MIDICC_START + midiControllerNumber + channel * NUM_MIDICC_PER_CHAN;
             assert(id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP);
             return kResultTrue;
-        }
-        else
-        {
-            return kResultFalse;
         }
     }
 
@@ -1622,7 +1638,9 @@ private:
     // VSTHost send parameters updates to inexisting parameters.
     bool _hostMaySendBadParameterIDs = false;
 
-    version(futureVST3MIDICC)
+    version(legacyVST3MIDICC)
+    {}
+    else
     {
         // Contains midichannel x 130 values.
         Vec!double _midiCCValues;
@@ -1715,7 +1733,11 @@ private:
     // Helper to get quickly a MIDI cc with its channel, from a ParamID
     bool isMIDIInputCCParameter(ParamID id, out int midiChan, out int ccIndex)
     {
-        version(futureVST3MIDICC)
+        version(legacyVST3MIDICC)
+        {
+            return false;
+        }
+        else
         {
             if (!_client.receivesMIDI)
                 return false;
@@ -1729,10 +1751,6 @@ private:
             assert(midiChan >= 0 && midiChan < NUM_MIDI_CHANNELS_INPUT);
             return true;
         }
-        else
-        {
-            return false;
-        }
     }
 }
 
@@ -1744,7 +1762,9 @@ pure:
 enum int PARAM_ID_BYPASS         = 998;
 enum int PARAM_ID_PROGRAM_CHANGE = 999;
 
-version(futureVST3MIDICC)
+version(legacyVST3MIDICC)
+{}
+else
 {
     // FUTURE: deprecate those, to make number of input MIDI channels tunable.
     enum int NUM_MIDI_CHANNELS_INPUT = 16;
