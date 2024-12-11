@@ -290,7 +290,9 @@ nothrow:
         // Stop an existing dragging operation.
         stopDragging();
 
-        version(futureMouseDrag)
+        version(legacyMouseDrag)
+        {}
+        else
         {
             setMouseOver(element);
             assert(this.mouseOver is element);
@@ -303,7 +305,9 @@ nothrow:
     {
         if (dragged !is null)
         {
-            version(futureMouseDrag)
+            version(legacyMouseDrag)
+            {}
+            else
             {
                 assert(this.mouseOver is dragged);
             }

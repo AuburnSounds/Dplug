@@ -417,7 +417,7 @@ nothrow:
     /// Called when mouse move over this Element.
     /// This function is meant to be overriden.
     ///
-    /// Note: If "legacyMouseDrag" version identifier is used, 
+    /// Note: If "legacyMouseDrag" version identifier is used,
     /// this will be called even during a drag, beware.
     void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
     {
@@ -427,10 +427,10 @@ nothrow:
     /// This function is meant to be overriden.
     /// Between `onBeginDrag` and `onStopDrag`, `isDragged` will return `true`.
     ///
-    /// Note: When a widget is dragged, and "futureMouseDrag" version identifier is used, 
+    /// Note: When a widget is dragged, and "legacyMouseDrag" version identifier is NOT used,
     /// then a dragged widget is always also isMouseOver.
     ///
-    /// Example: you could call `beginParamEdit` from there or from `onMouseClick`. You probably 
+    /// Example: you could call `beginParamEdit` from there or from `onMouseClick`. You probably
     /// have more context in `onMouseClick`.
     void onBeginDrag()
     {
@@ -449,7 +449,7 @@ nothrow:
     /// This function is meant to be overriden.
     /// Between `onBeginDrag` and `onStopDrag`, `isDragged` will return `true`.
     ///
-    /// Note: When a widget is dragged, and "futureMouseDrag" version identifier is used, 
+    /// Note: When a widget is dragged, and "legacyMouseDrag" version identifier is NOT used,
     /// then a dragged widget is always also isMouseOver.
     ///
     /// Example: if a mouse click started a modification of a plugin parameter, this will be a
@@ -570,14 +570,18 @@ nothrow:
     // to be called at top-level when the mouse is released
     final void mouseRelease(int x, int y, int button, MouseState mstate)
     {
-        version(futureMouseDrag)
+        version(legacyMouseDrag)
+        {}
+        else
         {
             bool wasDragging = (_context.dragged !is null);
         }
 
         _context.stopDragging();
 
-        version(futureMouseDrag)
+        version(legacyMouseDrag)
+        {}
+        else
         {
             // Enter widget below mouse if a dragged operation was stopped.
             if (wasDragging)
@@ -704,7 +708,9 @@ nothrow:
         // Can't be mouse over if not visible.
         bool canBeMouseOver = _visibilityStatus;
 
-        version(futureMouseDrag)
+        version(legacyMouseDrag)
+        {}
+        else
         {
             // If dragged, it already received `onMouseDrag`.
             // if something else is dragged, it can be mouse over.
@@ -720,15 +726,15 @@ nothrow:
                 foundMouseOver = true;
                 _context.setMouseOver(this);
 
-                version(futureMouseDrag)
+                version(legacyMouseDrag)
+                {}
+                else
                 {
                     onMouseMove(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
                 }
             }
 
-            version(futureMouseDrag)
-            {}
-            else
+            version(legacyMouseDrag)
             {
                 onMouseMove(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
             }
@@ -891,7 +897,9 @@ nothrow:
     /// Returns: `true` is this element is hovered by the mouse, and 
     final bool isMouseOver() pure const
     {
-        version(futureMouseDrag)
+        version(legacyMouseDrag)
+        {}
+        else
         {
             if (_context.mouseOver !is this)
             {
@@ -904,7 +912,9 @@ nothrow:
 
     final bool isDragged() pure const
     {
-        version(futureMouseDrag)
+        version(legacyMouseDrag)
+        {}
+        else
         {
             if (_context.dragged is this)
                 assert(isMouseOver());

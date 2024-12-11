@@ -348,9 +348,7 @@ nothrow:
             x -= outer._userArea.min.x;
             y -= outer._userArea.min.y;
             bool hitSomething = outer.mouseMove(x, y, dx, dy, mstate, false);
-            version(futureMouseDrag)
-            {}
-            else
+            version(legacyMouseDrag)
             {
                 if (!hitSomething)
                 {
@@ -425,14 +423,14 @@ nothrow:
         override void onMouseExitedWindow()
         {
             // Stop an eventual isMouseOver
-            version(futureMouseDrag)
+            version(legacyMouseDrag)
             {
-                if (outer._uiContext.dragged is null)
-                    outer._uiContext.setMouseOver(null);
+                outer._uiContext.setMouseOver(null);
             }
             else
             {
-                outer._uiContext.setMouseOver(null);
+                if (outer._uiContext.dragged is null)
+                    outer._uiContext.setMouseOver(null);
             }
         }
 
