@@ -368,7 +368,7 @@ nothrow:
 
     static if (is(T == struct) && hasElaborateDestructor!T)
     {
-        pragma(msg, "WARNING! struct with destructors were never meant to be supported in Vec!T. This will be removed in Dplug v15.");
+        static assert(false, "struct with destructors cannot go in `Vec!T`. You are welcome to use the `numem` package instead or do otherwise.");
     }
 
     public
