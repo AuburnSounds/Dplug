@@ -187,7 +187,6 @@ nothrow:
             case GraphicsBackend.autodetect: wbackend = WindowBackend.autodetect; break;
             case GraphicsBackend.win32: wbackend = WindowBackend.win32; break;
             case GraphicsBackend.cocoa: wbackend = WindowBackend.cocoa; break;
-            case GraphicsBackend.carbon: wbackend = WindowBackend.carbon; break;
             case GraphicsBackend.x11: wbackend = WindowBackend.x11; break;
         }
 

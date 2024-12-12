@@ -14,7 +14,6 @@ enum GraphicsBackend
 {
     autodetect,
     win32,
-    carbon,
     cocoa,
     x11
 }
@@ -25,7 +24,7 @@ interface IGraphics
 nothrow:
 @nogc:
     /// Create an UI, return a system-specific handle for the window/view
-    abstract void* openUI(void* parentInfo, 
+    abstract void* openUI(void* parentInfo,
                           void* controlInfo, // must be null, was a Carbon thing
                           IClient client,
                           GraphicsBackend backend);

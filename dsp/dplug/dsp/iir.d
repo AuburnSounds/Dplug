@@ -15,15 +15,6 @@ import std.complex: Complex,
 import dplug.core.math;
 import inteli.emmintrin;
 
-// DMD with a 32-bit target uses the FPU
-version(X86)
-{
-    version(DigitalMars)
-    {
-        version = killDenormals;
-    }
-}
-
 // TODO: function to make biquads from z-plane poles and zeroes
 
 public
@@ -77,14 +68,6 @@ public
 
                 double current = a0 * input + a1 * x1 + a2 * x2 - a3 * y1 - a4 * y2;
 
-                // kill denormals,and double values that would be converted
-                // to float denormals
-                version(killDenormals)
-                {
-                    current += 1e-18f;
-                    current -= 1e-18f;
-                }
-
                 _x0 = input;
                 _x1 = x1;
                 _y0 = current;
@@ -106,14 +89,6 @@ public
                     a4 = coeff[4];
 
                 double current = a0 * input + a1 * x1 + a2 * x2 - a3 * y1 - a4 * y2;
-
-                // kill denormals, and double values that would be converted
-                // to float denormals
-                version(killDenormals)
-                {
-                    current += 1e-18f;
-                    current -= 1e-18f;
-                }
 
                 _x0 = input;
                 _x1 = x1;
@@ -306,19 +281,6 @@ public
                     else
                         static assert(false, "Not implemented for this platform.");
 
-                    // Kill small signals that can cause denormals (no precision loss was measurable)
-                    version(killDenormals)
-                    {
-                        x0 += 1e-10;
-                        x0 -= 1e-10;
-                        x1 += 1e-10;
-                        x1 -= 1e-10;
-                        y0 += 1e-10;
-                        y0 -= 1e-10;
-                        y1 += 1e-10;
-                        y1 -= 1e-10;
-                    }
-
                     _x0 = x0;
                     _x1 = x1;
                     _y0 = y0;
@@ -340,14 +302,6 @@ public
                     for(int i = 0; i < frames; ++i)
                     {
                         double current = a0 * input[i] + a1 * x0 + a2 * x1 - a3 * y0 - a4 * y1;
-
-                        // kill denormals,and double values that would be converted
-                        // to float denormals
-                        version(killDenormals)
-                        {
-                            current += 1e-18f;
-                            current -= 1e-18f;
-                        }
 
                         x1 = x0;
                         x0 = input[i];
@@ -433,14 +387,6 @@ public
                 {
                     double current = a0 * input + a1 * x0 + a2 * x1 - a3 * y0 - a4 * y1;
 
-                    // kill denormals,and double values that would be converted
-                    // to float denormals
-                    version(killDenormals)
-                    {
-                        current += 1e-18f;
-                        current -= 1e-18f;
-                    }
-
                     x1 = x0;
                     x0 = input;
                     y1 = y0;
@@ -470,14 +416,6 @@ public
                 for(int i = 0; i < frames; ++i)
                 {
                     double current = a0 * input + a1 * x0 + a2 * x1 - a3 * y0 - a4 * y1;
-
-                    // kill denormals,and double values that would be converted
-                    // to float denormals
-                    version(killDenormals)
-                    {
-                        current += 1e-18f;
-                        current -= 1e-18f;
-                    }
 
                     x1 = x0;
                     x0 = input;

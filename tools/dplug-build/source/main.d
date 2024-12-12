@@ -272,9 +272,7 @@ int main(string[] args)
 
                 // You can select a single arch for fast building, or "all".
                 // all is also the default.
-                if (args[i] == "x86")
-                    archs = [ Arch.x86 ];
-                else if (args[i] == "x86_64")
+                if (args[i] == "x86_64")
                     archs = [ Arch.x86_64 ];
                 else if (args[i] == "arm32")
                     archs = [ Arch.arm32 ];
@@ -428,7 +426,6 @@ int main(string[] args)
             {
                 final switch(arch) with (Arch)
                 {
-                    case x86: return "32b-";
                     case x86_64: return "64b-";
                     case arm32: return "arm32-";
                     case arm64: return "arm64-";
@@ -502,27 +499,11 @@ int main(string[] args)
 
             foreach (size_t archCount, arch; architectures)
             {
-                // Only build x86_64 AAX on Windows
-                if (targetOS == OS.windows && configIsAAX(config) && (arch != Arch.x86_64) && !(legacyPT10 && arch == Arch.x86) )
+                // Only build x86_64 on Windows
+                if (targetOS == OS.windows && arch != Arch.x86_64)
                 {
-                    cwritefln("info: Skipping architecture %s for AAX on Windows\n", arch);
+                    cwritefln("info: Skipping architecture %s for Windows\n", arch);
                     continue;
-                }
-
-                // Only build x86_64 FLP on Windows
-                if (targetOS == OS.windows && configIsFLP(config) && (arch != Arch.x86_64))
-                {
-                    cwritefln("info: Skipping architecture %s for FLP on Windows\n", arch);
-                    continue;
-                }
-
-                // Does not try to build 32-bit under Mac
-                if (targetOS == OS.macOS)
-                {
-                    if (arch == Arch.x86)
-                    {
-                       throw new Exception("Can't make 32-bit x86 builds for macOS");
-                    }
                 }
 
                 // Does not try to build AU under Windows
@@ -807,12 +788,6 @@ int main(string[] args)
                             fileMove(plugin.dubOutputFileName, contentsDir ~ "x64/" ~ pluginFinalName);
                             signAAXBinaryWithPACE(contentsDir ~ "x64/" ~ pluginFinalName);
                         }
-                        else if (arch == Arch.x86)
-                        {
-                            mkdirRecurse(contentsDir ~ "Win32");
-                            fileMove(plugin.dubOutputFileName, contentsDir ~ "Win32/" ~ pluginFinalName);
-                            signAAXBinaryWithPACE(contentsDir ~ "Win32/" ~ pluginFinalName);
-                        }
                         else
                             throw new Exception("AAX doesn't support this arch");
 
@@ -848,9 +823,7 @@ int main(string[] args)
                         //     $PROGRAMFILES\Image-Line\FL Studio $FLVER\Plugins\Fruity\Generators
                         //
                         string pluginFinalName;
-                        if (arch == Arch.x86)
-                            pluginFinalName = plugin.pluginName ~ ".dll";
-                        else if (arch == Arch.x86_64)
+                        if (arch == Arch.x86_64)
                             pluginFinalName = plugin.pluginName ~ "_x64.dll";
                         else
                             throw new Exception("Unsupported architecture for FLP plug-in format");
@@ -1271,7 +1244,7 @@ int main(string[] args)
                         {
                             cwriteln("*** Validation with auval...");
 
-                            bool is32b = (arch == Arch.x86);
+                            bool is32b = false;
                             string exename = is32b ? "auval" : "auvaltool";
                             cmd = format("%s%s -v aufx %s %s -de -dw",
                                 exename,

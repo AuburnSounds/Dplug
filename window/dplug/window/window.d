@@ -259,7 +259,6 @@ enum WindowBackend
 {
     autodetect,
     win32,
-    carbon, // Legacy, now unsupported
     cocoa,
     x11
 }
@@ -274,8 +273,6 @@ static isWindowBackendSupported(WindowBackend backend) nothrow @nogc
         version(AArch64)
             return (backend == WindowBackend.cocoa);
         else version(X86_64)
-            return (backend == WindowBackend.cocoa);
-        else version(X86)
             return (backend == WindowBackend.cocoa);
         else
             static assert(false, "unsupported arch");
@@ -299,11 +296,10 @@ static isWindowBackendSupported(WindowBackend backend) nothrow @nogc
 ///
 ///   parentInfo = OS handle of the parent window.
 ///                For `WindowBackend.win32` it's a HWND.
-///                For `WindowBackend.carbon` it's a NSWindow.
 ///                For `WindowBackend.x11` it's _unused_.
 ///
-///   controlInfo = only used in Carbon Audio Units, an additional parenting information.
-///                 Can be `null` otherwise.
+///   controlInfo = was used in Carbon Audio Units, an additional parenting information.
+///                 Should be `null` otherwise.
 ///
 ///   listener = A `IWindowListener` which listens to events by this window. Can be `null` for the moment.
 ///              Must outlive the created window.

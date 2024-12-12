@@ -68,10 +68,6 @@ string toStringArchs(Arch[] archs)
     {
         final switch(arch) with (Arch)
         {
-            case x86:
-                if (i) r ~= " and ";
-                r ~= "x86";
-                break;
             case x86_64:
                 if (i) r ~= " and ";
                 r ~= "x86_64";
@@ -1475,7 +1471,6 @@ string makeRSRC_with_Rez(Plugin plugin, Arch arch, bool verbose)
     string archFlags;
     final switch(arch) with (Arch)
     {
-        case x86: archFlags = "-arch i386"; break;
         case x86_64: archFlags = "-arch x86_64"; break;
         case arm32: assert(false);
         case arm64: assert(false);

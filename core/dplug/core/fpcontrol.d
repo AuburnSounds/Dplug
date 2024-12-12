@@ -104,30 +104,3 @@ version(isX86)
     }
 }
 
-unittest
-{
-    // TEST FOR DENORMAL FLUSH TO ZERO
-
-    FPControl control;
-    control.initialize();
-   
-   // Doesn't work since constant folder may use "real" precision.
-   /*
-
-    // Trying to see if FTZ is working, 1e-37 is a very small normalized number
-    float denormal = 1e-37f * 0.1f;
-
-    version(DigitalMars)
-    {
-        version(X86)
-        {
-            // DMD x86 32-bit may use FPU operations, hence not suppressing denormals         
-        }
-        else
-            assert(denormal == 0);
-    }
-    else
-        assert(denormal == 0);
-
-    */
-}
