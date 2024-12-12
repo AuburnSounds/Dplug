@@ -350,7 +350,13 @@ unittest
 
 
 /// Returns: A newly created `Vec`.
-Vec!T makeVec(T)(size_t initialSize = 0, int alignment = 1) nothrow @nogc
+Vec!T makeVec(T)(size_t initialSize = 0) nothrow @nogc
+{
+    return Vec!T(initialSize);
+}
+
+deprecated("Vec!T must have alignment 1. This constructor will be removed in Dplug v16")
+Vec!T makeVec(T)(size_t initialSize = 0, int alignment) nothrow @nogc
 {
     return Vec!T(initialSize, alignment);
 }
@@ -374,7 +380,17 @@ nothrow:
     public
     {
         /// Creates an aligned buffer with given initial size.
-        this(size_t initialSize, int alignment) @safe
+        this(size_t initialSize) @safe
+        {
+            _size = 0;
+            _allocated = 0;
+            _data = null;
+            _alignment = 1;
+            resizeExactly(initialSize);
+        }
+
+        deprecated("Vec!T must have alignment 1. This constructor will be removed in Dplug v16")
+            this(size_t initialSize, int alignment) @safe
         {
             assert(alignment != 0);
             _size = 0;
