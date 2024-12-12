@@ -511,9 +511,28 @@ package:
             &&  (heightLogicalPixels == _currentLogicalHeight) )
             return true;
 
+        // Welcome to a very complicated function!
+        // Most cases of resize are:
+        // 1. ask for resize,
+        // 2. then optionally resize window manually
+        //
+        // However rare cases necessitate to do the reverse.
+        bool hostWantsWindowResizeBeforeRequest = false;
+        version(OSX) {
+            // See Issue #888, this was found as workaround, similar to their .flp format.
+            if (_client.getPluginFormat() == PluginFormat.vst2
+             && _client.getDAW()          == DAW.FLStudio)
+                hostWantsWindowResizeBeforeRequest = true;
+        }
+
         // Note: the client might ask back the plugin size inside this call!
         // Hence why we have the concept of "desired" size.
-        bool parentWasResized = _client.requestResize(widthLogicalPixels, heightLogicalPixels);
+        bool parentWasResized;
+        if (hostWantsWindowResizeBeforeRequest)
+            parentWasResized = true; // will ask later
+        else
+            parentWasResized = _client.requestResize(widthLogicalPixels, heightLogicalPixels);
+
 
         // We do not "desire" something else than the current situation, at this point this is in our hands.
         _desiredLogicalWidth  = _currentLogicalWidth;
@@ -544,6 +563,11 @@ package:
         {
             success = _client.notifyResized;
         }
+
+        // In case the host wanted to be asked afterwards.
+        if (hostWantsWindowResizeBeforeRequest)
+           return _client.requestResize(widthLogicalPixels, heightLogicalPixels);
+
         return success;
     }
 
