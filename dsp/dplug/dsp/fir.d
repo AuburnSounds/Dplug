@@ -21,7 +21,8 @@ import dplug.dsp.window;
 
 // Basic sinc impulse functions
 
-/// Generates a sinc lowpass impulse, centered on floor(output.length / 2).
+// Generates a sinc lowpass impulse, centered on floor(output.length / 2).
+deprecated("This will be removed in Dplug v16") 
 void generateLowpassImpulse(T)(T[] output, double cutoff, double samplerate) nothrow @nogc
 {
     checkFilterParams(output.length, cutoff, samplerate);
@@ -39,8 +40,9 @@ void generateLowpassImpulse(T)(T[] output, double cutoff, double samplerate) not
     }
 }
 
-/// Generates a sinc highpass impulse, centered on floor(output.length / 2).
-/// When convolved with, preserve amplitude of the pass-band.
+// Generates a sinc highpass impulse, centered on floor(output.length / 2).
+// When convolved with, preserve amplitude of the pass-band.
+deprecated("This will be removed in Dplug v16") 
 void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate) nothrow @nogc
 {
     checkFilterParams(output.length, cutoff, samplerate);
@@ -58,7 +60,8 @@ void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate) no
     }
 }
 
-/// Generates a hilbert transformer impulse, centered on floor(output.length / 2).
+// Generates a hilbert transformer impulse, centered on floor(output.length / 2).
+deprecated("This will be removed in Dplug v16") 
 void generateHilbertTransformer(T)(T[] outImpulse, WindowDesc windowDesc, double samplerate) nothrow @nogc
 {
     static bool isOdd(int i) pure nothrow @nogc @safe
@@ -103,25 +106,8 @@ private static void checkFilterParams(size_t length, double cutoff, double sampl
     assert(cutoff * 2 < sampleRate, "2x the cutoff exceed sampling rate, Nyquist disapproving");
 }
 
-unittest
-{
-    double[256] lp_impulse;
-    double[256] hp_impulse;
-    generateLowpassImpulse(lp_impulse[], 40.0, 44100.0);
-    generateHighpassImpulse(hp_impulse[], 40.0, 44100.0);
-}
-
-unittest
-{
-    double[256] lp_impulse;
-    generateHilbertTransformer(lp_impulse[0..$-1],
-        WindowDesc(WindowType.blackmannHarris,
-                   WindowAlignment.right), 44100.0);
-}
-
-
-// Composed of a delay-line, and an inpulse.
-struct FIR(T)
+// Composed of a delay-line, and an inpulse. It's a bad convolver.
+deprecated("This will be removed in Dplug v16") struct FIR(T)
 {
     /// Initializes the FIR filter. It's up to you to fill the impulse with something worthwhile.
     void initialize(int sizeOfImpulse) nothrow @nogc
@@ -180,12 +166,4 @@ private:
 
     Delayline!T _delayline;
     T[] _windowBuffer;
-}
-
-unittest
-{
-    FIR!double fir;
-    fir.initialize(32);
-    generateLowpassImpulse(fir.impulse(), 40.0, 44100.0);
-    fir.applyWindow(WindowDesc(WindowType.hann, WindowAlignment.right));
 }

@@ -1,7 +1,7 @@
 /**
 Defines `Vec`, `reallocBuffer` and memory functions.
 
-Copyright: Guillaume Piolat 2015-2016.
+Copyright: Guillaume Piolat 2015-2024.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 Authors:   Guillaume Piolat
 */
@@ -1070,7 +1070,7 @@ unittest
     assert(ma._allocation == null);
 }
 
-// Should be valid to allocate nothing with a MergedAllocation.
+// test stomping detection
 unittest
 {
     MergedAllocation ma;
