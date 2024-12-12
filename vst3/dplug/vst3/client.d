@@ -1952,14 +1952,34 @@ nothrow:
         scope(exit) _graphicsMutex.unlock();
 
         int widthLogicalPixels, heightLogicalPixels;
-        if (_vst3Client._client.getDesiredGUISize(&widthLogicalPixels, &heightLogicalPixels))
+
+        // Different VST3 daws need to return different size :)
+        // Cubase like the "desired size" so that it can call during a resize.
+        // FLStudio and probably most hosts wants instead the former size.
+        // See Issue #888.
+        if (_daw == DAW.Cubase)
         {
-            size.left = 0;
-            size.top = 0;
-            size.right = widthLogicalPixels;
-            size.bottom = heightLogicalPixels;
-            return kResultTrue;
+            if (_vst3Client._client.getDesiredGUISize(&widthLogicalPixels, &heightLogicalPixels))
+            {
+                size.left = 0;
+                size.top = 0;
+                size.right = widthLogicalPixels;
+                size.bottom = heightLogicalPixels;
+                return kResultTrue;
+            }
         }
+        else
+        {
+            if (_vst3Client._client.getGUISize(&widthLogicalPixels, &heightLogicalPixels))
+            {
+                size.left = 0;
+                size.top = 0;
+                size.right = widthLogicalPixels;
+                size.bottom = heightLogicalPixels;
+                return kResultTrue;
+            }
+        }
+
         return kResultFalse;
     }
 

@@ -442,6 +442,7 @@ nothrow:
     }
 
     /// Only allowed for client implementation.
+    /// This is helpful for some hosts, like OBS and Cubase, but not others like FL Studio.
     final bool getDesiredGUISize(int* widthLogicalPixels, int* heightLogicalPixels) nothrow @nogc
     {
         createGraphicsLazily();
