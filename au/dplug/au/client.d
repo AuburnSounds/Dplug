@@ -2232,6 +2232,25 @@ private:
                 if (_client.sendsMIDI)
                     _client.clearAccumulatedOutputMidiMessages();
 
+                // Welcome to Issue #887 workaround.
+                // Here is our last chance to avoid have same pointer for input and output (Studio One 7).
+                // If we detect the same buffer here, copy to scratch input buffer and point there.
+                {
+                    int minIO = newUsedInputs;
+                    if (minIO > newUsedOutputs) minIO = newUsedOutputs;
+                    for (int b = 0; b < minIO; ++b)
+                    {
+                        if (_inputPointersNoGap[b] == _outputPointersNoGap[b])
+                        {
+                            // Assuming here that the scratch buffer couldn't be in input AND output, though
+                            // I'm not 100% certain to be fair.
+                            float* buffer = _inputScratchBuffer[b].ptr;
+                            buffer[0..nFrames] =  _inputPointersNoGap[b][0..nFrames]; // copy
+                            _inputPointersNoGap[b] = buffer;
+                        }
+                    }
+                }
+
                 _client.processAudioFromHost(_inputPointersNoGap[0..newUsedInputs],
                                              _outputPointersNoGap[0..newUsedOutputs],
                                              nFrames,
