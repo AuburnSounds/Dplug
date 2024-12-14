@@ -2232,7 +2232,7 @@ private:
                 if (_client.sendsMIDI)
                     _client.clearAccumulatedOutputMidiMessages();
 
-                // Welcome to Issue #887 workaround.
+                // Welcome to Issue #890 workaround.
                 // Here is our last chance to avoid have same pointer for input and output (Studio One 7).
                 // If we detect the same buffer here, copy to scratch input buffer and point there.
                 {
