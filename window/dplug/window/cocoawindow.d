@@ -445,11 +445,16 @@ private:
             //    rect.origin.x+rect.size.width,
             //    rect.origin.y+rect.size.height);
 
-            // Would be very interesting to find a crash there! Please contact Dplug admins if you do so.
-            assert(_wfb.w == _width);
-            assert(_wfb.h == _height);
-            assert(_wfb.w >= cast(int)(rect.origin.x+rect.size.width));
-            assert(_wfb.h >= cast(int)(rect.origin.y+rect.size.height));
+            // Some combinations, like Studio One 7 + CLAP, send an
+            // invalid rect first (say: -1,0 580x500 instead of
+            // 0,0 500x500).
+            // However subsequent code can deal with it. I'm warey of the
+            // optimizer removing the workaround for the condition we
+            // asserted on!
+            //assert(_wfb.w == _width);
+            //assert(_wfb.h == _height);
+            //assert(_wfb.w >= cast(int)(rect.origin.x+rect.size.width));
+            //assert(_wfb.h >= cast(int)(rect.origin.y+rect.size.height));
 
             static if (fullDraw)
             {
@@ -471,25 +476,24 @@ private:
                 // "on return, you may safely release [the provider]"
                 CGDataProviderRelease(provider);
                 scope(exit) CGImageRelease(image);
-
                 CGRect fullRect = CGMakeRect(0, 0, _width, _height);
                 CGContextDrawImage(cgContext, fullRect, image);
             }
             else
             {
-                /// rect can be outsides frame and needs clipping.
+                /// rect can be outside frame and needs clipping.
                 ///              
                 /// "Some patterns that have historically worked will require adjustment:
-                ///  Filling the dirty rect of a view inside of -drawRect. A fairly common 
+                ///  Filling the dirty rect of a view inside of -drawRect. A fairly common
                 ///  pattern is to simply rect fill the dirty rect passed into an override
                 ///  of NSView.draw(). The dirty rect can now extend outside of your view's
-                ///  bounds. This pattern can be adjusted by filling the bounds instead of 
+                ///  bounds. This pattern can be adjusted by filling the bounds instead of
                 ///  the dirty rect, or by setting clipsToBounds = true.
-                ///  Confusing a view’s bounds and its dirty rect. The dirty rect passed to .drawRect() 
-                ///  should be used to determine what to draw, not where to draw it. Use NSView.bounds 
+                ///  Confusing a view’s bounds and its dirty rect. The dirty rect passed to .drawRect()
+                ///  should be used to determine what to draw, not where to draw it. Use NSView.bounds
                 ///  when determining the layout of what your view draws." (10905750)
                 ///
-                /// Thus is the story of Issue #835.
+                /// Thus is the story of Issue #835 (and afterwards, Issue #885)
 
                 int rectOrigX = cast(int)rect.origin.x;
                 int rectOrigY = cast(int)rect.origin.y;
@@ -500,42 +504,46 @@ private:
                 box2i bounds = box2i(0, 0, _width, _height);
 
                 // clip dirtyRect to bounds
+                // it CAN be made empty with energetic resizing, the
+                // base offset might already be outside a window that
+                // is shrinking
                 box2i clipped = dirtyRect.intersection(bounds);
+                if (!clipped.empty)
+                {
+                    int clippedOrigX = clipped.min.x;
+                    int clippedOrigY = clipped.min.y;
+                    int clippedWidth  = clipped.width;
+                    int clippedHeight = clipped.height;
 
+                    int ysource = -clippedOrigY + _height - clippedHeight;
 
-                int clippedOrigX = clipped.min.x;
-                int clippedOrigY = clipped.min.y;
-                int clippedWidth  = clipped.width;
-                int clippedHeight = clipped.height;
+                    assert(ysource >= 0);
+                    assert(ysource < _height);
 
-                int ysource = -clippedOrigY + _height - clippedHeight;
+                    const (RGBA)* firstPixel = &(_wfb.scanline(ysource)[clippedOrigX]);
+                    size_t sizeNeeded = _wfb.pitch * clippedHeight;
+                    size_t bytesPerRow = _wfb.pitch;
 
-                assert(ysource >= 0);
-                assert(ysource < _height);
+                    CGDataProviderRef provider = CGDataProviderCreateWithData(null, firstPixel, sizeNeeded, null);
 
-                const (RGBA)* firstPixel = &(_wfb.scanline(ysource)[clippedOrigX]);
-                size_t sizeNeeded = _wfb.pitch * clippedHeight;
-                size_t bytesPerRow = _wfb.pitch;
+                    CGImageRef image = CGImageCreate(clippedWidth,
+                                                     clippedHeight,
+                                                     8,
+                                                     32,
+                                                     bytesPerRow,
+                                                     _cgColorSpaceRef,
+                                                     kCGImageByteOrderDefault | kCGImageAlphaNoneSkipFirst,
+                                                     provider,
+                                                     null,
+                                                     true,
+                                                     kCGRenderingIntentDefault);
+                    // "on return, you may safely release [the provider]"
+                    CGDataProviderRelease(provider);
+                    scope(exit) CGImageRelease(image);
 
-                CGDataProviderRef provider = CGDataProviderCreateWithData(null, firstPixel, sizeNeeded, null);
-
-                CGImageRef image = CGImageCreate(clippedWidth,
-                                                 clippedHeight,
-                                                 8,
-                                                 32,
-                                                 bytesPerRow,
-                                                 _cgColorSpaceRef,
-                                                 kCGImageByteOrderDefault | kCGImageAlphaNoneSkipFirst,
-                                                 provider,
-                                                 null,
-                                                 true,
-                                                 kCGRenderingIntentDefault);
-                // "on return, you may safely release [the provider]"
-                CGDataProviderRelease(provider);
-                scope(exit) CGImageRelease(image);
-
-                CGRect clippedDirtyRect = CGMakeRect(clippedOrigX, clippedOrigY, clippedWidth, clippedHeight);
-                CGContextDrawImage(cgContext, clippedDirtyRect, image);
+                    CGRect clippedDirtyRect = CGMakeRect(clippedOrigX, clippedOrigY, clippedWidth, clippedHeight);
+                    CGContextDrawImage(cgContext, clippedDirtyRect, image);
+                }
             }
         }
         else
