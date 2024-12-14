@@ -1957,7 +1957,7 @@ nothrow:
         // Cubase like the "desired size" so that it can call during a resize.
         // FLStudio and probably most hosts wants instead the former size.
         // See Issue #888.
-        if (_daw == DAW.Cubase)
+        if (_vst3Client._daw == DAW.Cubase)
         {
             if (_vst3Client._client.getDesiredGUISize(&widthLogicalPixels, &heightLogicalPixels))
             {
