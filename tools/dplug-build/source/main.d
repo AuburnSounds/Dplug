@@ -1561,8 +1561,13 @@ void buildPlugin(OS targetOS,
         // force reggae and ninja build
         if (force)
         {
-            rmdirRecurse(rootDir ~ "/.reggae");
-            std.file.remove(rootDir ~ "/.ninja_log");
+            try
+            {
+                rmdirRecurse(rootDir ~ "/.reggae");
+                std.file.remove(rootDir ~ "/.ninja_log");
+            }
+            catch(Exception e)
+            {}
         }
 
         // Note: reggae doesn't seem to have a --root argument
