@@ -54,6 +54,19 @@
             ]
         },
         {
+            "name": "LV2",
+            "versions": ["LV2"],
+            "targetType": "dynamicLibrary",
+            "lflags-osx-ldc": [
+                "-exported_symbols_list",
+                "$PACKAGE_DIR/source/module-lv2.lst",
+                "-dead_strip"
+            ],
+            "lflags-linux-ldc": [
+                "--version-script=$PACKAGE_DIR/source/module-lv2.ver"
+            ]
+        },
+        {
             "name": "AU",
             "versions": [ "AU" ],
             "lflags-osx-ldc": [
