@@ -53,7 +53,7 @@ nothrow:
         _depthOpacityBuf.destroyFree();
         _materialOpacityBuf.destroyFree();
     }
-    
+
     override void setDirty(box2i rect, UILayer layer = UILayer.guessFromFlags) nothrow @nogc 
     {
         super.setDirty(rect, layer);
@@ -169,7 +169,18 @@ nothrow:
     ~this()
     {
         _rawBuf.destroyFree();
-        _opacityBuf.destroyFree();        
+        _opacityBuf.destroyFree();
+    }
+
+    /// Does not initialize buffers.
+    /// `onDrawBufferedRaw` will be returned the same content, 
+    /// unless the buffer size has changed.
+    /// This is needed for widgets might want their own Raw 
+    /// and Opacity buffer to stay unchanged, if their size
+    /// didn't change. This is typically an optimization.
+    void doNotClearBuffers()
+    {
+        _preClearBuffers = false;
     }
 
     override void setDirty(box2i rect, UILayer layer = UILayer.guessFromFlags)
@@ -192,6 +203,8 @@ nothrow:
         int newWidth = _position.width;
         int newHeight = _position.height;
         bool sizeChanged = (currentWidth != newWidth) || (currentHeight != newHeight);
+
+        bool preClear = _preClearBuffers;
         if (sizeChanged)
         {
             // If the widget size changed, we must redraw it even if it was not dirtied
@@ -200,20 +213,25 @@ nothrow:
             // Change size of buffers
             _opacityBuf.size(newWidth, newHeight);
             _rawBuf.size(newWidth, newHeight);
+
+            preClear = true;
         }
 
         if (_mustBeRedrawn)
         {
-            // opacity buffer originally filled with zeroes
-            _opacityBuf.fillAll(opacityFullyTransparent);
+            if (preClear)
+            {
+                // opacity buffer originally filled with zeroes
+                _opacityBuf.fillAll(opacityFullyTransparent);
 
-            // RGBA buffer originally filled with black
-            _rawBuf.fillAll(RGBA(0, 0, 0, 255));
+                // RGBA buffer originally filled with black
+                _rawBuf.fillAll(RGBA(0, 0, 0, 255));
+            }
 
             onDrawBufferedRaw(_rawBuf.toRef(), _opacityBuf.toRef());
 
-            // For debug purpose            
-            //_opacityBuf.fill(opacityFullyOpaque);
+            // For debug purpose
+            //_opacityBuf.fillAll(opacityFullyOpaque);
 
             _mustBeRedrawn = false;
         }
@@ -234,4 +252,10 @@ private:
     OwnedImage!RGBA _rawBuf;
     OwnedImage!L8 _opacityBuf;
     bool _mustBeRedrawn;
+
+    // Buffers are pre-cleared at every draw.
+    // This allows to draw only non-transparent part, 
+    // but can also be a CPU cost.
+    // Default = true.
+    bool _preClearBuffers = true;
 }
