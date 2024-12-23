@@ -1786,19 +1786,22 @@ private:
                 AUPreset* auPreset = cast(AUPreset*)pData;
                 int presetIndex = auPreset.presetNumber;
 
-
                 PresetBank bank = _client.presetBank();
                 if (bank.isValidPresetIndex(presetIndex))
                 {
                     bank.loadPresetFromHost(presetIndex);
+                    return noErr;
                 }
-                else if (auPreset.presetName != null)
+                else
                 {
-                    string presetName = mallocStringFromCFString(auPreset.presetName);
-                    scope(exit) presetName.freeSlice();
-                    bank.addNewDefaultPresetFromHost(presetName);
+                    // Do not create a preset _inside_ our presetbank.
+                    // Probably very few hosts rely on that, and DigitalPerformer
+                    // doesn't need it, it created issue #606 when previously creating
+                    // a preset at the end of the bank and then loading it.
+                    // Will we need to return preset -1 on GET?
+                    // Anyway, this was tested on DP11, Logic, REAPER.
+                    return noErr;
                 }
-                return noErr;
             }
 
             case kAudioUnitProperty_OfflineRender:
@@ -1955,7 +1958,7 @@ private:
         putNumberInDict(pDict, kAUPresetManufacturerKey, &cManufacturer, kCFNumberSInt32Type);
         auto presetBank = _client.presetBank();
         putStrInDict(pDict, kAUPresetNameKey, presetBank.currentPreset().name);
-        ubyte[] state = presetBank.getStateChunkFromCurrentState();
+        ubyte[] state = presetBank.getStateChunkFromCurrentState(); // LEAK???
         putDataInDict(pDict, kAUPresetDataKey, state);
         *ppPropList = pDict;
         return noErr;
