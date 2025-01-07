@@ -119,6 +119,14 @@ nothrow @nogc:
     /// Get the first `UIElement` with the given ID, or `null`. This just checks for exact id matches, without anything fancy.
     /// If you use `dplug:wren-support`, this is called by the `$` operator or the `UI.getElementById`.
     UIElement getElementById(const(char)* id);
+
+    /// If one `UIElement` was focused, loose that focus.
+    /// Allows to loose focus from a widget callback.
+    /// To be effective from a mouse click, you also need 
+    /// to return `Click.handledNoFocus`, since 
+    /// `Click.handled` and `Click.startDrag` would immediately
+    /// refocus that widget.
+    void looseFocus();
 }
 
 // Official dplug:gui optional extension.
@@ -364,7 +372,12 @@ nothrow:
     final ref Vec!UIElement sortingScratchBuffer()
     {
         return _sortingscratchBuffer;
-    }    
+    }
+
+    final override void looseFocus()
+    {
+        setFocused(null);
+    }
 
 private:
     GUIGraphics _owner;

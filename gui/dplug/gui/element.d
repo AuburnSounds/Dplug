@@ -85,9 +85,20 @@ enum UILayer
 /// Result of `onMouseClick`, was the mouse click handled?
 enum Click
 {
-    handled,   /// click handled, no drag.            
-    startDrag, /// click handled AND it start new drag. (previously: true)
-    unhandled  /// click not handeld, pass it around.   (previously: false)
+    /// Click was handled, no drag.
+    /// Gain keyboard focus (`isFocused`).
+    handled,
+
+    /// Click was handled, no darg.
+    /// Does not gain keyboard focus (rare)
+    handledNoFocus,
+
+    /// click handled AND it start new drag. (previously: true)
+    /// Gain keyboard focus (`isFocused`).
+    startDrag,
+
+    /// click not handeld, pass it around.   (previously: false)
+    unhandled
 }
 
 /// The maximum length for an UIElement ID.
@@ -547,6 +558,9 @@ nothrow:
                     _context.setFocused(this);
                     return true;
 
+                case Click.handledNoFocus:
+                    return true;
+
                 case Click.startDrag:
                     _context.beginDragging(this);
                     goto case Click.handled;
@@ -871,7 +885,7 @@ nothrow:
     {
         /// BUG: it is problematic to allow this from the audio thread,
         /// because the access to _position isn't protected and it could 
-        /// create a race in case of concurrent reflow(). Puhsed rectangles
+        /// create a race in case of concurrent reflow(). Pushed rectangles
         /// might be out of range, this is workarounded in GUIGraphics currently
         /// for other reasons.
         box2i translatedRect = rect.translate(_position.min);
