@@ -31,7 +31,12 @@
         "dplug:wren-support": { "path": "../.." }
     },
 
-    "versions": ["futureMouseDrag", "futureBinState", "futurePBREmissive"],
+    "versions": [
+        "futureMouseDrag",
+        "futureBinState",
+        "futurePBREmissive",
+        "Dplug_RightClickMoveWidgets"
+    ],
 
     "configurations": [
         {
