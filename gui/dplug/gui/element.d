@@ -257,13 +257,89 @@ enum UIELEMENT_POINTERID_WREN_VM_GENERATION  = 1; ///ditto
 */
 class UIElement
 {
-    // List of publicAPIs in `UIElement`
-    // 1. Creation/destruction
-    // 2. Position
-    // 3. Children management
-    // 4. Visibility
-    // 5. Z-order
-    // 6. Identifiers
+    // Summary of user APIs in `UIElement`:
+    //
+    // 1. Creation/destruction API
+    //      - this
+    //      - ~this
+    //
+    // 2. Widget positioning API
+    //      - position
+    //
+    // 3. Children API
+    //      - context
+    //      - parent
+    //      - topLevelParent
+    //      - child
+    //      - addChild
+    //      - removeChild
+    //
+    // 4. Invalidation API
+    //      - setDirtyWhole
+    //      - setDirty
+    //
+    // 5. Widget visibility API
+    //      - isVisible
+    //      - visibility
+    //
+    // 6. Widget Z-order API
+    //      - zOrder
+    //
+    // 7. Widget identifiers API
+    //      - id
+    //      - hasId
+    //      - getElementById
+    //
+    // 8. Layout callback
+    //      - reflow
+    //
+    // 9. Status API
+    //      - isMouseOver
+    //      - isDragged
+    //      - isFocused
+    //      - drawsToPBR
+    //      - drawsToRaw
+    //      - isAnimated
+    //      - isDrawAloneRaw
+    //      - isDrawAlonePBR
+    //
+    // 10. Mouse Cursor API
+    //      - cursorWhenDragged
+    //      - setCursorWhenDragged
+    //      - cursorWhenMouseOver
+    //      - setCursorWhenMouseOver
+    //
+    // 11. User Pointers API
+    //      - getUserPointer
+    //      - setUserPointer
+    //
+    // 12. Contains callback
+    //      - contains
+    //
+    // 13. Mouse Event callbacks
+    //      - onMouseEnter
+    //      - onMouseExit
+    //      - onMouseClick
+    //      - onMouseWheel
+    //      - onMouseMove
+    //
+    // 14. Drag Events callbacks
+    //      - onBeginDrag
+    //      - onStopDrag
+    //      - onMouseDrag
+    //
+    // 15. Keyboard Events callbacks
+    //      - onFocusEnter
+    //      - onFocusExit
+    //      - onKeyDown
+    //      - onKeyUp
+    //
+    // 16. Drawing callbacks.
+    //      - onDrawRaw
+    //      - onDrawPBR
+    //
+    // 17. Animation callback
+    //      - onAnimate
 
 public:
 nothrow:
@@ -341,9 +417,12 @@ nothrow:
            - call `.reflow` to position children.
 
         Warning:
-             All widgets MUST support:
+             Most widget won't crash with:
              - empty position
              - position partially or 100% outside the window
+
+        However, position outside the window will likely
+        lead to bad rendering. (See: onDrawRaw TODO)
     */
     final void position(box2i p)
     {
@@ -469,7 +548,7 @@ nothrow:
 
 
     //
-    // Invalidation API.
+    // 4. Invalidation API.
     // Explanation: provokes all widget redraws.
     //
 
@@ -514,7 +593,8 @@ nothrow:
                    `.setDirty()/.setDirtyWhole()` in an
                    `.onAnimate()` callback.
     */
-    void setDirty(box2i rect, UILayer layer = UILayer.guessFromFlags)
+    void setDirty(box2i   rect,
+                  UILayer layer = UILayer.guessFromFlags)
     {
         // BUG: it is actually problematic to allow this
         // from the audio thread, because the access to
@@ -531,9 +611,10 @@ nothrow:
 
 
     //
-    // 4. Widget visibility API
+    // 5. Widget visibility API
     // Explanation: an invisible widget is not displayed
     //              nor considered for most events.
+    // Widgets start their life being visible.
     //
 
     /**
@@ -588,7 +669,7 @@ nothrow:
 
 
     //
-    // 5. Widget Z-order API
+    // 6. Widget Z-order API
     //
 
 
@@ -630,7 +711,7 @@ nothrow:
 
 
     //
-    // 6. Widget identifiers
+    // 7. Widget identifiers API
     //
 
     /**
@@ -719,7 +800,7 @@ nothrow:
     }
 
     //
-    // Layout and resize API.
+    // 8. Layout callback.
     //
 
     /**
@@ -761,7 +842,7 @@ nothrow:
 
 
     //
-    // Status API.
+    // 9. Status API.
     // Typically used to change the display of a widget.
     //
 
@@ -858,7 +939,7 @@ nothrow:
 
 
     //
-    // Mouse Cursor API
+    // 10. Mouse Cursor API
     // FUTURE: need redo/clarify this API.
     //
 
@@ -888,7 +969,7 @@ nothrow:
 
 
     //
-    // User Pointers API
+    // 11. User Pointers API
     //
 
     /**
@@ -906,7 +987,7 @@ nothrow:
     }
 
     //
-    // Contains callback.
+    // 12. Contains callback.
     //
 
     /**
@@ -944,7 +1025,7 @@ nothrow:
 
 
     //
-    // Mouse Events callbacks.
+    // 13. Mouse Events callbacks.
     // All of the following function can be (optionally)
     // overridden.
     //
@@ -1029,14 +1110,16 @@ nothrow:
             used, this will be called even during a drag.
             Else this cannot happen in a drag.
     */
-    void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
+    void onMouseMove(int x, int y,
+                     int dx, int dy,
+                     MouseState mstate)
     {
         // By default: do nothing
     }
 
 
     //
-    // Drag Events callbacks.
+    // 14. Drag Events callbacks.
     // All of the following function can be (optionally)
     // overridden.
     //
@@ -1075,7 +1158,6 @@ nothrow:
         // Often the place to do `.endParamEdit`.
     }
 
-
     /**
         Called when the mouse moves while dragging this
         widget.
@@ -1098,7 +1180,7 @@ nothrow:
 
 
     //
-    // Keyboard Events Callback
+    // 15. Keyboard Events Callback
     //
 
     /**
@@ -1147,59 +1229,106 @@ nothrow:
 protected:
 
     //
-    // Drawing callbacks.
+    // 16. Drawing callbacks.
     //
 
-    /// Raw layer draw method. This gives you 1 surface cropped by  _position for drawing.
-    /// Note that you are not forced to draw to the surfaces at all.
-    ///
-    /// `UIElement` are drawn by increasing z-order, or lexical order if lack thereof.
-    /// Those elements who have non-overlapping `_position` are drawn in parallel.
-    /// Hence you CAN'T draw outside `_position` and receive cropped surfaces.
-    ///
-    /// IMPORTANT: you MUST NOT draw outside `dirtyRects`. This allows more fine-grained updates.
-    /// A `UIElement` that doesn't respect dirtyRects will have PAINFUL display problems.
+    /**
+        Raw layer draw method.
+        This function is meant to be overridden.
+
+        `UIElement` are drawn on the Raw layer by increasing
+        z-order, or lexical order if lack thereof.
+
+        The widgets who have non-overlapping positions are
+        drawn in parallel if their flags allow it.
+
+        One MUST NOT draw outsides the given `dirtyRects`.
+        This allows fast and fine-grained updates.
+        A `UIElement` that doesn't respect dirtyRects WILL
+        have bad rendering with surrounding updates.
+
+        Params:
+            rawMap     Raw RGBA pixels (input and output),
+                       cropped to widget position.
+                       Blending allowed.
+            dirtyRects Where to draw in this rawMap.
+
+        TODO: Not sure if dirtyRects are widget-space or
+          cropped-space.
+    */
     void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
-        // empty by default, meaning this UIElement does not draw on the Raw layer
+        // By default: invisible
     }
 
-    /// PBR layer draw method. This gives you 3 surfaces cropped by  _position for drawing.
-    /// Note that you are not forced to draw all to the surfaces at all, in which case the
-    /// below `UIElement` will be displayed.
-    ///
-    /// `UIElement` are drawn by increasing z-order, or lexical order if lack thereof.
-    /// Those elements who have non-overlapping `_position` are drawn in parallel.
-    /// Hence you CAN'T draw outside `_position` and receive cropped surfaces.
-    /// `diffuseMap`, `depthMap` and `materialMap` are made to span _position exactly.
-    ///
-    /// IMPORTANT: you MUST NOT draw outside `dirtyRects`. This allows more fine-grained updates.
-    /// A `UIElement` that doesn't respect dirtyRects will have PAINFUL display problems.
-    void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
+    /**
+        PBR layer draw method.
+        This function is meant to be overridden.
+
+        `UIElement` are drawn on the Raw layer by increasing
+        z-order, or lexical order if lack thereof.
+        However, all PBR stuff is composited and computed
+        before Raw is drawn on top of that (cached) result.
+
+        The widgets who have non-overlapping positions are
+        drawn in parallel if their flags allow it.
+
+        One MUST NOT draw outsides the given `dirtyRects`.
+        This allows fast and fine-grained updates.
+        A `UIElement` that doesn't respect dirtyRects WILL
+        have bad rendering with surrounding updates.
+
+        Params:
+            diffuseMap  Contain 4 channels:
+                        Red, Green, Blue, Emissive.
+            depthMap    One channel of 16-bit depth.
+            materialMap Contain 3 channels:
+                        Roughness, Metalness, Specular, and
+                        a unused 4th channel.
+            dirtyRects Where to draw in these maps.
+
+        TODO: Not sure if dirtyRects are widget-space or
+          cropped-space.
+    */
+    void onDrawPBR(ImageRef!RGBA diffuse,
+                   ImageRef!L16  depth,
+                   ImageRef!RGBA material,
+                   box2i[] dirtyRects)
     {
-        // defaults to filling with a grey pattern
-        RGBA darkGrey = RGBA(100, 100, 100, 0);
+        // By default: checkerboard pattern
+        RGBA darkGrey    = RGBA(100, 100, 100, 0);
         RGBA lighterGrey = RGBA(150, 150, 150, 0);
 
-        foreach(dirtyRect; dirtyRects)
+        // This is a typical draw function:
+        // for each r in dirtyRects
+        //   crop inputs by r
+        //   show something in it
+        // You don't have to fill everything though.
+        foreach(r; dirtyRects)
         {
-            for (int y = dirtyRect.min.y; y < dirtyRect.max.y; ++y)
+            for (int y = r.min.y; y < r.max.y; ++y)
             {
-                L16[] depthScan = depthMap.scanline(y);
-                RGBA[] diffuseScan = diffuseMap.scanline(y);
-                RGBA[] materialScan = materialMap.scanline(y);
-                for (int x = dirtyRect.min.x; x < dirtyRect.max.x; ++x)
+                L16[] depthScan     = depth.scanline(y);
+                RGBA[] diffuseScan  = diffuse.scanline(y);
+                RGBA[] materialScan = material.scanline(y);
+                for (int x = r.min.x; x < r.max.x; ++x)
                 {
-                    diffuseScan.ptr[x] = ( (x >> 3) ^  (y >> 3) ) & 1 ? darkGrey : lighterGrey;
+                    RGBA col = ((x>>3)^(y>>3))&1 ? darkGrey
+                                              : lighterGrey;
+                    diffuseScan.ptr[x] = col;
                     depthScan.ptr[x] = L16(defaultDepth);
-                    materialScan.ptr[x] = RGBA(defaultRoughness, defaultMetalnessDielectric, defaultSpecular, 255);
+                    RGBA m = RGBA(defaultRoughness,
+                                 defaultMetalnessDielectric,
+                                 defaultSpecular,
+                                 255);
+                    materialScan.ptr[x] = m;
                 }
             }
         }
     }
 
     //
-    // Animation callback.
+    // 17. Animation callback.
     //
 
     /**
@@ -1248,9 +1377,9 @@ public:
     {
         // We only consider the part of _position that is
         // actually in the surface.
-        // Indeed, `_position` can always be outside the
-        // bounds of a window (all widgets MUST support
-        // that).
+        // Indeed, `_position` should not be outside the
+        // bounds of a window (most widgets will support
+        // that), but most widgets will render that badly.
         box2i surPos = box2i(0, 0, rawMap.w, rawMap.h);
         box2i vPos = _position.intersection(surPos);
 
@@ -1298,9 +1427,9 @@ public:
 
         // We only consider the part of _position that is
         // actually in the surface.
-        // Indeed, `_position` can always be outside the
-        // bounds of a window (all widgets MUST support
-        // that).
+        // Indeed, `_position` should not be outside the
+        // bounds of a window (most widgets will support
+        // that), but most widgets will render that badly.
         box2i surPos = box2i(0, 0, W, H);
         box2i vPos = _position.intersection(surPos);
 
@@ -1380,11 +1509,11 @@ public:
             }
         }
 
-        // Test children that are displayed below this element last
         foreach(child; _zOrderedChildren[])
         {
             if (child.zOrder < zOrder)
-                if (child.mouseClick(x, y, button, isDoubleClick, mstate))
+                if (child.mouseClick(x, y, button,
+                    isDoubleClick, mstate))
                     return true;
         }
 
@@ -1392,7 +1521,8 @@ public:
     }
 
     // to be called at top-level when the mouse is released
-    final void mouseRelease(int x, int y, int button, MouseState mstate)
+    final void mouseRelease(int x, int y,
+                            int button, MouseState mstate)
     {
         version(legacyMouseDrag)
         {}
@@ -1407,41 +1537,54 @@ public:
         {}
         else
         {
-            // Enter widget below mouse if a dragged operation was stopped.
+            // Enter widget below mouse if a dragged
+            // operation was stopped.
             if (wasDragging)
             {
-                bool foundOver = mouseMove(x, y, 0, 0, mstate, false);
-                if (!foundOver)
+                bool ok = mouseMove(x, y, 0, 0, mstate,
+                                    false);
+                if (!ok)
                     _context.setMouseOver(null);
             }
         }
     }
 
     // to be called at top-level when the mouse wheeled
-    final bool mouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate)
+    final bool mouseWheel(int x, int y,
+                          int wheelDeltaX, int wheelDeltaY,
+                          MouseState mstate)
     {
         recomputeZOrderedChildren();
 
-        // Test children that are displayed above this element first
+        // Test children that are displayed above this
+        // element first
         foreach(child; _zOrderedChildren[])
         {
             if (child.zOrder >= zOrder)
-                if (child.mouseWheel(x, y, wheelDeltaX, wheelDeltaY, mstate))
+                if (child.mouseWheel(x, y, wheelDeltaX,
+                    wheelDeltaY, mstate))
                     return true;
         }
 
-        bool canBeMouseWheeled = _visibilityStatus; // cannot be mouse-wheeled if invisible
-        if (canBeMouseWheeled && contains(x - _position.min.x, y - _position.min.y))
+        int dx = x - _position.min.x;
+        int dy = y - _position.min.y;
+
+        // cannot be mouse-wheeled if invisible
+        bool canBeMouseWheeled = _visibilityStatus;
+        if (canBeMouseWheeled && contains(dx, dy))
         {
-            if (onMouseWheel(x - _position.min.x, y - _position.min.y, wheelDeltaX, wheelDeltaY, mstate))
+            if (onMouseWheel(dx, dy, wheelDeltaX,
+                wheelDeltaY, mstate))
                 return true;
         }
 
-        // Test children that are displayed below this element last
+        // Test children that are displayed below this
+        // element last
         foreach(child; _zOrderedChildren[])
         {
             if (child.zOrder < zOrder)
-                if (child.mouseWheel(x, y, wheelDeltaX, wheelDeltaY, mstate))
+                if (child.mouseWheel(x, y, wheelDeltaX,
+                    wheelDeltaY, mstate))
                     return true;
         }
 
@@ -1449,36 +1592,46 @@ public:
     }
 
     // To be called when the mouse moved
-    // Returns: `true` if one child has taken the mouse-over role globally.
-    final bool mouseMove(int x, int y, int dx, int dy, MouseState mstate, bool alreadyFoundMouseOver)
+    final bool mouseMove(int x, int y, int dx, int dy,
+        MouseState mstate, bool alreadyFoundMouseOver)
     {
         recomputeZOrderedChildren();
 
-        bool foundMouseOver = alreadyFoundMouseOver;
+        // "found" is whether we have found the hovered
+        // thing (mouseOver)
+        bool found = alreadyFoundMouseOver;
 
-        // Test children that are displayed above this element first
+        // Test children that are displayed above this
+        // element first
         foreach(child; _zOrderedChildren[])
         {
             if (child.zOrder >= zOrder)
             {
-                bool found = child.mouseMove(x, y, dx, dy, mstate, foundMouseOver);
-                foundMouseOver = foundMouseOver || found;
+                bool here = child.mouseMove(x, y, dx, dy,
+                    mstate, found);
+                found = found || here;
             }
         }
 
         if (isDragged())
         {
             // EDIT MODE
-            // In debug mode, dragging with the right mouse button move elements around
-            // and dragging with shift  + right button resize elements around.
+            // With version `Dplug_RightClickMoveWidgets`,
+            // dragging with the right mouse button move
+            // elements around.
+            // Dragging with shift  + right button resize
+            // elements around.
             //
-            // Additionally, if CTRL is pressed, the increments are only -1 or +1 pixel.
-            // 
-            // You can see the _position rectangle thanks to `debugLog`.
+            // Additionally, if CTRL is pressed, the
+            // increments are only -1 or +1 pixel.
+            //
+            // You can see the _position rectangle thanks to
+            // `debugLog`.
             bool draggingUsed = false;
-            debug
+            version(Dplug_RightClickMoveWidgets)
             {
-                if (mstate.rightButtonDown && mstate.shiftPressed)
+                if (mstate.rightButtonDown
+                    && mstate.shiftPressed)
                 {
                     if (mstate.ctrlPressed)
                     {
@@ -1493,10 +1646,8 @@ public:
                     int h = _position.height + dy;
                     if (w < 5) w = 5;
                     if (h < 5) h = 5;
-                    position = box2i(nx, ny, nx + w, ny + h);
+                    position = box2i(nx, ny, nx+w, ny+h);
                     draggingUsed = true;
-
-
                 }
                 else if (mstate.rightButtonDown)
                 {
@@ -1511,22 +1662,27 @@ public:
                     int ny = _position.min.y + dy;
                     if (nx < 0) nx = 0;
                     if (ny < 0) ny = 0;
-                    position = box2i(nx, ny, nx + position.width, ny + position.height);
+                    position = box2i(nx, ny,
+                                     nx + position.width,
+                                     ny + position.height);
                     draggingUsed = true;
                 }
 
-                // Output the latest position
-                // This is helpful when developing a plug-in UI.
                 if (draggingUsed)
                 {
                     char[128] buf;
-                    snprintf(buf.ptr, 128, "position = box2i.rectangle(%d, %d, %d, %d)\n", _position.min.x, _position.min.y, _position.width, _position.height);
+                    snprintf(buf.ptr, 128,
+                        "rectangle(%d, %d, %d, %d)\n",
+                        _position.min.x, _position.min.y,
+                        _position.width, _position.height);
                     debugLog(buf.ptr);
                 }
             }
 
             if (!draggingUsed)
-                onMouseDrag(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
+                onMouseDrag(x - _position.min.x,
+                            y - _position.min.y,
+                            dx, dy, mstate);
         }
 
         // Can't be mouse over if not visible.
@@ -1536,44 +1692,52 @@ public:
         {}
         else
         {
-            // If dragged, it already received `onMouseDrag`.
-            // if something else is dragged, it can be mouse over.
+            // If dragged, already received `onMouseDrag`.
+            // if something else dragged, cannot be hovered.
             if (_context.dragged !is null)
                 canBeMouseOver = false;
         }
 
-        if (canBeMouseOver && contains(x - _position.min.x, y - _position.min.y)) // FUTURE: something more fine-grained?
+        // FUTURE: something more fine-grained?
+        if (canBeMouseOver && contains(x - _position.min.x,
+                                       y - _position.min.y))
         {
             // Get the mouse-over crown if not taken
-            if (!foundMouseOver)
+            if (!found)
             {
-                foundMouseOver = true;
+                found = true;
                 _context.setMouseOver(this);
 
                 version(legacyMouseDrag)
                 {}
                 else
                 {
-                    onMouseMove(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
+                    onMouseMove(x - _position.min.x,
+                                y - _position.min.y,
+                                dx, dy, mstate);
                 }
             }
 
             version(legacyMouseDrag)
             {
-                onMouseMove(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
+                onMouseMove(x - _position.min.x,
+                            y - _position.min.y,
+                            dx, dy, mstate);
             }
         }
 
-        // Test children that are displayed below this element
+        // Test children that are displayed below this
         foreach(child; _zOrderedChildren[])
         {
             if (child.zOrder < zOrder)
             {
-                bool found = child.mouseMove(x, y, dx, dy, mstate, foundMouseOver);
-                foundMouseOver = foundMouseOver || found;
+                bool hit;
+                hit = child.mouseMove(x, y, dx, dy, mstate,
+                                      found);
+                found = found || hit;
             }
         }
-        return foundMouseOver;
+        return found;
     }
 
     // to be called at top-level when a key is pressed
@@ -1605,21 +1769,24 @@ public:
     }
 
     // To be called at top-level periodically.
+    // TODO why this isn't final?
     void animate(double dt, double time)
     {
         if (isAnimated)
             onAnimate(dt, time);
 
-        // For some rare widgets, it is important that children are animated
+        // For some rare widgets, it is important that
+        // children are animated
         // _after_ their parent.
         foreach(child; _children[])
             child.animate(dt, time);
     }
 
-    /// Appends the Elements that should be drawn, in order.
-    /// You should empty it before calling this function.
-    /// Everything visible get into the draw list, but that doesn't mean they
-    /// will get drawn if they don't overlap with a dirty area.
+    // Appends the Elements that should be drawn, in order.
+    // You should empty it before calling this function.
+    // Everything visible get into the draw list, but that
+    // doesn't mean they will get drawn if they don't
+    // overlap with a dirty area.
     final void getDrawLists(ref Vec!UIElement listRaw,
                             ref Vec!UIElement listPBR)
     {
@@ -1631,8 +1798,10 @@ public:
             if (drawsToPBR())
                 listPBR.pushBack(this);
 
-            // Note: if one widget is not visible, the whole sub-tree can be ignored for drawing.
-            // This is because invisibility is inherited without recourse.
+            // Note: if one widget is not visible, the whole
+            // sub-tree can be ignored for drawing.
+            // This is because invisibility is inherited
+            // without recourse.
             foreach(child; _children[])
                 child.getDrawLists(listRaw, listPBR);
         }
@@ -1667,95 +1836,101 @@ public:
 
 private:
 
-    /// Reference to owning context.
+    // Reference to owning context.
     UIContext _context;
 
     // <visibility privates>
 
-    /// If _visibleFlag is false, neither the Element nor its children are drawn.
-    /// Each UIElement starts its life being visible.
+    // If _visibleFlag is false, neither the Element nor its
+    // children are drawn.
     bool _visibleFlag = true;
 
-    /// Final visibility value, cached in order to set rectangles dirty.
-    /// It is always up to date across the whole UI tree.
+    // Final visibility value, cached in order to set
+    // rectangles dirty.
+    // It is always up to date across the whole UI tree.
     bool _visibilityStatus = true;
 
-    void recomputeVisibilityStatus(bool parentVisibilityStatus)
+    void recomputeVisibilityStatus(bool parentStatus)
     {
-        bool newVisibleStatus = _visibleFlag && parentVisibilityStatus;
+        bool newStatus = _visibleFlag && parentStatus;
 
         // has it changed in any way?
-        if (newVisibleStatus != _visibilityStatus)
+        if (newStatus != _visibilityStatus)
         {
-            _visibilityStatus = newVisibleStatus;
+            _visibilityStatus = newStatus;
 
             // Dirty the widget position
             setDirtyWhole();
 
-            // Must inform children of the new status of parent.
+            // Inform children of the new parent status
             foreach(child; _children[])
-                child.recomputeVisibilityStatus(newVisibleStatus);
+                child.recomputeVisibilityStatus(newStatus);
         }
     }
 
     // </visibility privates>
 
-    /// Dirty rectangles buffer, cropped to _position.
-    /// Technically would only need that as a temporary
-    /// array in TLS, but well.
+    // Dirty rectangles buffer, cropped to _position.
+    // Technically would only need that as a temporary
+    // array in TLS, but well.
     Vec!box2i _localRectsBuf;
 
-    /// Sorted children in Z-lexical-order (sorted by Z, or else increasing index in _children).
+    // Sorted children.
     Vec!UIElement _zOrderedChildren;
 
-    /// The mouse cursor to display when this element is being dragged
+    // Cursor to display when widget is being dragged
     MouseCursor _cursorWhenDragged = MouseCursor.pointer;
 
-    /// The mouse cursor to display when this element is being moused over
+    // Cursor to display when widget is mouseover
     MouseCursor _cursorWhenMouseOver = MouseCursor.pointer;
 
-    /// Identifier storage.
+    // Identifier storage.
     char[maxUIElementIDLength+1] _idStorage;
 
-    /// Warning: if you store objects here, keep in mind they won't get destroyed automatically.
-    /// 4 user pointer in case you'd like to store things in UIElement as a Dplug extension.
-    /// id 0..1 are reserved for Wren support.
-    /// id 2..3 are reserved for future Dplug extensions.
-    /// id 4..7 are for vendor-specific extensions.
-    void*[8] _userPointers; // Opaque pointers for Wren VM and things.
+    // Warning: if you store objects here, keep in mind
+    // they won't get destroyed automatically.
+    // 4 user pointer in case you'd like to store things in
+    // `UIElement` as a Dplug extension.
+    // id 0..1 are reserved for Wren support.
+    // id 2..3 are reserved for future Dplug extensions.
+    // id 4..7 are for vendor-specific extensions.
+    void*[8] _userPointers; // User pointers
 
     // Sort children in ascending z-order
     // Input: unsorted _children
     // Output: sorted _zOrderedChildren
     // This is not thread-safe.
-    // Only one widget in the same UI can sort its children at once, since it uses
+    // Only one widget in the same UI can sort its children
+    // at once, since it uses
     // a UIContext buffer to do so.
     final void recomputeZOrderedChildren()
     {
         // Get a z-ordered list of childrens
         _zOrderedChildren.clearContents();
 
-        /// See: https://github.com/AuburnSounds/Dplug/issues/652
         version(legacyZOrder)
         {
+            // See: Dplug Issue #652
             foreach(child; _children[])
                 _zOrderedChildren.pushBack(child);
         }
         else
         {
-            // Adding children in reverse, since children added last are considered having a higher Z order.
+            // Adding children in reverse, since children
+            // added last are considered having a higher
+            // Z-order.
             foreach_reverse(child; _children[])
                 _zOrderedChildren.pushBack(child);
         }
 
         timSort!UIElement(_zOrderedChildren[],
                             context.sortingScratchBuffer(),
-                            (a, b) nothrow @nogc 
-                            {
-                                if (a.zOrder < b.zOrder) return 1;
-                                else if (a.zOrder > b.zOrder) return -1;
-                                else return 0;
-                            });
+            (a, b) nothrow @nogc
+            {
+                if (a.zOrder < b.zOrder) return 1;
+                else if (a.zOrder > b.zOrder) return -1;
+                else return 0;
+            });
 
     }
 
@@ -1766,10 +1941,12 @@ private:
             case UILayer.guessFromFlags:
                 if (drawsToPBR())
                 {
-                    // Note: even if one UIElement draws to both Raw and PBR layers, we are not 
-                    // adding this rectangle in `dirtyListRaw` since the Raw layer is automatically
+                    // Note: even if one UIElement draws to
+                    // both Raw and PBR layers, we are not
+                    // adding this rect in `dirtyListRaw`
+                    // since the Raw layer is automatically
                     // updated when the PBR layer below is.
-                    _context.dirtyListPBR.addRect(rect); 
+                    _context.dirtyListPBR.addRect(rect);
                 }
                 else if (drawsToRaw())
                 {
@@ -1778,11 +1955,12 @@ private:
                 break;
 
             case UILayer.rawOnly:
-                _context.dirtyListRaw.addRect(rect); 
+                _context.dirtyListRaw.addRect(rect);
                 break;
 
             case UILayer.allLayers:
-                // This will lead the Raw layer to be invalidated too
+                // This will lead the Raw layer to be
+                // invalidated too
                 _context.dirtyListPBR.addRect(rect);
                 break;
         }
