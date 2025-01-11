@@ -37,9 +37,9 @@ unittest
     Map the `[0..1]` range to `[min..max]` logarithmically.
 
     Params:
-        t   Interpolating value from [0 to 1]. UB if out of range.
-        min Value corresponding to t = 0. Must be > 0.
-        max Value corresponding to t = 1. Must be > 0.
+        t   = Interpolating value from [0 to 1]. UB if out of range.
+        min = Value corresponding to t = 0. Must be > 0.
+        max = Value corresponding to t = 1. Must be > 0.
 
     Note: You can totally have a max that is smaller than min.
           In this case, the range mapped with more accuracy will be
@@ -61,9 +61,9 @@ unittest
     the same thing as a 6dB/oct lowpass filter.
 
     Params:
-        timeConstantSecs Time after which the amplitude is only 37%
-                         of the original.
-        samplerate       Sampling rate.
+        timeConstantSecs = Time after which the amplitude is only 37%
+                           of the original.
+        samplerate       = Sampling rate.
 
     Returns:
         Multiplier for this RC time constant and sampling rate.
@@ -280,12 +280,12 @@ unittest
     Hermite interpolation.
 
     Params:
-        f_pos Position of interpolation between (0 to 1).
-              0 means at position x0, 1 at position x1.
-        xm1   Value of f(x-1)
-        x0    Value of f(x)
-        x1    Value of f(x+1)
-        x2    Value of f(x+2)
+        f_pos = Position of interpolation between (0 to 1).
+                0 means at position x0, 1 at position x1.
+        xm1   = Value of f(x-1)
+        x0    = Value of f(x)
+        x1    = Value of f(x+1)
+        x2    = Value of f(x+2)
 
     Returns:
         An interpolated value corresponding to `f(x0 + f_pos)`.

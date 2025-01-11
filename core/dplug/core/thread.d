@@ -402,9 +402,9 @@ else
 
         /// Creates a thread-pool.
         /// Params:
-        ///     numThreads Number of threads to create (0 = auto).
-        ///     maxThreads A maximum number of threads to create (0 = none).
-        ///     stackSize Stack size to create threads with (0 = auto).
+        ///     numThreads = Number of threads to create (0 = auto).
+        ///     maxThreads = A maximum number of threads to create (0 = none).
+        ///     stackSize = Stack size to create threads with (0 = auto).
         this(int numThreads = 0, int maxThreads = 0, size_t stackSize = 0)
         {
             // Create sync first

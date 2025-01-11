@@ -545,7 +545,9 @@ private:
 /// They are the same limitations that exist in Dplug in minor plugin version.
 ///
 /// Params:
-///    maxCount Maximum number of presets to take, -1 for all of them
+///    client = Client to load presets for.
+///    inputFBXData = binary data.
+///    maxCount = Maximum number of presets to take, -1 for all of them.
 ///
 /// Example:
 ///       override Preset[] buildPresets()

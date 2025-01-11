@@ -61,7 +61,8 @@ nothrow @nogc:
     /// It is illegal to call `paramAutomate` outside of a `beginParamEdit`/`endParamEdit` pair.
     ///
     /// Params:
-    ///    value Normalized parameter value.
+    ///    paramIndex = Parameter index.
+    ///    value = Normalized parameter value.
     void paramAutomate(int paramIndex, float value);
 
     /// Notifies the host that editing of a parameter has finished from UI side.
@@ -72,8 +73,8 @@ nothrow @nogc:
     /// Note: UI widgets and plugin format clients have different coordinate systems.
     ///
     /// Params:
-    ///     width New width of the plugin, in logical pixels.
-    ///     height New height of the plugin, in logical pixels.
+    ///     widthLogicalPixels = New width of the plugin, in logical pixels.
+    ///     heightLogicalPixels = New height of the plugin, in logical pixels.
     /// Returns: `true` if the host parent window has been resized.
     bool requestResize(int widthLogicalPixels, int heightLogicalPixels);
 
@@ -232,8 +233,8 @@ nothrow:
     /// Returns: `true` if succeeded.
     ///
     /// Params:
-    ///     width New width of the plugin, in logical pixels.
-    ///     height New height of the plugin, in logical pixels.
+    ///     widthLogicalPixels = New width of the plugin, in logical pixels.
+    ///     heightLogicalPixels = New height of the plugin, in logical pixels.
     bool requestResize(int widthLogicalPixels, int heightLogicalPixels);
 
     /// Notify AFTER a manual resize of the plugin, so that the host updates its window.
@@ -623,21 +624,21 @@ nothrow:
     ///
     /// Params:
     ///
-    ///     inputs   Input channels pointers, each pointing to `frames` audio samples. 
-    ///              Number of pointer is equal to `numInputs` given in last `reset()` callback.
-    ///              Unconnected input pins (if any) point to zeroes.
+    ///     inputs  = Input channels pointers, each pointing to `frames` audio samples. 
+    ///               Number of pointer is equal to `numInputs` given in last `reset()` callback.
+    ///               Unconnected input pins (if any) point to zeroes.
     ///
-    ///     outputs  Output channels pointers, each pointing to `frames` audio samples. 
-    ///              Number of pointer is equal to `numOutputs` given in last `reset()` callback.
-    ///              The output space can be used as temporary storage.
-    ///              (do not modify these non-const pointers).
+    ///     outputs = Output channels pointers, each pointing to `frames` audio samples. 
+    ///               Number of pointer is equal to `numOutputs` given in last `reset()` callback.
+    ///               The output space can be used as temporary storage.
+    ///               (do not modify these non-const pointers).
     ///
-    ///     frames   Number of audio samples for this callback. 
-    ///              This number is always <= `maxFrames`, given in last `reset()` callback.
-    ///              To force this number to arbitrarily, you may override `maxFramesInProcess`, 
-    ///              which will split host buffers in smaller chunks.
+    ///     frames  = Number of audio samples for this callback. 
+    ///               This number is always <= `maxFrames`, given in last `reset()` callback.
+    ///               To force this number to arbitrarily, you may override `maxFramesInProcess`, 
+    ///               which will split host buffers in smaller chunks.
     ///
-    ///     timeInfo Timing information for the first sample (0th) of this buffer.
+    ///     timeInfo = Timing information for the first sample (0th) of this buffer.
     ///
     /// Warning: Using MIDI input? 
     ///          If your plug-in has "receivesMidi" set to `true` in its `plugin.json`, this 

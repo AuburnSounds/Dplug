@@ -222,7 +222,7 @@ nothrow:
 
     /// Return: size in bytes of the MIDI message, if it were serialized without offset.
     ///         -1 if unknown size (either the status byte doesn't start with 1xxxxxx, or
-    ///         starts with 1111xxxx (can be many different things).
+    ///         starts with 1111xxxx, can be many different things).
     /// Reference: https://www.midi.org/specifications-old/item/table-2-expanded-messages-list-status-bytes
     int lengthInBytes() const
     {
@@ -249,13 +249,13 @@ nothrow:
     /// Write the raw MIDI data in a buffer `data` of capacity `len`.
     ///
     /// If given < 0 len, return the number of bytes needed to return the whole message.
-    /// Note: Channel Pressure event, who are 2 bytes, are transmitted as 3 in VST3 (no issue) 
+    /// Note: Channel Pressure event, who are 2 bytes, are transmitted as 3 in VST3 (no issue)
     /// but also in LV2 (BUG).
     ///
     /// Params:
-    ///     data   Pointer to at least 3 bytes of buffer to write MIDI message to (advice = 256 bytes).
-    ///     buflen Length of buffer pointed to by `data`.
-    ///            If buflen < 0, this functions instead return the number of bytes needed (or -1 for unknown length).
+    ///     data =   Pointer to at least 3 bytes of buffer to write MIDI message to (advice = 256 bytes).
+    ///     buflen = Length of buffer pointed to by `data`.
+    ///              If buflen < 0, this functions instead return the number of bytes needed (or -1 for unknown length).
     ///
     /// Returns: Number of written bytes.
     ///          If the MIDI message has an unknown (aka unsupported) length then nothing gets written,
@@ -383,7 +383,9 @@ MidiMessage makeMidiMessageNoteOff(int offset, int channel, int noteNumber)
 
 /// Make a Pitch Wheel (aka Pitch Bend) MIDI message.
 /// Params:
-///     value Amount of pitch, -1 to 1. Not sure what unit! FUTUURE understand how much semitones MIDI says it should be.
+///     offset  = Offset in current buffer, in frames.
+///     channel = MIDI Channel.
+///     value = Amount of pitch, -1 to 1. Not sure what unit! FUTUURE understand how much semitones MIDI says it should be.
 MidiMessage makeMidiMessagePitchWheel(int offset, int channel, float value)
 {
     int ivalue = 8192 + cast(int)(value * 8192.0);

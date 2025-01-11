@@ -94,7 +94,7 @@ nothrow:
 @nogc:
 @safe:
 
-    /// Change the size (`channels` and `frames` of the underlying store.
+    /// Change the size (`channels` and `frames`) of the underlying store.
     /// Data is left uninitialized.
     /// Typically you would reuse an `AudioBuffer` if you want to reuse the allocation.
     /// When the same size is requested, the same allocation is reused (unless alignment is changed).
