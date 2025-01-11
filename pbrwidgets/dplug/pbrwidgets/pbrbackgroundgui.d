@@ -24,7 +24,7 @@ public import dplug.gui.sizeconstraints;
 import gamut;
 
 
-// `decompressImagesLazily` cause JPEG and PNG to be decompressed on the fly on resize, instead 
+// `decompressImagesLazily` cause JPEG and PNG to be decompressed on the fly on resize, instead
 // of ahead of time and staying in memory.
 // This wins 17mb of RAM on Panagement.
 // However, this also disable live reload of images for UI development. Hence, it is disabled for debug builds, in order
@@ -40,8 +40,8 @@ else
 /// images used with the press of ENTER.
 /// The path of each of these images (given as a template parameter) must be
 /// in your "stringImportPaths" settings.
-class PBRBackgroundGUI(string baseColorPath, 
-                       string emissivePath, 
+class PBRBackgroundGUI(string baseColorPath,
+                       string emissivePath,
                        string materialPath,
                        string depthPath,
                        string skyboxPath,
@@ -74,7 +74,7 @@ nothrow:
 
         auto skyboxData = cast(ubyte[])(import(skyboxPath));
         loadSkybox(skyboxData);
-    }    
+    }
 
     ~this()
     {
@@ -84,9 +84,10 @@ nothrow:
         _depthResized.destroyFree();
     }
 
-    // Development purposes. 
-    // In debug mode, pressing ENTER reload the backgrounds
-    debug
+    // Development purposes.
+    // If this version is enabled, you could press ENTER to
+    // reload the backgrounds. Do not ship this!
+    version(Dplug_EnterReloadBackgrounds)
     {
         override bool onKeyDown(Key key)
         {
@@ -132,23 +133,23 @@ nothrow:
                 _materialResized.size(W, H);
                 _depthResized.size(W, H);
 
-                // Potentially resize all 3 backgrounds in parallel 
+                // Potentially resize all 3 backgrounds in parallel
                 void resizeOneImage(int i, int threadIndex) nothrow @nogc
                 {
                     ImageResizer resizer;
-                    if (i == 0) 
+                    if (i == 0)
                     {
                         version(Dplug_ProfileUI) context.profiler.begin("resize Diffuse background");
                         resizer.resizeImageDiffuse(_diffuse.toRef, _diffuseResized.toRef);
                         version(Dplug_ProfileUI) context.profiler.end;
                     }
-                    if (i == 1) 
+                    if (i == 1)
                     {
                         version(Dplug_ProfileUI) context.profiler.begin("resize Material background");
                         resizer.resizeImageMaterial(_material.toRef, _materialResized.toRef);
                         version(Dplug_ProfileUI) context.profiler.end;
                     }
-                    if (i == 2) 
+                    if (i == 2)
                     {
                         version(Dplug_ProfileUI) context.profiler.begin("resize Depth background");
                         resizer.resizeImageDepth(_depth.toRef, _depthResized.toRef);
@@ -202,9 +203,9 @@ private:
         auto materialData = cast(ubyte[])(import(materialPath));
         auto depthData = cast(ubyte[])(import(depthPath));
 
-        loadBackgroundImages(basecolorData, 
-                             emissiveData, 
-                             materialData, 
+        loadBackgroundImages(basecolorData,
+                             emissiveData,
+                             materialData,
                              depthData,
                              threadPool);
     }
@@ -266,7 +267,7 @@ private:
         // This saves up hours.
         void reloadImagesAtRuntime()
         {
-            // reading images with an absolute path since we don't know 
+            // reading images with an absolute path since we don't know
             // which is the current directory from the host
             ubyte[] basecolorData = readFile(baseColorPathAbs);
             ubyte[] emissiveData = emissivePathAbs ? readFile(emissivePathAbs) : null;
@@ -300,9 +301,9 @@ private:
         }
     }
 
-    void loadBackgroundImages(ubyte[] basecolorData, 
+    void loadBackgroundImages(ubyte[] basecolorData,
                               ubyte[] emissiveData, // this one can be null
-                              ubyte[] materialData, 
+                              ubyte[] materialData,
                               ubyte[] depthData,
                               ThreadPool* threadPool)
     {
@@ -310,7 +311,7 @@ private:
         void loadOneImage(int i, int threadIndex) nothrow @nogc
         {
             ImageResizer resizer;
-            if (i == 0) 
+            if (i == 0)
             {
                 version(Dplug_ProfileUI) context.profiler.category("image").begin("load Diffuse background");
                 if (emissiveData)
@@ -322,7 +323,7 @@ private:
                 }
                 version(Dplug_ProfileUI) context.profiler.end;
             }
-            if (i == 1) 
+            if (i == 1)
             {
                 version(Dplug_ProfileUI) context.profiler.begin("load Material background");
                 _material = loadOwnedImage(materialData);
@@ -344,11 +345,11 @@ private:
             loadOneImage(0, -1);
             loadOneImage(1, -1);
             loadOneImage(2, -1);
-        }       
+        }
     }
-    
+
     void loadSkybox(ubyte[] skyboxData)
-    {        
+    {
         // Search for a pass of type PassSkyboxReflections
         if (auto mpc = cast(MultipassCompositor) compositor())
         {

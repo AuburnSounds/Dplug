@@ -76,15 +76,16 @@ nothrow:
         }
     }
 
-    // Development purposes. 
-    // In debug mode, pressing ENTER reload the backgrounds
-    debug
+    // Development purposes.
+    // If this version is enabled, you could press ENTER to
+    // reload the backgrounds. Do not ship this!
+    version(Dplug_EnterReloadBackgrounds)
     {
         override bool onKeyDown(Key key)
         {
             if (super.onKeyDown(key))
                 return true;
-            
+
             if (key == Key.enter)
             {
                 reloadImageAtRuntime();
@@ -94,7 +95,7 @@ nothrow:
             return false;
         }
     }
-    
+
 private:
     OwnedImage!RGBA _backgroundImage, _backgroundImageResized;
 

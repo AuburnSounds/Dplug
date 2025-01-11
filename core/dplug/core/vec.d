@@ -22,7 +22,7 @@ import inteli.xmmintrin;
 /// Allocates an aligned memory chunk.
 /// Functionally equivalent to Visual C++ _aligned_malloc.
 /// Do not mix allocations with different alignment.
-/// Important: `alignedMalloc(0)` does not necessarily return `null`, and its result 
+/// Important: `alignedMalloc(0)` does not necessarily return `null`, and its result
 ///            _has_ to be freed with `alignedFree`.
 void* alignedMalloc(size_t size, size_t alignment) nothrow @nogc
 {
@@ -71,7 +71,7 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
 /// Reallocates an aligned memory chunk allocated by `alignedMalloc` or `alignedRealloc`.
 /// Functionally equivalent to Visual C++ `_aligned_realloc`.
 /// Do not mix allocations with different alignment.
-/// Important: `alignedRealloc(p, 0)` does not necessarily return `null`, and its result 
+/// Important: `alignedRealloc(p, 0)` does not necessarily return `null`, and its result
 ///            _has_ to be freed with `alignedFree`.
 void* alignedRealloc(void* aligned, size_t size, size_t alignment) nothrow @nogc
 {
@@ -102,7 +102,7 @@ unittest
 }
 
 /// Does memory slices a[0..a_size] and b[0..b_size] have an overlapping byte?
-bool isMemoryOverlapping(const(void)* a, ptrdiff_t a_size, 
+bool isMemoryOverlapping(const(void)* a, ptrdiff_t a_size,
                          const(void)* b, ptrdiff_t b_size) pure @trusted
 {
     assert(a_size >= 0 && b_size >= 0);
@@ -266,7 +266,7 @@ unittest
         alignedFree(p, alignment);
     }
 
-    // Verify that same size alloc preserve pointer. 
+    // Verify that same size alloc preserve pointer.
     {
         void* p = null;
         p = alignedRealloc(p, 254, 16);
@@ -288,10 +288,10 @@ unittest
 /// You MUST use consistent alignement thoughout the lifetime of this buffer.
 ///
 /// Params:
-///    buffer = Existing allocated buffer. Can be null. 
+///    buffer = Existing allocated buffer. Can be null.
 ///             Input slice length is not considered.
 ///    length = Desired slice length.
-///    alignment = Alignement if the slice has allocation requirements, 1 else. 
+///    alignment = Alignement if the slice has allocation requirements, 1 else.
 ///                Must match for deallocation.
 ///
 /// Example:
@@ -306,16 +306,16 @@ unittest
 ///     {
 ///         // mybuf points to maxFrames frames
 ///         mybuf.reallocBuffer(maxFrames);
-///     }   
+///     }
 ///
 ///     ~this()
 ///     {
-///         // If you don't free the buffer, it will leak.    
-///         mybuf.reallocBuffer(0); 
+///         // If you don't free the buffer, it will leak.
+///         mybuf.reallocBuffer(0);
 ///     }
 ///
 /// private:
-///     float[] mybuf;      
+///     float[] mybuf;
 /// }
 /// ---
 void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow @nogc
@@ -619,7 +619,7 @@ nothrow:
         size_t _alignment = 1; // for an unaligned Vec, you probably are not interested in alignment
 
         /// Used internally to grow in response to a pushBack operation.
-        /// Different heuristic, since we know that the resize is likely to be repeated for an 
+        /// Different heuristic, since we know that the resize is likely to be repeated for an
         /// increasing size later.
         void resizeGrow(size_t askedSize) @trusted
         {
@@ -663,7 +663,7 @@ nothrow:
         size_t computeNewCapacity(size_t newLength, size_t oldLength)
         {
             // Optimal value (Windows malloc) not far from there.
-            enum size_t PAGESIZE = 4096; 
+            enum size_t PAGESIZE = 4096;
 
             size_t newLengthBytes = newLength * T.sizeof;
             if (newLengthBytes > PAGESIZE)
@@ -676,7 +676,7 @@ nothrow:
             {
                 // For smaller arrays being pushBack, can bring welcome speed by minimizing realloc.
                 return newLength * 3;
-            }            
+            }
         }
     }
 }
@@ -773,7 +773,7 @@ unittest
     Vec!string vec;
 
     foreach(e; vec[])
-    {        
+    {
     }
 
     assert(vec.length == 0);
@@ -809,7 +809,7 @@ unittest // removeAndShiftRestOfArray was wrong
     v.pushBack(38);
     assert(v.length == 3);
     v.removeAndShiftRestOfArray(1);
-    assert(v.length == 2);    
+    assert(v.length == 2);
     assert(v[] == [14, 38]);
 }
 unittest // removeAndShiftRestOfArray with slice
@@ -854,8 +854,8 @@ nothrow:
     // and check at the end of the program that they were unaffected.
     static if (mergedAllocStompWarning)
     {
-        // Number of bytes to write between areas to check for stomping. 
-        enum SENTINEL_BYTES = 32; 
+        // Number of bytes to write between areas to check for stomping.
+        enum SENTINEL_BYTES = 32;
     }
 
     enum maxExpectedAlignment = 32;
@@ -877,18 +877,18 @@ nothrow:
     /// This gets called twice for each array, see example for usage.
     ///
     /// This bumps the internal bump allocator.
-    /// Giving null to this chain and converting the result to size_t give the total needed size 
+    /// Giving null to this chain and converting the result to size_t give the total needed size
     /// for the merged allocation.
     ///
-    /// Warning: 
-    ///          - If called after a `start()` call, the area returned are wrong and are only for 
+    /// Warning:
+    ///          - If called after a `start()` call, the area returned are wrong and are only for
     ///             counting needed bytes. Don't use those.
     ///
-    ///          - If called after an `allocate()` call, the area returned are an actual merged 
+    ///          - If called after an `allocate()` call, the area returned are an actual merged
     ///            allocation (if the same calls are done).
     ///
-    /// Warning: Prefer `allocArray` over `alloc` variant, since the extra length field WILL help 
-    ///          you catch memory errors before release. Else it is very common to miss buffer 
+    /// Warning: Prefer `allocArray` over `alloc` variant, since the extra length field WILL help
+    ///          you catch memory errors before release. Else it is very common to miss buffer
     ///          overflows in samplerate changes.
     void allocArray(T)(out T[] array, size_t numElems, size_t alignment = 1)
     {
@@ -1010,7 +1010,7 @@ private:
 
             // If you fail here, there is a memory error in your access patterns.
             // Sentinel bytes of value 0xCC were overwritten in a `MergedAllocation`.
-            // You can use slices with `allocArray` instead of `alloc` to find the faulty 
+            // You can use slices with `allocArray` instead of `alloc` to find the faulty
             // access. This check doesn't catch everything!
             assert(! hasMemoryError());
 
@@ -1020,7 +1020,7 @@ private:
 }
 
 
-// Here is how you should use MergedAllocation. 
+// Here is how you should use MergedAllocation.
 unittest
 {
     static struct MyDSPStruct
@@ -1036,11 +1036,11 @@ unittest
             layout(_mergedAlloc, maxFrames); // the first time arrays area allocated in the `null` area, the second time in
                                              // actually allocated memory (since we now have the needed length).
         }
-    
+
         void layout(ref MergedAllocation ma, int maxFrames)
         {
             // allocate `maxFrames` elems, and return a slice in `_intermediateBuf`.
-            ma.allocArray(_intermediateBuf, maxFrames); 
+            ma.allocArray(_intermediateBuf, maxFrames);
 
             // allocate `maxFrames` elems, aligned to 16-byte boundaries. Return a pointer to that in `_coeffs`.
             ma.alloc(_coeffs, maxFrames, 16);
