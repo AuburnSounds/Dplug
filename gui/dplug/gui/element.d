@@ -198,6 +198,10 @@ enum Click
         operation if one is already active (see Issue #822),
         typically it currently happens with another mouse
         button in the wild.
+
+        Note: there is no `onMouseRelease` in Dplug. The way
+        to catch the releasesi to start a drag, then catch
+        `onStopDrag`.
     */
     startDrag,
 

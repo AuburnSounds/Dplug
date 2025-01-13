@@ -22,8 +22,16 @@ import inteli.xmmintrin;
 /// Allocates an aligned memory chunk.
 /// Functionally equivalent to Visual C++ _aligned_malloc.
 /// Do not mix allocations with different alignment.
-/// Important: `alignedMalloc(0)` does not necessarily return `null`, and its result
+///
+/// Important: `alignedMalloc(0)` does not necessarily
+///            return `null`, and its result
 ///            _has_ to be freed with `alignedFree`.
+///
+/// Important: Don't call that often in a real-time thread
+///            without amortization (keep a capacity).
+///            If you need to allocate from `nextBuffer`, do
+///            prefer the use of `Vec` which doesn't shrink,
+///            and will reuse the allocation.
 void* alignedMalloc(size_t size, size_t alignment) nothrow @nogc
 {
     assert(alignment != 0);
@@ -71,15 +79,22 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
 /// Reallocates an aligned memory chunk allocated by `alignedMalloc` or `alignedRealloc`.
 /// Functionally equivalent to Visual C++ `_aligned_realloc`.
 /// Do not mix allocations with different alignment.
+///
+/// The "discard" version doesn't preserve data.
+///
 /// Important: `alignedRealloc(p, 0)` does not necessarily return `null`, and its result
 ///            _has_ to be freed with `alignedFree`.
+///
+/// Important: Don't call that often in a real-time thread
+///            without amortization (keep a capacity).
+///            If you need to allocate from `nextBuffer`, do
+///            prefer the use of `Vec` which doesn't shrink,
+///            and will reuse the allocation.
 void* alignedRealloc(void* aligned, size_t size, size_t alignment) nothrow @nogc
 {
     return alignedReallocImpl!true(aligned, size, alignment);
 }
-
-
-/// Same as `alignedRealloc` but does not preserve data.
+///ditto
 void* alignedReallocDiscard(void* aligned, size_t size, size_t alignment) nothrow @nogc
 {
     return alignedReallocImpl!false(aligned, size, alignment);
@@ -101,9 +116,11 @@ unittest
     assert(isPointerAligned(&c[4], 4));
 }
 
-/// Does memory slices a[0..a_size] and b[0..b_size] have an overlapping byte?
+/// Does memory slices a[0..a_size] and b[0..b_size] have an
+/// overlapping byte?
 bool isMemoryOverlapping(const(void)* a, ptrdiff_t a_size,
-                         const(void)* b, ptrdiff_t b_size) pure @trusted
+                         const(void)* b, ptrdiff_t b_size)
+    pure @trusted
 {
     assert(a_size >= 0 && b_size >= 0);
 
@@ -118,7 +135,8 @@ bool isMemoryOverlapping(const(void)* a, ptrdiff_t a_size,
     ubyte* lB = cast(ubyte*)b;
     ubyte* hB = lB + b_size;
 
-    // There is overlapping, if lA is inside lB..hB, or lB is inside lA..hA
+    // There is overlapping, if lA is inside lB..hB,
+    // or lB is inside lA..hA
 
     if (lA >= lB && lA < hB)
         return true;
@@ -318,6 +336,13 @@ unittest
 ///     float[] mybuf;
 /// }
 /// ---
+/// Important: Don't call that often in a real-time thread
+///            without amortization (keep a capacity).
+///            If you need to allocate from `nextBuffer`, do
+///            prefer the use of `Vec` which doesn't shrink,
+///            and will reuse the allocation.
+///            This, instead, will shrink the allocation
+///            which makes it more expensive.
 void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow @nogc
 {
     static if (is(T == struct) && hasElaborateDestructor!T)
