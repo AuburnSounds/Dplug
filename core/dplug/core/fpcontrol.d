@@ -1,8 +1,9 @@
 /**
-Save/Restore floating-point FPU/SSE state for every plug-in callback.
- 
-Copyright: Guillaume Piolat 2015-2016.
-License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+    Save/Restore floating-point control words, so that
+    rounding-mode doesn't change wildly in a shared library.
+
+    Copyright: Guillaume Piolat 2015-2016.
+    License:   http://www.boost.org/LICENSE_1_0.txt
 */
 module dplug.core.fpcontrol;
 
@@ -13,41 +14,64 @@ version(X86_64)
 
 import inteli.xmmintrin;
 
-/// This struct ensures that floating point is save/restored and set consistently in plugin callbacks.
+nothrow @nogc:
+
+/**
+    This struct ensures that floating point is save/restored
+    and set consistently in plugin callbacks.
+*/
 struct FPControl
 {
-    void initialize() nothrow @nogc
+nothrow @nogc:
+    void initialize()
     {
-        // Get current SSE control word (emulated on ARM)
-        storedMXCSR = _mm_getcsr();
+        // Save and set control word. This works because
+        // intel-intrinsics emulate that control word for
+        // ARM.
+        {
+            // Get current SSE control word
+            storedMXCSR = _mm_getcsr();
 
-        // Set current SSE control word (emulated on ARM)
-        _mm_setcsr(0x9fff); // Flush denormals to zero + Denormals Are Zeros + all exception masked
+            // Set current SSE control word:
+            // - Flush denormals to zero
+            // - Denormals Are Zeros
+            // - all exception masked
+            _mm_setcsr(0x9fff);
+        }
 
+        // There is a x86 specific path-here because x86 has
+        // a FPU control word in addition to the SSE control
+        // word.
         version(isX86)
         {
             // store FPU control word
             fpuState = getFPUControlState();
 
-            // masks all floating-point exceptions, sets rounding to nearest, and sets the x87 FPU precision to 64 bits
+            // masks all floating-point exceptions,
+            // sets rounding to nearest,
+            // and sets the x87 FPU precision to 64 bits
             ushort control = 0x037f;
 
-            // Looking for problems? Unmask all errors.
+            // Very rarely useful debug options below:
+
+            // 1. Looking for problems? Unmask all errors.
             //control = 0x0340;
 
-            // Looking for denormals only? This unmasks denormal creation and denormal use exceptions.
+            // 2. Looking for denormals only? This unmasks
+            // denormal creation and denormal use
+            // exceptions.
             //control = 0x036d;
 
             setFPUControlState(control);
         }
     }
 
-    ~this() nothrow @nogc
+    ~this()
     {
         _mm_setcsr(storedMXCSR);
 
         version(isX86)
-        {        
+        {
             // restore FPU control word
             setFPUControlState(fpuState);
         }
@@ -55,7 +79,7 @@ struct FPControl
 
     version(isX86)
     {
-        ushort fpuState;        
+        ushort fpuState;
     }
     uint storedMXCSR;
 }
@@ -68,8 +92,7 @@ version(isX86)
     else version(D_InlineAsm_X86_64)
         version = InlineX86Asm;
 
-    /// Gets FPU control register
-    ushort getFPUControlState() nothrow @nogc
+    ushort getFPUControlState()
     {
         version (InlineX86Asm)
         {
@@ -82,15 +105,11 @@ version(isX86)
             return cont;
         }
         else
-            static assert(0, "Unsupported");
+            static assert(0);
     }
 
-    /// Sets FPU control register
-    void setFPUControlState(ushort newState) nothrow @nogc
+    void setFPUControlState(ushort newState)
     {
-        // MAYDO: report that the naked version in Phobos is buggy on OSX
-        // it fills the control word with a random word which can create
-        // FP exceptions.
         version (InlineX86Asm)
         {
             asm nothrow @nogc
@@ -100,7 +119,7 @@ version(isX86)
             }
         }
         else
-            static assert(0, "Unsupported");
+            static assert(0);
     }
 }
 
