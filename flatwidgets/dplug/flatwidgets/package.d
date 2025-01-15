@@ -1,5 +1,5 @@
 /**
-Widgets and rendering-style that don't use the PBR system, and allow knobs from KnobMan.
+Widgets and rendering-style that don't use the PBR layer.
 
 Copyright: Guillaume Piolat 2015.
 Copyright: Ethan Reker 2017.

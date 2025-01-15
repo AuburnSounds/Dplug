@@ -1,5 +1,6 @@
 /**
-  2D software renderer.
+  Fast 2D software renderer.
+
   See an example of a Canvas-enabled UIElement in:
       `dplug.flatwidgets.windowresizer.UIWindowResizer`
 
@@ -19,7 +20,7 @@
   dplug:canvas is pretty fast and writes 4 pixels at once.
 
   Bug: you can't use it on a widget that is full-size in your plugin.
-  
+
   Copyright: Copyright Chris Jones 2020.
   Copyright: Copyright Guillaume Piolat 2020.
   License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)

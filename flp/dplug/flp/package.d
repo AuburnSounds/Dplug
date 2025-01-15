@@ -1,5 +1,5 @@
 /**
-FL Plugin client package. This module is the public API.
+FL Plugin client.
 
 Copyright: Guillaume Piolat 2023.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
@@ -15,7 +15,7 @@ import dplug.core.runtime;
 import dplug.flp.types;
 import dplug.flp.client;
 
- 
+
 // Main entry point for FLP plugins.
 template FLPEntryPoint(alias ClientClass)
 {
