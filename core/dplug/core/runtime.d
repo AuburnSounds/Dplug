@@ -1,33 +1,47 @@
 /**
-This file provides `ScopedForeignCallback` to be used in every callback.
+This file provides `ScopedForeignCallback`, a RAII object
+to be conventionally in every foreign callback.
 
 Copyright: Guillaume Piolat 2015-2023.
-License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+License:   http://www.boost.org/LICENSE_1_0.txt
 */
 module dplug.core.runtime;
 
-import core.runtime;
-import core.atomic;
-import core.stdc.stdlib;
-
-import std.traits;
-import std.functional: toDelegate;
-
 import dplug.core.fpcontrol;
-import dplug.core.nogc;
 
 
-/// RAII struct to cover extern callbacks.
-/// This only deals with CPU identification and FPU control words save/restore.
-/// But when we used an enabled D runtime, this used to manage thread attachment 
-/// and disappearance, so calling this on callbacks is still mandated.
-struct ScopedForeignCallback(bool dummyDeprecated, bool saveRestoreFPU)
+/**
+    RAII struct to cover extern callbacks.
+    Nowadays it only deals with FPU/SSE control words
+    save/restore.
+
+    When we used a D runtime, this used to manage thread
+    attachment and deattachment in each incoming exported
+    function.
+
+    Calling this on callbacks is still mandatory, since
+    changing floating-point control work can happen and
+    create issues.
+
+    Example:
+
+        extern(C) myCallback()
+        {
+            ScopedForeignCallback!(false, true) cb;
+            cb.enter();
+
+            // Rounding mode preserved here...
+        }
+
+*/
+struct ScopedForeignCallback(bool dummyDeprecated,
+                             bool saveRestoreFPU)
 {
 public:
 nothrow:
 @nogc:
 
-    /// Thread that shouldn't be attached are eg. the audio threads.
+    /// Call this in each callback.
     void enter()
     {
         debug _entered = true;
