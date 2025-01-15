@@ -8,8 +8,7 @@ which makes it faster.
 Copyright: Guillaume Piolat 2015-2024.
 Copyright: Copyright (C) 2008- by Steven Schveighoffer. Other code
 Copyright: 2010- Andrei Alexandrescu. All rights reserved by the respective holders.
-License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-Authors:   Authors: Steven Schveighoffer, $(HTTP erdani.com, Andrei Alexandrescu), Guillaume Piolat
+License:   http://www.boost.org/LICENSE_1_0.txt
 */
 module dplug.core.map;
 

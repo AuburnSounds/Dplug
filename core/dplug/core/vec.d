@@ -1,9 +1,8 @@
 /**
-Defines `Vec`, `reallocBuffer` and memory functions.
+    Defines `Vec`, `reallocBuffer` and memory functions.
 
-Copyright: Guillaume Piolat 2015-2024.
-License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-Authors:   Guillaume Piolat
+    Copyright: Guillaume Piolat 2015-2024.
+    License:   http://www.boost.org/LICENSE_1_0.txt
 */
 module dplug.core.vec;
 

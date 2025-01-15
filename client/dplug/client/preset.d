@@ -20,7 +20,7 @@ import dplug.client.client;
 import dplug.client.params;
 
 // The current situation is quite complicated.
-// 
+//
 // See https://github.com/AuburnSounds/Dplug/wiki/Roles-of-the-PresetBank
 // for an explanation of the bizarre "PresetBank".
 

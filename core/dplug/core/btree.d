@@ -4,8 +4,7 @@
 * the public dplug:core API.
 *
 * Copyright: Copyright Guillaume Piolat 2024.
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Guillaume Piolat
+* License:   http://www.boost.org/LICENSE_1_0.txt
 */
 module dplug.core.btree;
 

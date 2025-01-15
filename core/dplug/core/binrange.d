@@ -1,265 +1,339 @@
 /**
- * Utilities for parsing and emitting binary data from input ranges, or to output ranges.
- * It is unwise to depend on this outside of Dplug internals.
- *
- * Copyright: Copyright Auburn Sounds 2015-2023.
- * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Authors:   Guillaume Piolat
+
+    Binary parsing and emitting from input ranges, or to
+    output ranges.
+
+    Copyright: Guillaume Piolat 2015-2024.
+    License:   http://www.boost.org/LICENSE_1_0.txt
+
+    It is used internally by Dplug, and also by the user for
+    emitting and parsing plugin state chunks.
+
+    See_also: `futureBinState`.
+
  */
 module dplug.core.binrange;
 
-// FUTURE: Monomorphism. only allow reading from [] and writing on Vec!ubyte
+// FUTURE: Monomorphism. only allow reading from [] and
+// writing on Vec!ubyte
 import std.range.primitives;
 
 import dplug.core.nogc;
 import dplug.core.traits;
 
-// Note: the exceptions thrown here are allocated with mallocEmplace,
-// and should be released with destroyFree.
+@nogc nothrow:
 
-public @nogc
+public:
+
+/* Public API in this file here:
+
+  - popLE      Read  a little-endian integer (or FP number)
+  - popBE      Read  a    big-endian integer (or FP number)
+  - writeLE    Write a little-endian integer (or FP number)
+  - writeBE    Write a    big-endian integer (or FP number)
+  - skipBytes  Skip a number of bytes in input stream.
+  - readRIFFChunkHeader
+  - writeRIFFChunkHeader
+  - RIFFChunkId FourCC constant helper.
+
+  Those functions operate on slices of `ubyte` for input,
+  and output ranges of `ubyte` for output only.
+
+*/
+
+/**
+    Skip bytes in input slice.
+
+    Returns: On success, `*err` is set to `false`.
+             On failure, `*err` is set to `true`, and the
+             input range cannot be used anymore.
+
+    Note: input slice is modified.
+*/
+void skipBytes(ref const(ubyte)[] input,
+               int numBytes,
+               bool* err)
 {
-    /// Skip bytes in input range.
-    /// Returns: On success, `*err` is set to `false` and return integer.
-    ///          On failure, `*err` is set to `true` and return 0. The input range cannot be used anymore.
-    void skipBytes(ref const(ubyte)[] input, int numBytes, bool* err) nothrow
+    for (int i = 0; i < numBytes; ++i)
     {
-        for (int i = 0; i < numBytes; ++i)
-        {
-            popUbyte(input, err); 
-            if (*err)
-                return;
-        }
-        *err = false;
-    }
-
-    /// Reads a big endian integer from input.
-    /// Returns: On success, `*err` is set to `false` and return integer.
-    ///          On failure, `*err` is set to `true` and return 0. The input range cannot be used anymore.
-    T popBE(T)(ref const(ubyte)[] input, bool* err) nothrow
-    {
-        return popFunction!(T, false)(input, err);
-    }
-
-    /// Reads a little endian integer from input.
-    /// Returns: On success, `*err` is set to `false` and return integer.
-    ///          On failure, `*err` is set to `true` and return 0. The input range cannot be used anymore.
-    T popLE(T)(ref const(ubyte)[] input, bool* err) nothrow
-    {
-        return popFunction!(T, true)(input, err);
-    }
-
-    /// Writes a big endian integer/float to output.
-    void writeBE(T, R)(ref R output, T n) if (isOutputRange!(R, ubyte))
-    {
-        writeFunction!(T, R, false)(output, n);
-    }
-
-    /// Writes a little endian integer/float to output.
-    void writeLE(T, R)(ref R output, T n) if (isOutputRange!(R, ubyte))
-    {
-        writeFunction!(T, R, true)(output, n);
-    }
-
-    /// Returns: A RIFF chunk header parsed from an input range.
-    /// Returns: On success, `*err` is set to `false` and return integer.
-    ///          On failure, `*err` is set to `true` and undefined values for chunkId and chunkSize. The input range cannot be used anymore.
-    void readRIFFChunkHeader(ref const(ubyte)[] input, out uint chunkId, out uint chunkSize, bool* err) nothrow
-    {
-        chunkId = popBE!uint(input, err);
+        popUbyte(input, err);
         if (*err)
             return;
-        chunkSize = popLE!uint(input, err);
-        if (*err)
-            return;
-        *err = false;
     }
-
-    /// Writes a RIFF chunk header to an output range.
-    void writeRIFFChunkHeader(R)(ref R output, uint chunkId, uint chunkSize) if (isOutputRange!(R, ubyte))
-    {
-        writeBE!uint(output, chunkId);
-        writeLE!uint(output, chunkSize);
-    }
-
-    /// Returns: A RIFF chunk id.
-    template RIFFChunkId(string id)
-    {
-        static assert(id.length == 4);
-        uint RIFFChunkId = (cast(ubyte)(id[0]) << 24)
-                         | (cast(ubyte)(id[1]) << 16)
-                         | (cast(ubyte)(id[2]) << 8)
-                         | (cast(ubyte)(id[3]));
-    }
-
+    *err = false;
 }
 
-private
+/**
+    Reads a big-endian/little-endian base type from input
+    slice.
+
+    Supported types:
+        `byte`, `ubyte`, `short`, `ushort`,
+         `int`,  `uint`,  `long`,  `ulong`,
+         `float`, `double`
+
+    Note: input slice is modified.
+
+    Returns: On failure, `*err` is set to `true`, return 0.
+          The input range cannot be used anymore.
+*/
+T popBE(T)(ref const(ubyte)[] input, bool* err)
 {
-    // read/write 64-bits float
-    union float_uint
-    {
-        float f;
-        uint i;
-    }
+    return popFunction!(T, false)(input, err);
+}
+///ditto
+T popLE(T)(ref const(ubyte)[] input, bool* err)
+{
+    return popFunction!(T, true)(input, err);
+}
 
-    // read/write 64-bits float
-    union double_ulong
-    {
-        double f;
-        ulong i;
-    }
+/**
+    Writes a big-endian/little-endian base type to output
+    range.
 
-    uint float2uint(float x) pure nothrow @nogc
-    {
-        float_uint fi;
-        fi.f = x;
-        return fi.i;
-    }
+    Supported types:
+        `byte`, `ubyte`, `short`, `ushort`,
+         `int`,  `uint`,  `long`,  `ulong`,
+         `float`, `double`
 
-    float uint2float(int x) pure nothrow @nogc
-    {
-        float_uint fi;
-        fi.i = x;
-        return fi.f;
-    }
+    Doesn't report write errors.
+*/
+void writeBE(T, R)(ref R output, T n)
+    if (isOutputRange!(R, ubyte))
+{
+    writeFunction!(T, R, false)(output, n);
+}
+///ditto
+void writeLE(T, R)(ref R output, T n)
+    if (isOutputRange!(R, ubyte))
+{
+    writeFunction!(T, R, true)(output, n);
+}
 
-    ulong double2ulong(double x) pure nothrow @nogc
-    {
-        double_ulong fi;
-        fi.f = x;
-        return fi.i;
-    }
+/**
+    Reads a RIFF chunk header from an input range.
 
-    double ulong2double(ulong x) pure nothrow @nogc
-    {
-        double_ulong fi;
-        fi.i = x;
-        return fi.f;
-    }
+    Returns: On failure, `*err` is set to `true`
+        and `chunkId` and `chunkSize` are undefined.
+        The input range cannot be used anymore.
 
-    private template IntegerLargerThan(int numBytes) if (numBytes >= 1 && numBytes <= 8)
-    {
-        static if (numBytes == 1)
-            alias IntegerLargerThan = ubyte;
-        else static if (numBytes == 2)
-            alias IntegerLargerThan = ushort;
-        else static if (numBytes <= 4)
-            alias IntegerLargerThan = uint;
-        else
-            alias IntegerLargerThan = ulong;
-    }
+    Note: input slice is modified.
+*/
+void readRIFFChunkHeader(ref const(ubyte)[] input,
+                         out uint chunkId,
+                         out uint chunkSize,
+                         bool* err)
+{
+    chunkId = popBE!uint(input, err);
+    if (*err)
+        return;
+    chunkSize = popLE!uint(input, err);
+    if (*err)
+        return;
+    *err = false;
+}
 
-    // Read one ubyte in stream.
-    // On success, sets `*err` to `false` and return the byte value.
-    // On error,   sets `err` to `true` and return 0.
-    ubyte popUbyte(ref const(ubyte)[] input, bool* err) nothrow @nogc
+/**
+    Reads a RIFF chunk header to an output range.
+*/
+void writeRIFFChunkHeader(R)(ref R output,
+                             uint chunkId,
+                             uint chunkSize)
+    if (isOutputRange!(R, ubyte))
+{
+    writeBE!uint(output, chunkId);
+    writeLE!uint(output, chunkSize);
+}
+
+/// Returns: A RIFF chunk id.
+template RIFFChunkId(string id)
+{
+    static assert(id.length == 4);
+    uint RIFFChunkId = (cast(ubyte)(id[0]) << 24)
+                     | (cast(ubyte)(id[1]) << 16)
+                     | (cast(ubyte)(id[2]) << 8)
+                     | (cast(ubyte)(id[3]));
+}
+
+private:
+
+// read/write 64-bits float
+union float_uint
+{
+    float f;
+    uint i;
+}
+
+// read/write 64-bits float
+union double_ulong
+{
+    double f;
+    ulong i;
+}
+
+uint float2uint(float x) pure
+{
+    float_uint fi;
+    fi.f = x;
+    return fi.i;
+}
+
+float uint2float(int x) pure
+{
+    float_uint fi;
+    fi.i = x;
+    return fi.f;
+}
+
+ulong double2ulong(double x) pure
+{
+    double_ulong fi;
+    fi.f = x;
+    return fi.i;
+}
+
+double ulong2double(ulong x) pure
+{
+    double_ulong fi;
+    fi.i = x;
+    return fi.f;
+}
+
+private template IntegerLargerThan(int numBytes)
+    if (numBytes >= 1 && numBytes <= 8)
+{
+    static if (numBytes == 1)
+        alias IntegerLargerThan = ubyte;
+    else static if (numBytes == 2)
+        alias IntegerLargerThan = ushort;
+    else static if (numBytes <= 4)
+        alias IntegerLargerThan = uint;
+    else
+        alias IntegerLargerThan = ulong;
+}
+
+ubyte popUbyte(ref const(ubyte)[] input, bool* err)
+{
+    if (input.length == 0)
     {
-        if (input.length == 0)
+        *err = true;
+        return 0;
+    }
+    ubyte b = input[0];
+    input = input[1..$];
+    return b;
+}
+
+auto popInteger(int NumBytes,
+                bool WantSigned,
+                bool LittleEndian)
+               (ref const(ubyte)[] input, bool* err)
+{
+    alias T = IntegerLargerThan!NumBytes;
+
+    T result = 0;
+
+    static if (LittleEndian)
+    {
+        for (int i = 0; i < NumBytes; ++i)
         {
-            *err = true;
-            return 0;
+            ubyte b = popUbyte(input, err);
+            if (*err)
+                return 0;
+            result |= ( cast(T)(b) << (8 * i) );
         }
-        ubyte b = input[0];
-        input = input[1..$];
-        return b;
     }
-
-    // Generic integer parsing
-    // On success, sets `*err` to `false` and return the byte value.
-    // On error,   sets `err` to `true` and return 0.
-    auto popInteger(int NumBytes, bool WantSigned, bool LittleEndian)(ref const(ubyte)[] input, bool* err) nothrow @nogc
+    else
     {
-        alias T = IntegerLargerThan!NumBytes;
-
-        T result = 0;
-
-        static if (LittleEndian)
+        for (int i = 0; i < NumBytes; ++i)
         {
-            for (int i = 0; i < NumBytes; ++i)
-            {
-                ubyte b = popUbyte(input, err);
-                if (*err)
-                    return 0;
-                result |= ( cast(T)(b) << (8 * i) );
-            }
+            ubyte b = popUbyte(input, err);
+            if (*err)
+                return 0;
+            result = cast(T)( (result << 8) | b );
         }
-        else
-        {
-            for (int i = 0; i < NumBytes; ++i)
-            {
-                ubyte b = popUbyte(input, err);
-                if (*err)
-                    return 0;
-                result = cast(T)( (result << 8) | b );
-            }
-        }
-
-        *err = false;
-
-        static if (WantSigned)
-            return cast(UnsignedToSigned!T)result;
-        else
-            return result;
     }
 
-    // Generic integer writing
-    void writeInteger(R, int NumBytes, bool LittleEndian)(ref R output, IntegerLargerThan!NumBytes n) if (isOutputRange!(R, ubyte))
+    *err = false;
+
+    static if (WantSigned)
+        return cast(UnsignedToSigned!T)result;
+    else
+        return result;
+}
+
+void writeInteger(R, int NumBytes, bool LittleEndian)
+     (ref R output, IntegerLargerThan!NumBytes n)
+     if (isOutputRange!(R, ubyte))
+{
+    alias T = IntegerLargerThan!NumBytes;
+
+    static assert(isUnsignedIntegral!T);
+    auto u = cast(T)n;
+
+    static if (LittleEndian)
     {
-        alias T = IntegerLargerThan!NumBytes;
-
-        static assert(isUnsignedIntegral!T);
-        auto u = cast(T)n;
-
-        static if (LittleEndian)
+        for (int i = 0; i < NumBytes; ++i)
         {
-            for (int i = 0; i < NumBytes; ++i)
-            {
-                ubyte b = (u >> (i * 8)) & 255;
-                output.put(b);
-            }
-        }
-        else
-        {
-            for (int i = 0; i < NumBytes; ++i)
-            {
-                ubyte b = (u >> ( (NumBytes - 1 - i) * 8) ) & 255;
-                output.put(b);
-            }
+            ubyte b = (u >> (i * 8)) & 255;
+            output.put(b);
         }
     }
-
-    void writeFunction(T, R, bool endian)(ref R output, T n) @nogc nothrow  if (isOutputRange!(R, ubyte))
+    else
     {
-        static if (isBuiltinIntegral!T)
-            writeInteger!(R, T.sizeof, endian)(output, n);
-        else static if (is(T : float))
-            writeInteger!(R, 4, endian)(output, float2uint(n));
-        else static if (is(T : double))
-            writeInteger!(R, 8, endian)(output, double2ulong(n));
-        else
-            static assert(false, "Unsupported type " ~ T.stringof);
+        for (int i = 0; i < NumBytes; ++i)
+        {
+            ubyte b = (u >> ((NumBytes-1-i)*8)) & 255;
+            output.put(b);
+        }
     }
+}
 
-    T popFunction(T, bool endian)(ref const(ubyte)[] input, bool* err) @nogc nothrow
+void writeFunction(T, R, bool endian)(ref R o, T n)
+    if (isOutputRange!(R, ubyte))
+{
+    static if (isBuiltinIntegral!T)
+        writeInteger!(R, T.sizeof, endian)(o, n);
+    else static if (is(T : float))
+        writeInteger!(R, 4, endian)(o, float2uint(n));
+    else static if (is(T : double))
+        writeInteger!(R, 8, endian)(o, double2ulong(n));
+    else
+        static assert(false);
+}
+
+T popFunction(T, bool endian)
+    (ref const(ubyte)[] i, bool* err)
+{
+    static if(isBuiltinIntegral!T)
     {
-        static if(isBuiltinIntegral!T)
-            return cast(T) popInteger!(T.sizeof, isSignedIntegral!T, endian)(input, err);
-        else static if (is(T == float))
-            return uint2float(popInteger!(4, false, endian)(input, err));
-        else static if (is(T == double))
-            return ulong2double(popInteger!(8, false, endian)(input, err));
-        else
-            static assert(false, "Unsupported type " ~ T.stringof);
+        enum Signed = isSignedIntegral!T;
+        alias F = popInteger!(T.sizeof, Signed, endian);
+        return cast(T) F(i, err);
     }
+    else static if (is(T == float))
+    {
+        alias F = popInteger!(float.sizeof, false, endian);
+        return uint2float(F(i, err));
+    }
+    else static if (is(T == double))
+    {
+        alias F = popInteger!(double.sizeof, false, endian);
+        return ulong2double(F(i, err));
+    }
+    else
+        static assert(false);
 }
 
 unittest
 {
+    static immutable ubyte[8] ARR =
+            [ 0x00, 0x01, 0x02, 0x03 ,
+              0x00, 0x01, 0x02, 0x03 ];
+
     // test 32-bit integer parsing
     {
-        const(ubyte)[] arr = [ 0x00, 0x01, 0x02, 0x03 ,
-                               0x00, 0x01, 0x02, 0x03 ];
+        const(ubyte)[] arr = ARR[];
         bool err;
         assert(popLE!uint(arr, &err) == 0x03020100);
         assert(!err);
@@ -271,21 +345,16 @@ unittest
     // test 64-bit integer parsing
     {
         bool err;
-        const(ubyte)[] arr = [ 0x00, 0x01, 0x02, 0x03, 0x00, 0x01, 0x02, 0x03 ];
-        assert(popLE!ulong(arr, &err) == 0x03020100_03020100);
+        const(ubyte)[] arr = ARR[];
+        assert(popLE!ulong(arr, &err)==0x03020100_03020100);
         assert(!err);
     }
     {
         bool err;
-        const(ubyte)[] arr = [ 0x00, 0x01, 0x02, 0x03, 0x00, 0x01, 0x02, 0x03 ];
-        assert(popBE!long(arr, &err) == 0x00010203_00010203);
+        const(ubyte)[] arr = ARR[];
+        assert(popBE!long(arr, &err)==0x00010203_00010203);
         assert(!err);
     }
-
-    // read out of range
-    //assert(popLE!uint(arr[1..$], &err) == 0);
-   // assert(err);
-    
 
     import dplug.core.vec;
     auto app = makeVec!ubyte();
@@ -296,13 +365,19 @@ unittest
 
 unittest
 {
+    static immutable ubyte[8] ARR1 =
+            [ 0, 0, 0, 0, 0, 0, 0xe0, 0x3f ];
+
+    static immutable ubyte[8] ARR2 =
+            [ 0, 0, 0, 0, 0, 0, 0xe0, 0xbf ];
+
     bool err;
-    const(ubyte)[] arr = [0, 0, 0, 0, 0, 0, 0xe0, 0x3f];
+    const(ubyte)[] arr = ARR1[];
     double r = popLE!double(arr, &err);
     assert(!err);
     assert(r == 0.5);
 
-    arr = [0, 0, 0, 0, 0, 0, 0xe0, 0xbf];
+    arr = ARR2[];
     r = popLE!double(arr, &err);
     assert(!err);
     assert(r == -0.5);

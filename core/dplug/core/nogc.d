@@ -2,20 +2,12 @@
 
 Various @nogc alternatives. This file includes parts of `std.process`, `std.random`, `std.uuid`.
 
-Authors:
-  $(HTTP guillaumepiolat.fr, Guillaume Piolat)
-  $(LINK2 https://github.com/kyllingstad, Lars Tandle Kyllingstad),
-  $(LINK2 https://github.com/schveiguy, Steven Schveighoffer),
-  $(HTTP thecybershadow.net, Vladimir Panteleev)
+Copyright: Copyright 2016-2024, Guillaume Piolat.
+Copyright: Copyright 2013, Lars Tandle Kyllingstad (std.process).
+Copyright: Copyright 2013, Steven Schveighoffer (std.process).
+Copyright: Copyright 2013, Vladimir Panteleev (std.process).
 
-Copyright:
- Copyright (c) 2016, Guillaume Piolat.
- Copyright (c) 2013, Lars Tandle Kyllingstad (std.process).
- Copyright (c) 2013, Steven Schveighoffer (std.process).
- Copyright (c) 2013, Vladimir Panteleev (std.process).
-
- License:
-   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+License: www.boost.org/LICENSE_1_0.txt
 */
 module dplug.core.nogc;
 
