@@ -380,7 +380,7 @@ Vec!T makeVec(T)(size_t initialSize = 0) nothrow @nogc
 }
 
 deprecated("Vec!T must have alignment 1. This constructor will be removed in Dplug v16")
-Vec!T makeVec(T)(size_t initialSize = 0, int alignment = 1) nothrow @nogc
+Vec!T makeVec(T)(size_t initialSize, int alignment) nothrow @nogc
 {
     return Vec!T(initialSize, alignment);
 }
