@@ -19,11 +19,11 @@
 
     "dependencies":
     {
-        "dplug:gui":           "~>14.7",
-        "dplug:flat-widgets":  "~>14.7",
-        "dplug:vst3":          "~>14.7",
-        "dplug:au":            "~>14.7",
-        "dplug:clap":          "~>14.7"
+        "dplug:gui":           "~>15.0",
+        "dplug:flat-widgets":  "~>15.0",
+        "dplug:vst3":          "~>15.0",
+        "dplug:au":            "~>15.0",
+        "dplug:clap":          "~>15.0"
     },
 
     "targetType": "dynamicLibrary",
