@@ -264,7 +264,7 @@ bool class_addIvar (Class cls, string name, size_t size, byte alignment, string 
 
 bool class_addMethod (Class cls, SEL name, IMP imp, string types) nothrow @nogc
 {
-    CString typesZ = CString(types) 
+    CString typesZ = CString(types); 
     return varclass_addMethod(cls, name, imp, typesZ.storage);
 }
 
