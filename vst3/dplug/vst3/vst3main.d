@@ -93,7 +93,7 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
         ClientClass client = mallocNew!ClientClass();
         scope(exit) client.destroyFree();
 
-        auto vendorNameZ = CString(client.vendorName);
+        CString vendorNameZ = CString(client.vendorName);
 
         string vendorEmail = client.getVendorSupportEmail();
         if (!vendorEmail) vendorEmail = "support@example.com";
@@ -101,12 +101,12 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
         string pluginHomepage = client.pluginHomepage();
         if (!pluginHomepage) pluginHomepage = "https://google.com";
 
-        auto pluginHomepageZ = CString(pluginHomepage);
-        auto vendorEmailZ = CString(vendorEmail);
+        CString pluginHomepageZ = CString(pluginHomepage);
+        CString vendorEmailZ = CString(vendorEmail);
 
-        PFactoryInfo factoryInfo = PFactoryInfo(vendorNameZ,
-                                                pluginHomepageZ,
-                                                vendorEmailZ,
+        PFactoryInfo factoryInfo = PFactoryInfo(vendorNameZ.storage,
+                                                pluginHomepageZ.storage,
+                                                vendorEmailZ.storage,
                                                 PFactoryInfo.kUnicode);
 
         auto pluginFactory = mallocNew!CPluginFactory(factoryInfo);
@@ -118,7 +118,7 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
         char[4] pid = client.getPluginUniqueID();
         TUID classId = INLINE_UID(DPLUG_MAGIC, DPLUG_MAGIC2, *cast(uint*)(vid.ptr), *cast(uint*)(pid.ptr));
 
-        auto pluginNameZ = CString(client.pluginName());
+        CString pluginNameZ = CString(client.pluginName());
         char[64] versionString;
         client.getPublicVersion().toVST3VersionString(versionString.ptr, 64);
 
@@ -145,10 +145,10 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
         PClassInfo2 componentClass = PClassInfo2(classId,
                                                  PClassInfo.kManyInstances, // cardinality
                                                  kVstAudioEffectClass.ptr,
-                                                 pluginNameZ,
+                                                 pluginNameZ.storage,
                                                  kSimpleModeSupported,
                                                  vst3Category.ptr,
-                                                 vendorNameZ,
+                                                 vendorNameZ.storage,
                                                  versionString.ptr,
                                                  kVstVersionString.ptr);
         pluginFactory.registerClass(&componentClass, &(createVST3Client!ClientClass));

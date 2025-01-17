@@ -428,8 +428,8 @@ void debugBreak() nothrow @nogc
     }
     else version(LDC)
     {
-    	import ldc.intrinsics;
-    	llvm_debugtrap();
+        import ldc.intrinsics;
+        llvm_debugtrap();
     }
     else
     {
@@ -466,9 +466,10 @@ public:
 nothrow:
 @nogc:
 
-    const(CharType)* storage = null;
-    alias storage this;
-
+    const(CharType)* storage() return
+    {
+        return _storage;
+    }    
 
     this(const(CharType)[] s)
     {
@@ -477,72 +478,35 @@ nothrow:
         CharType* buffer = cast(CharType*) malloc((len + 1) * CharType.sizeof);
         buffer[0..len] = s[0..len];
         buffer[len] = '\0';
-        storage = buffer;
-        wasAllocated = true;
-    }
-
-    // The constructor taking immutable can safely assume that such memory
-    // has been allocated by the GC or malloc, or an allocator that align
-    // pointer on at least 4 bytes.
-    this(immutable(CharType)[] s)
-    {
-        // Same optimizations that for toStringz
-        if (s.length == 0)
-        {
-            enum emptyString = cast(CharType[])"";
-            storage = emptyString.ptr;
-            return;
-        }
-
-        /* Peek past end of s[], if it's 0, no conversion necessary.
-        * Note that the compiler will put a 0 past the end of static
-        * strings, and the storage allocator will put a 0 past the end
-        * of newly allocated char[]'s.
-        */
-        const(CharType)* p = s.ptr + s.length;
-        // Is p dereferenceable? A simple test: if the p points to an
-        // address multiple of 4, then conservatively assume the pointer
-        // might be pointing to another block of memory, which might be
-        // unreadable. Otherwise, it's definitely pointing to valid
-        // memory.
-        if ((cast(size_t) p & 3) && *p == 0)
-        {
-            storage = s.ptr;
-            return;
-        }
-
-        size_t len = s.length;
-        CharType* buffer = cast(CharType*) malloc((len + 1) * CharType.sizeof);
-        buffer[0..len] = s[0..len];
-        buffer[len] = '\0';
-        storage = buffer;
-        wasAllocated = true;
+        _storage = buffer;
+        _wasAllocated = true;
     }
 
     ~this()
     {
-        if (wasAllocated)
-            free(cast(void*)storage);
+        if (_wasAllocated)
+            free(cast(void*)_storage);
     }
 
     @disable this(this);
 
 private:
-    bool wasAllocated = false;
+    const(CharType)* _storage = null;
+    bool _wasAllocated = false;
 }
-
 
 //
 // Launch browser, replaces std.process.browse
 //
 
-void browseNoGC(string url) nothrow @nogc
+void browseNoGC(const(char)[] url) nothrow @nogc
 {
+    CString curl = CString(url);
     version(Windows)
     {
         import core.sys.windows.winuser;
         import core.sys.windows.shellapi;
-        ShellExecuteA(null, CString("open").storage, CString(url).storage, null, null, 
+        ShellExecuteA(null, "open".ptr, curl.storage, null, null, 
                       SW_SHOWNORMAL);
     }
 
@@ -550,20 +514,19 @@ void browseNoGC(string url) nothrow @nogc
     {
         import core.sys.posix.unistd;
         const(char)*[5] args;
-
-        auto curl = CString(url).storage;
         const(char)* browser = getenv("BROWSER");
         if (browser)
         {
+
             browser = strdup(browser);
             args[0] = browser;
-            args[1] = curl;
+            args[1] = curl.storage;
             args[2] = null;
         }
         else
         {
             args[0] = "open".ptr;
-            args[1] = curl;
+            args[1] = curl.storage;
             args[2] = null;
         }
 
@@ -580,9 +543,9 @@ void browseNoGC(string url) nothrow @nogc
     {
         import core.sys.posix.stdlib;
         import core.stdc.stdio;
-        char[256] curl;
-        sprintf(curl.ptr, "%s %s", "xdg-open".ptr, CString(url).storage);
-        system(curl.ptr);
+        char[256] cmdline;
+        snprintf(cmdline.ptr, 256, "%s %s", "xdg-open".ptr, curl.storage);
+        system(cmdline.ptr);
     }
 }
 

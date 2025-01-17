@@ -182,7 +182,8 @@ version(Posix)
 
         SharedLibHandle LoadSharedLib(string libName) nothrow @nogc
         {
-            return dlopen(CString(libName), RTLD_NOW);
+            CString libNameZ = CString(libName);
+            return dlopen(libNameZ.storage, RTLD_NOW);
         }
 
         void UnloadSharedLib(SharedLibHandle hlib) nothrow @nogc
@@ -192,7 +193,8 @@ version(Posix)
 
         void* GetSymbol(SharedLibHandle hlib, string symbolName) nothrow @nogc
         {
-            return dlsym(hlib, CString(symbolName));
+            CString symbolNameZ = CString(symbolName);
+            return dlsym(hlib, symbolNameZ.storage);
         }
     }
 }

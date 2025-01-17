@@ -257,12 +257,15 @@ __gshared
 
 bool class_addIvar (Class cls, string name, size_t size, byte alignment, string types) nothrow @nogc
 {
-    return varclass_addIvar(cls, CString(name), size, alignment, CString(types));
+    CString nameZ = CString(name);
+    CString typesZ = CString(types);
+    return varclass_addIvar(cls, nameZ.storage, size, alignment, typesZ.storage);
 }
 
 bool class_addMethod (Class cls, SEL name, IMP imp, string types) nothrow @nogc
 {
-    return varclass_addMethod(cls, name, imp, CString(types));
+    CString typesZ = CString(types) 
+    return varclass_addMethod(cls, name, imp, typesZ.storage);
 }
 
 Class objc_allocateClassPair (Class superclass, const(char)* name, size_t extraBytes) nothrow @nogc
@@ -272,7 +275,8 @@ Class objc_allocateClassPair (Class superclass, const(char)* name, size_t extraB
 
 id objc_getClass (string name) nothrow @nogc
 {
-    return varobjc_getClass(CString(name));
+    CString nameZ = CString(name);
+    return varobjc_getClass(nameZ.storage);
 }
 
 id objc_getClass (char* name) nothrow @nogc
@@ -282,7 +286,8 @@ id objc_getClass (char* name) nothrow @nogc
 
 id objc_lookUpClass (string name) nothrow @nogc
 {
-    return varobjc_lookUpClass(CString(name));
+    CString nameZ = CString(name);
+    return varobjc_lookUpClass(nameZ.storage);
 }
 /*
 string object_getClassName (id obj) nothrow @nogc
@@ -292,18 +297,21 @@ string object_getClassName (id obj) nothrow @nogc
 */
 SEL sel_registerName (string str) nothrow @nogc
 {
-    return varsel_registerName(CString(str));
+    CString strZ = CString(str);
+    return varsel_registerName(strZ.storage);
 }
 
 Method class_getInstanceMethod (Class aClass, string aSelector) nothrow @nogc
 {
-    return varclass_getInstanceMethod(aClass, CString(aSelector));
+    CString aSelectorZ = CString(aSelector);
+    return varclass_getInstanceMethod(aClass, aSelectorZ.storage);
 }
 
 // Lazy selector literal
 // eg: sel!"init"
 SEL sel(string selectorName)() nothrow @nogc
 {
+    // PERF: too much allocation here
     version(useTLS)
     {
         // Use of TLS here
@@ -332,6 +340,7 @@ SEL sel(string selectorName)() nothrow @nogc
 // eg: lazyClass!"NSObject"
 id lazyClass(string className)() nothrow @nogc
 {
+    // PERF: too much allocation here
     version(useTLS)
     {
         // Use of TLS here
@@ -358,6 +367,7 @@ id lazyClass(string className)() nothrow @nogc
 
 Protocol* lazyProtocol(string className)() nothrow @nogc
 {
+    // PERF: too much allocation here
     version(useTLS)
     {
         static size_t cached = 0;
