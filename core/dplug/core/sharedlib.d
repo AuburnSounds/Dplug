@@ -206,7 +206,8 @@ else version(Windows)
         nothrow @nogc
         SharedLibHandle LoadSharedLib(string libName)
         {
-            return LoadLibraryA(CString(libName));
+            CString libNameZ = CString(libName);
+            return LoadLibraryA(libNameZ.storage);
         }
 
         nothrow @nogc
@@ -218,7 +219,8 @@ else version(Windows)
         nothrow @nogc
         void* GetSymbol(SharedLibHandle hlib, string symbolName)
         {
-            return GetProcAddress(hlib, CString(symbolName));
+            CString symbolNameZ = CString(symbolName);
+            return GetProcAddress(hlib, symbolNameZ.storage);
         }
     }
 } else {
