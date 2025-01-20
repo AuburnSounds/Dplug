@@ -42,13 +42,16 @@ public:
 */
 
 /**
-    Skip bytes in input slice.
+    Skip bytes while parsing an input slice.
+
+    Params:
+       input    = `ubyte` input range.
+       numBytes = Number of bytes to skip.
+       err      = `true` if read error.
 
     Returns: On success, `*err` is set to `false`.
              On failure, `*err` is set to `true`, and the
              input range cannot be used anymore.
-
-    Note: input slice is modified.
 */
 void skipBytes(ref const(ubyte)[] input,
                int numBytes,
@@ -64,15 +67,18 @@ void skipBytes(ref const(ubyte)[] input,
 }
 
 /**
-    Reads a big-endian/little-endian base type from input
-    slice.
+    Reads a base type from input slice.
+    `popLE` parses bytes in little-endian order.
+    `popBE` parses bytes in big-endian order.
+
+    Params:
+       input    = `ubyte` input range.
+       err      = `true` if read error.
 
     Supported types:
         `byte`, `ubyte`, `short`, `ushort`,
          `int`,  `uint`,  `long`,  `ulong`,
          `float`, `double`
-
-    Note: input slice is modified.
 
     Returns: On failure, `*err` is set to `true`, return 0.
           The input range cannot be used anymore.
@@ -91,12 +97,16 @@ T popLE(T)(ref const(ubyte)[] input, bool* err)
     Writes a big-endian/little-endian base type to output
     range.
 
+    Params:
+       output   = `ubyte` output range.
+       n        = A base type to write.
+
     Supported types:
         `byte`, `ubyte`, `short`, `ushort`,
          `int`,  `uint`,  `long`,  `ulong`,
          `float`, `double`
 
-    Doesn't report write errors.
+    Warning: Doesn't report write errors.
 */
 void writeBE(T, R)(ref R output, T n)
     if (isOutputRange!(R, ubyte))
@@ -111,13 +121,18 @@ void writeLE(T, R)(ref R output, T n)
 }
 
 /**
-    Reads a RIFF chunk header from an input range.
+    Reads a [RIFF] chunk header from an input range.
 
-    Returns: On failure, `*err` is set to `true`
-        and `chunkId` and `chunkSize` are undefined.
-        The input range cannot be used anymore.
+    Params:
+       input     = `ubyte` input range.
+       chunkId   = RIFF chunk id.
+       chunkSize = Chunk size.
+       err       = `true` if input error.
 
-    Note: input slice is modified.
+    On failure, `*err` is set to `true`
+    and `chunkId` and `chunkSize` are undefined.
+    The input range cannot be used anymore.
+    [RIFF]: http://www.daubnet.com/en/file-format-riff
 */
 void readRIFFChunkHeader(ref const(ubyte)[] input,
                          out uint chunkId,
@@ -134,7 +149,14 @@ void readRIFFChunkHeader(ref const(ubyte)[] input,
 }
 
 /**
-    Reads a RIFF chunk header to an output range.
+    Reads a [RIFF] chunk header to an output range.
+
+    Params:
+       output    = `ubyte` output range.
+       chunkId   = RIFF chunk id.
+       chunkSize = Chunk size.    
+
+    [RIFF]: http://www.daubnet.com/en/file-format-riff
 */
 void writeRIFFChunkHeader(R)(ref R output,
                              uint chunkId,
@@ -145,14 +167,18 @@ void writeRIFFChunkHeader(R)(ref R output,
     writeLE!uint(output, chunkSize);
 }
 
-/// Returns: A RIFF chunk id.
+/**
+    A RIFF chunk id. Also called "FourCC".
+
+    [RIFF]: http://www.daubnet.com/en/file-format-riff
+*/
 template RIFFChunkId(string id)
 {
     static assert(id.length == 4);
-    uint RIFFChunkId = (cast(ubyte)(id[0]) << 24)
-                     | (cast(ubyte)(id[1]) << 16)
-                     | (cast(ubyte)(id[2]) << 8)
-                     | (cast(ubyte)(id[3]));
+    enum uint RIFFChunkId = (cast(ubyte)(id[0]) << 24)
+                          | (cast(ubyte)(id[1]) << 16)
+                          | (cast(ubyte)(id[2]) <<  8)
+                          | (cast(ubyte)(id[3])      );
 }
 
 private:
