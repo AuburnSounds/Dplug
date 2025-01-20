@@ -1,10 +1,10 @@
 /**
-* Vanilla B-Tree implementation.
-* Note that this is an implementation detail of dplug.core.map and not part of
-* the public dplug:core API.
-*
-* Copyright: Copyright Guillaume Piolat 2024.
-* License:   http://www.boost.org/LICENSE_1_0.txt
+    Vanilla B-Tree implementation.
+    Note that this is an implementation detail of
+    `dplug.core.map` and not part of of the Dplug API.
+
+    Copyright: (c) Guillaume Piolat 2024-2025.
+    License: [BSL-1.0](http://www.boost.org/LICENSE_1_0.txt)
 */
 module dplug.core.btree;
 
@@ -19,75 +19,76 @@ debug(btree)
     import core.stdc.stdio;
 }
 
-/** 
-    An implementation of a vanilla B-Tree.
+/**
+    Vanilla [B-Tree](https://en.wikipedia.org/wiki/B-tree).
 
-    The API should looks closely like the builtin associative arrays.
-    O(lg(n)) insertion, removal, and search time.
-    This `BTree` is designed to operate even without initialization through
-    `makeBTree`.
+    `O(lg(n))` insertion, removal, and search time, much
+    like the builtin associative arrays.
 
-    Note: the keys don't need opEquals, but !(a < b) && !(b > a) should 
-          imply that a == b
+    `.init` is valid, needs no initialization.
 
-    Reference: 
-        http://staff.ustc.edu.cn/~csli/graduate/algorithms/book6/chap19.htm
-        https://en.wikipedia.org/wiki/B-tree
+    Params:
+        K    = Key type, must be comparable with `less`.
+        V    = Value type.
+        less = Must be a strict inequality, orders all `K`.
+        allowDuplicates = Are duplicate keys allowed?
+        duplicateKeyIsUB = Are duplicate keys UB?
+                           When `true`, user MUST guarantee
+                           no duplicates and `insert` is
+                           faster.
+
+    Warning: keys don't need `opEquals`, but:
+         `!(a < b) && !(b > a)`
+         should imply that:
+         `a == b`
 */
-// TODO: map over range of keys
-// PERF: tune minDegree vs size of K and V, there must be a sweet spot
-// PERF: allocate nodes in memory pool, to be built in bulk.
-//       How does reclaim works in that case, in a way that doesn't explode 
-//       memory?
-// PERF: first node could be interned in the struct itself (interior pointer)
-//       however that requires first to tweak the branching factor with size 
-//       of item.
-// PERF: (requires: Node memory pool) find a way to deallocate all at once
-// PERF: find how to use duplicateKeyIsUB for Map and Set
-struct BTree(K,                            // type of the keys
-             V,                            // type of the values
-             alias less = "a < b",         // must be strict inequality
-             
-             bool allowDuplicates = false, // dupe keys allowed or not
-
-             bool duplicateKeyIsUB = false) // user guarantees no duplicates
-                                            // for faster inserts 
-                                            // (works when !allowDuplicates)
+struct BTree(K, V, alias less = "a < b",
+             bool allowDuplicates = false,
+             bool duplicateKeyIsUB = false)
 {
 public:
 nothrow:
 @nogc:
 
-    /// Called "t" or "minimum degree" in litterature, can never be < 2.
-    /// Make it lower (eg: 2) to test tree algorithms.
-    /// See <digression> below to see why this is not B-Tree "order".
-    enum minDegree = 16;
-
-    // Every node must have >= minKeysPerNode and <= maxKeysPerNode.
-    // The root node is allowed to have < minKeysPerNode (but not zero).
-    enum int minKeys     =     minDegree - 1; 
-    enum int maxKeys     = 2 * minDegree - 1;
-    enum int minChildren =     minDegree;
-    enum int maxChildren = 2 * minDegree;
+    // TODO: map over range of keys
+    // PERF: tune minDegree vs size of K and V, there must
+    // be a sweet spot
+    // PERF: allocate nodes in memory pool, to be built in
+    //       bulk. How does reclaim works in that case, in a
+    //       way that doesn't explode memory?
+    // PERF: first node could be interned in the struct
+    //       itself (interior pointer) however that requires
+    //       first to tweak the branching factor with size
+    //       of item.
+    // PERF: (requires: Node memory pool) find a way to
+    //       deallocate all at once.
+    // PERF: find how to use duplicateKeyIsUB for Map and
+    //       Set.
 
     debug(btree) invariant()
     {
         checkInvariant();
     }
 
-    // Not copyable.
+
+    /**
+        Not copyable.
+    */
     @disable this(this);
+
 
     /**
         Constructor.
+        A new B-tree has no allocation and zero items.
     */
     this(int dummy)
     {
         // It does nothing, because T.init is valid.
     }
 
+
     /**
-        Destructor. All nodes are cleared.
+        Destructor. All nodes cleared.
     */
     ~this()
     {
@@ -96,36 +97,43 @@ nothrow:
             _root.reclaimMemory();
             _root = null;
         }
-    }    
+    }
+
 
     /**
         Number of items in the B-Tree.
-        Returns: Number of elements.
+        Returns: Number of items.
     */
     size_t length() const
     {
         return _count;
     }
 
+
     /**
         Is this B-Tree empty?
-        Returns: `true` if zero elements.
+        Returns: `true` if zero items.
     */
-    bool empty() const 
+    bool empty() const
     {
         return _count == 0;
     }
 
+
     /**
-        Insert an element in the container. 
+        Insert item in tree.
+
+        Params:
+            key   = Key to insert.
+            value = Value to insert associated with `key`.
 
         Returns: `true` if the insertion took place.
-                 If duplicates are supported, return true.
 
-        WARNING: inserting duplicate keys when duplicates are not supported
-        is Undefined Behaviour. Use `contains()` to avoid that case.
+        Warning: Inserting duplicate keys when duplicates
+                 are not supported is Undefined Behaviour.
+                 Use `contains()` to avoid that case.
     */
-    bool insert(K key, V value) 
+    bool insert(K key, V value)
     {
         lazyInitialize();
 
@@ -134,12 +142,14 @@ nothrow:
         {
             static if (duplicateKeyIsUB)
             {
-                // Detect dupes, but in -release it will be Undefined Behaviour
+                // Detect dupes, but in -release it will
+                // be Undefined Behaviour
                 assert(findKeyValue(_root, key) is null);
             }
             else
             {
-                // Always detect dupes, this slows down insertion by a lot
+                // Always detect dupes, this slows down
+                // insertion by a lot
                 if (findKeyValue(_root, key) !is null)
                     return false;
             }
@@ -163,13 +173,83 @@ nothrow:
         {
             insertNonFull(r, key, value);
         }
-        
+
         _count += 1;
         return true;
     }
 
+
     /**
-        Return forward range of values, over all elements.
+        Erase an item from the tree.
+
+        Params:
+            key = Key to remove.
+
+        Returns: Number of removed items, can be 0 or 1. In
+                 case of dupe keys, remove only one of them.
+    */
+    size_t remove(K key)
+    {
+        // This was surprisingly undocumented on the
+        // Internet or LLM.
+
+        if (_root is null)
+            return 0;
+
+        int keyIndex;
+        Node* node = findNode(_root, key, keyIndex);
+        if (node is null)
+            return 0; // not found
+
+        _count -= 1;
+
+        // Reference:
+        // https://www.youtube.com/watch?v=0NvlyJDfk1M
+        if (node.isLeaf)
+        {
+            // First, remove key, then eventually rebalance.
+            deleteKeyValueAtIndexAndShift(node, keyIndex);
+            rebalanceAfterDeletion(node);
+        }
+        else
+        {
+            // Exchange key with either highest of the
+            // smaller key in leaf, or largest of the
+            // highest keys.
+            //
+            //              . value .
+            //             /         \
+            //            /           \
+            //           /             \
+            //     left subtree      right subtree
+            //
+            // But I'm not sure why people tout this
+            // solution.
+            // Here we simply always get to the rightmost
+            // leaf node of left subtree. It seems it's
+            // always possible indeed, and it's not faster
+            // to look at the other sub-tree.
+            Node* leaf = node.children[keyIndex];
+            while (!leaf.isLeaf)
+                leaf = leaf.children[leaf.numKeys];
+            assert(leaf);
+
+            // Remove key from leaf, put it instead of
+            // target.
+            node.kv[keyIndex] = leaf.kv[leaf.numKeys-1];
+            leaf.numKeys -= 1;
+
+            // and then rebalance
+            rebalanceAfterDeletion(leaf);
+        }
+        return 1;
+    }
+
+
+    /**
+        Iterate over all values in the tree.
+
+        Returns: Forward range of `V`, over the whole tree.
     */
     auto byValue()
     {
@@ -182,7 +262,9 @@ nothrow:
     }
 
     /**
-        Return forward range of keys, over all elements.
+        Iterate over all keys in the tree.
+
+        Returns: Forward range of `K`, over the whole tree.
     */
     auto byKey()
     {
@@ -193,9 +275,13 @@ nothrow:
     {
         return const(BTreeRange!(RangeType.key))(this);
     }
-    
+
     /**
-        Return forward range of a struct that has .key and .value.
+        Iterate over all keys and values simultaneously.
+
+        Returns: Forward range of a Voldemort struct that
+                 exposes `.key` and `.value` of type `K` and
+                 `V` respectively.
     */
     auto byKeyValue()
     {
@@ -207,65 +293,22 @@ nothrow:
         return const(BTreeRange!(RangeType.keyValue))(this);
     }
 
-    /**
-        Erases an element from the tree, if found.
-        Returns: Number of elements erased (for now: 0 or 1 only).
-    */
-    size_t remove(K key)
-    {
-        if (_root is null)
-            return 0;
-
-        int keyIndex;
-        Node* node = findNode(_root, key, keyIndex);
-        if (node is null)
-            return 0; // not found
-
-        _count -= 1;
-
-        // Reference: https://www.youtube.com/watch?app=desktop&v=0NvlyJDfk1M
-        if (node.isLeaf)
-        {
-            // First, remove key, then eventually rebalance.
-            deleteKeyValueAtIndexAndShift(node, keyIndex);
-            rebalanceAfterDeletion(node);
-        }
-        else
-        {
-            // Exchange key with either highest of the smaller key in leaf,
-            // or largest of the highest keys
-            //          . value .
-            //         /         \
-            //        /           \
-            //       /             \
-            // left subtree      right subtree
-
-            // But I'm not sure why people tout this solution.
-            // Here we simply always get to the rightmost leaf node of left 
-            // subtree. It seems it's always possible indeed, and it's not
-            // faster to look at the other sub-tree.
-            Node* leafNode = node.children[keyIndex];
-            while (!leafNode.isLeaf)
-                leafNode = leafNode.children[leafNode.numKeys];
-            assert(leafNode);
-
-            // Remove key from leaf node, put it instead of target.
-            node.kv[keyIndex] = leafNode.kv[leafNode.numKeys-1];
-            leafNode.numKeys -= 1;
-
-            // and then rebalance
-            rebalanceAfterDeletion(leafNode);
-        }
-        
-        return 1;
-    }
 
     /**
-        `in` operator. Check to see if the given element exists in the
-        container.
-        In case of duplicate keys, it returns one of those, unspecified order.
+        Search the B-Tree by key.
+
+        Params:
+            key = Key to search for.
+
+        Returns:
+            A pointer to the corresponding `V` value.
+            `null` if not found.
+
+        Note: In case of duplicate keys, it returns one
+              of those in unspecified order.
     */
-    inout(V)* opBinaryRight(string op)(K key) inout if (op == "in")
+    inout(V)* opBinaryRight(string op)(K key) inout
+        if (op == "in")
     {
         if (_root is null)
             return null;
@@ -275,10 +318,16 @@ nothrow:
     }
 
     /**
-        Index the B-Tree by key.
-        Returns: A reference to the value corresponding to this key.
-                 In case of duplicate keys, it returns one of the values,
-                 in unspecified order.
+        Search the B-Tree by key.
+
+        Params:
+            key = Key to search for.
+
+        Returns: A reference to the value corresponding to
+                 this key.
+
+        Note: In case of duplicate keys, it returns one
+              of those in unspecified order.
     */
     ref inout(V) opIndex(K key) inout
     {
@@ -287,8 +336,12 @@ nothrow:
     }
 
     /**
-        Search for an element.
-        Returns: `true` if the element is present.
+        Search the B-Tree for a key.
+
+        Params:
+            key = Key to search for.
+
+        Returns: `true` if `key`` is contained in the tree.
     */
     bool contains(K key) const
     {
@@ -298,6 +351,22 @@ nothrow:
     }
 
 private:
+
+    // Called "t" or "minimum degree" in litterature, can
+    // never be < 2.
+    // Make it lower (eg: 2) to test tree algorithms.
+    // See <digression> below to see why this is not B-Tree
+    // "order".
+    enum minDegree = 16;
+
+    // Every node must have >= minKeysPerNode and <=
+    // maxKeysPerNode.
+    // The root node is allowed to have < minKeysPerNode
+    // (but not zero).
+    enum int minKeys     =     minDegree - 1;
+    enum int maxKeys     = 2 * minDegree - 1;
+    enum int minChildren =     minDegree;
+    enum int maxChildren = 2 * minDegree;
 
     alias _less = binaryFun!less;
 
@@ -310,35 +379,38 @@ private:
         if (_root)
         {
             assert(_count > 0);
-            checkNodeInvariant(_root, null, count);
+            checkNode(_root, null, count);
         }
         else
         {
-            assert(_count == 0); // No elements <=> null _root node.
+            assert(_count == 0); // No items <=> null _root
         }
         assert(count == _count);
     }
 
     // null if not found
-    inout(KeyValue)* findKeyValue(inout(Node)* x, K key) inout
+    inout(KeyValue)* findKeyValue(inout(Node)* x, K key)
+        inout
     {
         int index;
         inout(Node)* node = findNode(x, key, index);
         if (node is null)
             return null;
-        else 
+        else
             return &(node.kv[index]);
     }
 
-    // Return containing node + index of value in store, or null if not found.
-    inout(Node)* findNode(inout(Node)* x, K key, out int index) inout
+    // Return containing node + index of value in store, or
+    // null if not found.
+    inout(Node)* findNode(inout(Node)* x, K key,
+                          out int index) inout
     {
         int i = 0;
         while (i < x.numKeys && _less(x.kv[i].key, key))
             i += 1;
 
-        // Like in Phobos' Red Black tree, use !less(a,b) && !less(b,a) instead
-        // of opEquals.
+        // Like in Phobos' Red Black tree, this use:
+        // !less(a,b) && !less(b,a) instead of opEquals.
 
         if (i < x.numKeys && !_less(key, x.kv[i].key))
         {
@@ -377,7 +449,7 @@ private:
                 i -= 1;
             }
             x.kv[i+1] = KeyValue(key, value);
-            x.numKeys++; 
+            x.numKeys++;
         }
         else
         {
@@ -404,8 +476,8 @@ private:
     // y = a full node to split
     void splitChild(Node* x, int i, Node* y)
     {
-        // create new child, that will take half the keyvalues and children of
-        // the full y node
+        // create new child, that will take half the
+        // keyvalues and children of the full y node
         Node* z = allocateNode();
         z.isLeaf = y.isLeaf;
         z.numKeys = minDegree - 1;
@@ -431,7 +503,8 @@ private:
         y.numKeys = minDegree - 1;
 
         // And now for the parent node:
-        // * new child is inserted right of its older sibling
+        // * new child is inserted right of its older
+        //   sibling
         for (int j = x.numKeys; j > i; --j)
         {
             x.children[j+1] = x.children[j];
@@ -446,30 +519,32 @@ private:
         x.numKeys += 1;
     }
 
-    // Take one node that is exactly below capacity, and reinstate 
-    // the invariant by merging nodes and exchanging with neighbours.
-    // Is called on nodes that might be missing exactly one item.
+    // Take one node that is exactly below capacity, and
+    // reinstate the invariant by merging nodes and
+    // exchanging with neighbours. Is called on nodes that
+    // might be missing exactly one item.
     void rebalanceAfterDeletion(Node* node)
     {
-        if (node.parent is null)   // is this the tree _root?
+        if (node.parent is null)  // is this the tree _root?
         {
             assert(_root is node);
-            
+
             if (_root.numKeys == 0)
-            {        
-                if (_root.isLeaf)  // no more items in tree
+            {
+                if (_root.isLeaf) // no more items in tree
                 {
                     destroyFree(_root);
                     _root = null;
                 }
-                else               // tree is reduced by one level
+                else // tree is reduced by one level
                 {
                     Node* oldRoot = _root;
                     _root = oldRoot.children[0];
                     _root.parent = null;
                     oldRoot.numKeys = -1;
-                    oldRoot.children[0] = null; // so that it is not destroyed
-                    destroyFree(oldRoot);       // <- here
+                    // so that it is not destroyed
+                    oldRoot.children[0] = null;
+                    destroyFree(oldRoot); // <- here
                 }
             }
             return;
@@ -495,23 +570,26 @@ private:
                 break;
             }
         }
-        
-        if (childIndex != 0)                      // has left sibling?
+
+        // has left sibling?
+        if (childIndex != 0)
             left = parent.children[childIndex-1];
-        
-        if (childIndex + 1 < parent.numChildren)  // has right sibling?
+
+        // has right sibling?
+        if (childIndex + 1 < parent.numChildren)
             right = parent.children[childIndex+1];
 
-        assert(left || right);                    // one of those must exists
+        assert(left || right); // one of those exists
 
         if (left && left.numKeys > minKeys)
         {
-            // Take largest key from left sibling, it becomes the new pivot in
-            // parent. Old pivot erase our key (and if non-leaf, gets the left
+            // Take largest key from left sibling, it
+            // becomes the new pivot in parent. Old pivot
+            // erase our key (and if non-leaf, gets the left
             // sibling right subtree + the node one child).
             assert(left.isLeaf == node.isLeaf);
             KeyValue largest = left.kv[left.numKeys - 1];
-            Node* rightMostChild = left.children[left.numKeys];
+            Node* rightMost = left.children[left.numKeys];
             left.numKeys -= 1;
             KeyValue pivot = node.parent.kv[childIndex-1];
             node.parent.kv[childIndex-1] = largest;
@@ -529,21 +607,23 @@ private:
                 {
                     node.children[n] = node.children[n-1];
                 }
-                node.children[0] = rightMostChild;
-                rightMostChild.parent = node;
+                node.children[0] = rightMost;
+                rightMost.parent = node;
             }
             node.numKeys = minKeys;
         }
         else if (right && right.numKeys > minKeys)
         {
-            // Take smallest key from right sibling, it becomes the new pivot 
-            // in parent. Old pivot erase our key.
+            // Take smallest key from right sibling, it
+            // becomes the new pivot in parent. Old pivot
+            // erase our key.
             assert(right.isLeaf == node.isLeaf);
             KeyValue smallest = right.kv[0];
             Node* leftMostChild = right.children[0];
 
-            // Delete first key (and first child, if any) of right sibling.
-            if (!node.isLeaf) 
+            // Delete first key (and first child, if any) of
+            // right sibling.
+            if (!node.isLeaf)
             {
                 for (int n = 0; n < right.numKeys; ++n)
                     right.children[n] = right.children[n+1];
@@ -553,7 +633,7 @@ private:
             KeyValue pivot = parent.kv[childIndex];
             parent.kv[childIndex] = smallest;
             node.kv[minKeys - 1] = pivot;
-            if (!node.isLeaf) 
+            if (!node.isLeaf)
             {
                 leftMostChild.parent = node;
                 node.children[minKeys] = leftMostChild;
@@ -576,8 +656,9 @@ private:
         }
     }
 
-    // Merge children nth and nth+1, which must both have min amount of keys
-    // it makes one node with max amount of keys
+    // Merge children nth and nth+1, which must both have
+    // min amount of keys. makes one node with max amount of
+    // keys
     void mergeChild(Node* parent, int nth)
     {
         Node* left = parent.children[nth];
@@ -586,7 +667,7 @@ private:
         assert(left.isLeaf == right.isLeaf);
 
         // One key is missing already
-        assert(left.numKeys + right.numKeys == 2*minKeys - 1);
+        assert(left.numKeys + right.numKeys == 2*minKeys-1);
 
         left.kv[left.numKeys] = pivot;
 
@@ -598,9 +679,11 @@ private:
         {
             for (int n = 0; n < right.numKeys+1; ++n)
             {
-                left.children[left.numKeys + 1 + n] = right.children[n];
+                left.children[left.numKeys + 1 + n] =
+                    right.children[n];
                 assert(right.children[n].parent == right);
-                left.children[left.numKeys + 1 + n].parent = left;
+                left.children[left.numKeys + 1 + n].parent =
+                     left;
             }
         }
         left.numKeys = 2 * minKeys;
@@ -613,14 +696,15 @@ private:
             parent.children[n+1] = parent.children[n+2];
         }
 
-        // in case the parent has too few elements
+        // in case the parent has too few items
         rebalanceAfterDeletion(parent);
 
         destroyFree(right);
     }
 
     // internal use, delete a kv and shift remaining kv
-    void deleteKeyValueAtIndexAndShift(Node* node, int index)
+    void deleteKeyValueAtIndexAndShift(Node* node,
+                                       int index)
     {
         node.numKeys -= 1;
         for (int n = index; n < node.numKeys; ++n)
@@ -629,12 +713,15 @@ private:
         }
     }
 
-    void checkNodeInvariant(const(Node)* node, const(Node)* parent, 
-                            ref int count) const
+    // node invariant
+    void checkNode(const(Node)* node,
+                   const(Node)* parent,
+                   ref int count) const
     {
-        // Each node of the tree except the root must contain at least 
-        // `minDegree − 1` keys (and hence must have at least `minDegree` 
-        // children if it is not a leaf).        
+        // Each node of the tree except the root must
+        // contain at least
+        // `minDegree − 1` keys (and hence must have at
+        // least `minDegree` children if it is not a leaf).
         if (parent !is null)
         {
             assert(node.numKeys >= minKeys);
@@ -657,7 +744,7 @@ private:
             // Check child invariants.
             for (int n = 0; n < node.numChildren(); ++n)
             {
-                checkNodeInvariant(node.children[n], node, count);
+                checkNode(node.children[n], node, count);
             }
 
             // Check internal key ordering
@@ -675,39 +762,31 @@ private:
                 }
             }
 
-            // Check key orderings with children. All keys of child must be 
-            // inside parent range.
+            // Check key orderings with children. All keys
+            // of child must be inside parent range.
             for (int n = 0; n < node.numKeys; ++n)
             {
                 const(K) k = node.kv[n].key;
 
-                // All key of left children must be smaller, right must be 
-                // larger.
+                // All key of left children must be smaller,
+                // right must be larger.
                 const(Node)* left = node.children[n];
                 const(Node)* right = node.children[n+1];
 
                 for (int m = 0; m < left.numKeys; ++m)
                 {
                     static if (allowDuplicates)
-                    {
                         assert(! _less(k, left.kv[m].key));
-                    }
                     else
-                    {
                         assert(_less(left.kv[m].key, k));
-                    }
                 }
 
                 for (int m = 0; m < right.numKeys; ++m)
                 {
                     static if (allowDuplicates)
-                    {
                         assert(!_less(right.kv[m].key, k));
-                    }
                     else
-                    {
                         assert(_less(k, right.kv[m].key));
-                    }
                 }
             }
         }
@@ -719,10 +798,10 @@ private:
         V value;
     }
 
-    debug(btree) 
+    debug(btree)
     public void display()
     {
-        printf("Tree has %zu elements\n", _count);
+        printf("Tree has %zu items\n", _count);
         if (_root)
             _root.display();
         else
@@ -750,13 +829,16 @@ private:
         // Is this a leaf node?
         bool isLeaf;
 
-        // This node stored numKeys keys, and numKeys+1 children.
+        // This node stores:
+        //   - numKeys keys,
+        //   - and numKeys+1 children.
         int numKeys;
 
         // Keys and values together.
         KeyValue[maxKeys] kv;
 
-        // (borrowed) Parent node. Can be null, for the root.
+        // (borrowed) Parent node.
+        // Is null for the root.
         Node* parent;
 
         // (owning) Pointer to child nodes.
@@ -788,13 +870,14 @@ private:
 
             treeRef.deallocateNode(&this);
         }
-        
-        debug(btree) 
+
+        debug(btree)
         void display()
         {
             printf("\nNode %p\n", &this);
             printf("   * parent = %p\n", parent);
-            printf("   * leaf = %s\n", isLeaf ? "yes".ptr: "no".ptr);
+            printf("   * leaf = %s\n", isLeaf ? "yes".ptr:
+                                                "no".ptr);
             printf("   * numKeys = %d\n", numKeys);
 
             if (numKeys > 0)
@@ -802,17 +885,17 @@ private:
                 for (int v = 0; v < numKeys; ++v)
                 {
                     static if (is(V == string))
-                        printf("        - Contains key %d and value %s\n", 
+                        printf(" - key %d and value %s\n",
                                kv[v].key, kv[v].value.ptr);
                     else
-                        printf("        - Contains key %d\n", kv[v].key);
+                        printf(" - key %d\n", kv[v].key);
                 }
             }
             if (!isLeaf)
             {
                 for (int v = 0; v < numKeys+1; ++v)
                 {
-                    printf("        - Point to child %p\n", children[v]);
+                    printf(" - => child %p\n", children[v]);
                 }
             }
             printf("\n");
@@ -825,7 +908,7 @@ private:
                 }
             }
         }
-    }    
+    }
 
 
 public:
@@ -837,7 +920,7 @@ public:
         keyValue
     }
 
-    /// Btree Range 
+    /// Btree Range
     static struct BTreeRange(RangeType type)
     {
     nothrow @nogc:
@@ -852,7 +935,8 @@ public:
 
         this(ref const(BTree) tree)
         {
-            _current = cast(Node*)(tree._root); // const_cast here
+            // const_cast here
+            _current = cast(Node*)(tree._root);
             if (_current is null)
                 return;
             while(!_current.isLeaf)
@@ -867,86 +951,100 @@ public:
         auto front()
         {
             static if (type == RangeType.key)
-                return _current.kv[_currentItem].key;
+                return _current.kv[_curItem].key;
             static if (type == RangeType.value)
-                return _current.kv[_currentItem].value; 
+                return _current.kv[_curItem].value;
             static if (type == RangeType.keyValue)
-                return _current.kv[_currentItem];
+                return _current.kv[_curItem];
         }
 
         void popFront()
         {
-            // Basically, _current and _currentItem points at a key.
+            // Basically, _current and _curItem points
+            // at a key.
             //
             //       3
             //     /   \
             //  1-2     4-5
             //
-            //  Case 1: increment _currentItem
-            //  Case 2: increment _currentItem, see that it's out of bounds.
-            //          go up the parent chain, find position of child
-            //          repeat if needed
-            //          then point at pivot if any, or terminate.
+            //  Case 1: increment _curItem
+            //  Case 2: increment _curItem, see that
+            //          it's out of bounds.
+            //          Go up the parent chain, find
+            //          position of child.
+            //          Repeat if needed
+            //          Then point at pivot if any, or exit.
             //  Case 3: See that you're not in a leaf.
-            //          Go down to the leftmost leaf of the right sub-tree.
-            //          Start at first item. This one always exist.
-            //  Case 4: same as case 1. 
+            //          Go down to the leftmost leaf of the
+            //          right sub-tree.
+            //          Start at first item. This one always
+            //          exist.
+            //  Case 4: same as case 1.
             //  Case 5: same as case 2.
 
             // If not a leaf, go inside the next children
             if (!_current.isLeaf)
             {
                 // Case 3
-                assert(_currentItem + 1 < _current.numChildren);
-                _current = _current.children[_currentItem+1];
+                assert(_curItem + 1 < _current.numChildren);
+                _current = _current.children[_curItem+1];
                 while (!_current.isLeaf)
                     _current = _current.children[0];
-                _currentItem = 0;
+                _curItem = 0;
             }
             else
             {
-                _currentItem += 1;
-                if (_currentItem >= _current.numKeys)
+                _curItem += 1;
+                if (_curItem >= _current.numKeys)
                 {
                     while(true)
                     {
                         if (_current.parent is null)
                         {
-                            _current = null; // end of iteration
+                            // end of iteration
+                            _current = null;
                             break;
                         }
                         else
                         {
-                            // Find position of child in parent
-                            int posInParent = -2;
-                            Node* child = _current;
+                            // Find position of child in
+                            // parent
+                            int posParent = -2;
+                            Node* c = _current;
                             Node* parent = _current.parent;
 
-                            // Possibly there is a better way to do it with a 
-                            // stack somewhere. But that would require to know
-                            // the maximum level.
-                            // That, or change everything to be B+Tree.
-                            for (int n = 0; n < parent.numChildren(); ++n)
+                            // Possibly there is a better
+                            // way to do it with a stack
+                            // somewhere. But that would
+                            // require to know the maximum
+                            // level.
+                            // That, or change everything to
+                            // be B+Tree.
+                            size_t N = parent.numChildren();
+                            for (int n = 0; n < N; ++n)
                             {
-                                if (parent.children[n] == child)
+                                if (parent.children[n] == c)
                                 {
-                                    posInParent = n;
+                                    posParent = n;
                                     break;
                                 }
                             }
 
-                            assert(posInParent != -2); // else tree invalid
+                            // else tree invalid
+                            // not sure why I took -2
+                            assert(posParent != -2);
 
-                            if (posInParent < parent.numKeys)
+                            if (posParent < parent.numKeys)
                             {
                                 // Point at pivot
                                 _current = parent;
-                                _currentItem = posInParent;
+                                _curItem = posParent;
                                 break;
                             }
                             else
                             {
-                                // continue searching up for a pivot
+                                // continue search upwards
+                                // for a pivot
                                 _current = parent;
                             }
                         }
@@ -962,7 +1060,7 @@ public:
     private:
         // Next item returned by .front
         Node* _current;
-        int _currentItem;
+        int _curItem;
     }
 }
 
@@ -970,7 +1068,8 @@ public:
 //
 // A short note about B-tree "Knuth order" vs t/minDegree.
 //
-// t or "minimum degree" ensures an even number of children in full nodes.
+// t or "minimum degree" ensures an even number of children
+// in full nodes.
 //
 //  .----------------+---------------+-------------------.
 //  | minDegree max  | keys per node | children per node |
@@ -980,8 +1079,8 @@ public:
 //  |             4  |        3 to 7 |            4 to 8 |
 //  +----------------+---------------+-------------------+
 //
-// However Knuth defines that as an "order" m, which can be _odd_.
-// https://stackoverflow.com/questions/42705423/can-an-m-way-b-tree-have-m-odd
+// However Knuth defines that as an "order" m, which can be
+// an _odd_ number.
 //
 // In this case, the possible B-tree item bounds are:
 //
@@ -994,12 +1093,13 @@ public:
 //  |             7  |        3 to 6 |            4 to 7 |
 //  |             8  |        3 to 7 |            4 to 8 |
 //  +----------------+---------------+-------------------+
-// 
-// So, while things are similar for even m, they are different 
-// for odd m and some Internet example use m = 5.
-// If we disallow non-even m, then it's impossible to 
-// It makes a difference in deletion, because two minimally 
-// filled nodes + a pivot can be merged together if m is even.
+//
+// So, while things are similar for even m, they are
+// different for odd m and some Internet example use m = 5.
+// If we disallow non-even m, then it's impossible to
+// It makes a difference in deletion, because two minimally
+// filled nodes + a pivot can be merged together if m is
+// even.
 //
 // Our implementation does NOT allow for odd m.
 //
@@ -1007,7 +1107,8 @@ public:
 
 unittest // .init testing, basics
 {
-    // It should be possible to use most function of an uninitialized Map
+    // It should be possible to use most function of an
+    // uninitialized BTree.
     // All except functions returning a range will work.
     BTree!(int, string) m;
 
@@ -1046,7 +1147,7 @@ unittest // add and delete in reverse order
 }
 
 unittest // dupe keys
-{    
+{
     BTree!(int, int, "a < b", true) m;
     enum KEY = 4;
 
