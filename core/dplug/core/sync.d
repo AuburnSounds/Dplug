@@ -98,14 +98,14 @@ nothrow @nogc:
         // TODO: not easy to make the mutex destruction thread-safe, because one of the
         // thread must wait. Ignore that for now.
 
-        void* mutexHandle = atomicLoad(_mutex); // Can be the mutex handle, or null.
+        void* mutexHandle = atomicLoadCompat(_mutex); // Can be the mutex handle, or null.
 
         if (mutexHandle !is null)
         {
             // Now, the mutex could have been destroyed by another thread already.
             // Make a cas to ensure we are first to attempt it.
 
-            if (cas(&_mutex, &mutexHandle, null))
+            if (casCompat(&_mutex, &mutexHandle, null))
             {
                 destroyMutex(mutexHandle);
             }
@@ -134,6 +134,7 @@ nothrow @nogc:
         }
         else version( Posix )
         {
+            
             assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
                 {
@@ -258,7 +259,7 @@ private:
     void lazyThreadSafeInitialization() @trusted
     {
         // Is there an existing mutex already?
-        if (atomicLoad(_mutex) !is null)
+        if (atomicLoadCompat(_mutex) !is null)
             return;
 
         // Create one mutex.
@@ -268,7 +269,7 @@ private:
         void* ifThis = null;
 
         // Try to set _mutex.
-        if (!cas(here, &ifThis, p))
+        if (!casCompat(here, &ifThis, p))
         {
             // Another thread created _mutex first. Destroy our useless instance.
             destroyMutex(mtx);
@@ -281,6 +282,39 @@ package:
         pthread_mutex_t* handleAddr() nothrow @nogc
         {
             return cast(pthread_mutex_t*) _mutex;
+        }
+    }
+private:
+
+    static void* atomicLoadCompat(ref void* p)
+    {
+        static if (__VERSION__ < 2094)
+        {
+            // old compiler, do it incorrectly
+            return p;
+        }
+        else
+            return atomicLoad(p);        
+    }
+    
+    static bool casCompat(void** here,
+                          void** ifThis,
+                          void* writeThis)
+    {
+        static if (__VERSION__ < 2094)
+        {
+            // old compiler, do it incorrectly
+            if (*here == *ifThis)
+            {
+                *here = writeThis;
+                return true;                
+            }
+            else 
+                return false;
+        }
+        else
+        {
+            return cas(here, ifThis, writeThis);
         }
     }
 }
