@@ -52,7 +52,7 @@ T logmap(T)(T t, T min, T max) pure
 }
 unittest
 {
-    assert(isClose(logmap!float(0.5f, 2.0f, 200.0f), 20.0f));
+    assert(isCloseRel(logmap!float(0.5f, 2.0f, 200.0f), 20.0f));
 }
 
 
@@ -269,10 +269,10 @@ T normalizePhase(T)(T phase) if (is(T == float) || is(T == double))
 }
 unittest
 {
-    assert(isClose(normalizePhase!float(0.1f), 0.1f));
-    assert(isClose(normalizePhase!float(TAU + 0.1f), 0.1f));
-    assert(isClose(normalizePhase!double(-0.1f), -0.1f));
-    assert(isClose(normalizePhase!double(-TAU - 0.1f), -0.1f));
+    assert(isCloseRel(normalizePhase!float(0.1f), 0.1f));
+    assert(isCloseRel(normalizePhase!float(TAU + 0.1f), 0.1f));
+    assert(isCloseRel(normalizePhase!double(-0.1f), -0.1f));
+    assert(isCloseRel(normalizePhase!double(-TAU - 0.1f), -0.1f));
 }
 
 
@@ -559,3 +559,14 @@ T computeRMS(T)(T[] samples) pure
         sum += sample * sample;
     return sqrt(sum / cast(int)samples.length);
 }
+
+version(unittest)
+private bool isCloseRel(double a, double b, double maxRelDiff = 1e-2f)
+{
+    return
+       (a <= b *(1.0 + maxRelDiff))
+       &&
+       (b <= a *(1.0 + maxRelDiff));
+}
+
+

@@ -351,8 +351,13 @@ public double convertStringToDouble(const(char)* s,
  
 unittest
 {
-    //import core.stdc.stdio;
-    import std.math.operations;
+    bool isCloseRel(double a, double b, double maxRelDiff = 1e-2f)
+    {
+        return
+           (a <= b *(1.0 + maxRelDiff))
+           &&
+           (b <= a *(1.0 + maxRelDiff));
+    }
 
     string[9] s = ["14", "0x123", "+0x1.921fb54442d18p+0001", "0", "-0.0", "   \n\t\n\f\r 0.65", "1.64587", "-1.0e+9", "1.1454e-25"]; 
     double[9] correct = [14, 0x123, +0x1.921fb54442d18p+0001, 0.0, -0.0, 0.65L, 1.64587, -1e9, 1.1454e-25f];
@@ -376,7 +381,7 @@ unittest
         //import std.stdio;
         //debug writeln(a, " correct is ", correct[n]);
         assert(!err);
-        assert( isClose(a, correct[n], 0.0001) );
+        assert( isCloseRel(a, correct[n], 0.0001) );
 
         bool err2;
         double b = convertStringToDouble(s[n].ptr, false, &err2);
