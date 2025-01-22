@@ -563,10 +563,17 @@ T computeRMS(T)(T[] samples) pure
 version(unittest)
 private bool isCloseRel(double a, double b, double maxRelDiff = 1e-2f)
 {
+    if (a < 0)
+    {
+        a = -a;
+        b = -b;
+    }
+    
+    if (a == 0)
+        return b == 0;
+
     return
        (a <= b *(1.0 + maxRelDiff))
        &&
        (b <= a *(1.0 + maxRelDiff));
 }
-
-

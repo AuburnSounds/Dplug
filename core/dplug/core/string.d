@@ -353,6 +353,15 @@ unittest
 {
     bool isCloseRel(double a, double b, double maxRelDiff = 1e-2f)
     {
+        if (a < 0)
+        {
+            a = -a;
+            b = -b;
+        }
+        
+        if (a == 0)
+            return b == 0;
+
         return
            (a <= b *(1.0 + maxRelDiff))
            &&
@@ -378,8 +387,10 @@ unittest
 
         bool err;
         double a = convertStringToDouble(s[n].ptr, true, &err);
-        //import std.stdio;
-        //debug writeln(a, " correct is ", correct[n]);
+        
+        //import core.stdc.stdio;
+        //printf("%f but correct is %f\n", a, correct[n]);
+        
         assert(!err);
         assert( isCloseRel(a, correct[n], 0.0001) );
 
