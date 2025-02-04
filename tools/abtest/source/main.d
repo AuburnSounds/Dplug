@@ -326,8 +326,8 @@ int main(string[] args)
 
         // Display scores
         cwritefln("*** TOTAL RESULTS".white);
-        cwritefln("  => %s got %s votes", inputFileA.lcyan, to!string(scoreA).yellow);
-        cwritefln("  => %s got %s votes", inputFileB.lcyan, to!string(scoreB).yellow);
+        cwritefln("  =&gt; %s got %s votes", inputFileA.lcyan, to!string(scoreA).yellow);
+        cwritefln("  =&gt; %s got %s votes", inputFileB.lcyan, to!string(scoreB).yellow);
         cwriteln;
         cwritefln("*** DETAILS".white);
 
@@ -338,7 +338,7 @@ int main(string[] args)
             if (choiceQuestion[question] == 1.0f) result = inputFileB.lcyan;
             if (choiceQuestion[question] == 0.5f) result = "draw".yellow;
             if (isNaN(choiceQuestion[question])) result = "skipped".lred;
-            cwritefln("    %60s => %s", questions[question], result);
+            cwritefln("    %60s =&gt; %s", questions[question], result);
         }
         cwriteln;
 
