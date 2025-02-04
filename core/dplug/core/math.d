@@ -492,7 +492,7 @@ deprecated bool isEven(T)(T i) pure @safe
 }
 
 /// SSE approximation of reciprocal square root.
-deprecated("Use _mm_rcp_ss or 1/sqrt(x) instead")
+deprecated("WARNING: approximation. Use _mm_rsqrt_ss (approx) or 1/sqrt(x) (precise) instead")
 T inverseSqrt(T)(T x) @nogc if (is(T : float) || is(T: double))
 {
     version(AsmX86)
