@@ -89,11 +89,6 @@ nothrow @nogc:
         *err = false;
     }
 
-    override void close()
-    {
-        // not used anymore (remove in Dplug v15), destructor does this instead
-    }
-
     // This destructor must handle a partially constructed object!
     ~this()
     {
