@@ -24,6 +24,12 @@ void usage()
 }
 
 
+///ditto
+real convertLinearGainToDecibel_real(real x) pure @safe
+{
+    static immutable real f20_ln10 = 20 / cast(real)LN10;
+    return log(x) * f20_ln10;
+}
 
 int main(string[] args)
 {
@@ -90,8 +96,8 @@ int main(string[] args)
 
             real rms = sqrt(energy / N);
             real latencyMeasured = firstMoment / energy;
-            real peak_dB = convertLinearGainToDecibel(maxPeak);
-            real rms_dB = convertLinearGainToDecibel(rms);
+            real peak_dB = convertLinearGainToDecibel_real(maxPeak);
+            real rms_dB = convertLinearGainToDecibel_real(rms);
             string readableLatency = convertSecondsToHuman( latencyMeasured / sampleRate );
 
             cwritefln("     Channel #%s", chan);

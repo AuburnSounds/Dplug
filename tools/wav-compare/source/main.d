@@ -15,6 +15,12 @@ import consolecolors;
 import audioformats;
 
 
+real convertLinearGainToDecibel_real(real x) pure @safe
+{
+    static immutable real f20_ln10 = 20 / cast(real)LN10;
+    return log(x) * f20_ln10;
+}
+
 void usage()
 {
     void flag(string arg, string desc, string possibleValues, string defaultDesc)
@@ -213,8 +219,8 @@ int main(string[] args)
             rms +=  difference[i] * difference[i];
         rms = sqrt(rms / N);
 
-        real peak_dB = convertLinearGainToDecibel(maxPeakDifference);
-        real rms_dB = convertLinearGainToDecibel(rms);
+        real peak_dB = convertLinearGainToDecibel_real(maxPeakDifference);
+        real rms_dB = convertLinearGainToDecibel_real(rms);
 
         if (!quiet)
         {
@@ -420,7 +426,7 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
 RGBA coeff2Color(Complex!CoeffType c)
 {
     double len = abs(c);
-    double dB = -convertLinearGainToDecibel!double(len);
+    double dB = -convertLinearGainToDecibel(len);
     if (dB < 0) dB = 0;
     if (dB > 139.99f) dB = 139.99f;
     dB /= 20.0;
