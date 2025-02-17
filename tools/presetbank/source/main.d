@@ -12,6 +12,8 @@ import dplug.core.vec;
 import dplug.core.binrange;
 import dplug.client.preset;
 
+// TODO: if plugin has actual non-empty state chunk, cannot do it yet. See Issue #907.
+
 void usage()
 {
     writeln("Usage:");
@@ -27,6 +29,7 @@ void usage()
     writeln("Flags:");
     writeln("        -h, --help  Shows this help");
     writeln("        -o          Output bank. For now, this need to be a .fxb file path.");
+    writeln("        --state     Allow support for state chunk in presets. Only available if your plugin is NOT legacyBinState.");
     writeln;
 }
 
@@ -40,12 +43,17 @@ int main(string[] args)
         bool help = false;
         string[] inputs;
         string output = "output.fxb";
+        bool allowState = false;
 
         for (int i = 1; i < args.length; ++i)
         {
             string arg = args[i];
-            if (arg == "-h" || arg == "--help")
-                help = true;           
+            if (arg == "--state")
+            {
+                allowState = true;
+            }
+            else if (arg == "-h" || arg == "--help")
+                help = true;
             else if (arg == "-o")
             {
                 ++i;
@@ -74,7 +82,7 @@ int main(string[] args)
             if (input.length > 4 && input[$-4..$] == ".fxp")
             {
                 ubyte[] fxpData = cast(ubyte[]) std.file.read(input);
-                Preset preset = loadPresetFromFXP(fxpData);
+                Preset preset = loadPresetFromFXP(fxpData, allowState);
 
                 // take name from filename
                 preset.name = baseName(stripExtension(input));
@@ -120,6 +128,16 @@ class Preset
 
     float[] normalizedParams;
 
+    // true if we parsed a V2 Dplug chunk, even if the state is []
+    bool isV2Chunk;
+
+    bool hasStateData()
+    {
+        return stateData.length > 0;
+    }
+
+    ubyte[] stateData;
+
     int numParameters()
     {
         return cast(int) normalizedParams.length;
@@ -141,8 +159,8 @@ class Preset
 }
 
 // This parser supports: .fxb/.fxp created with Orion and another(?) DAW + the ones created by Dplug .
-Preset loadPresetFromFXP(const(ubyte)[] inputFXP)
-{    
+Preset loadPresetFromFXP(const(ubyte)[] inputFXP, bool allowState)
+{
     Preset preset = new Preset();
 
     uint presetChunkID;
@@ -214,8 +232,8 @@ Preset loadPresetFromFXP(const(ubyte)[] inputFXP)
         // nothing to check with minor version
         int dplugMajor = inputFXP.popLE!int(&err);
         if (err) throw new Exception("Cannot read Dplug major chunk version");
-        if (dplugMajor > 0)
-            throw new Exception("presetbank tool doesn't support Dplug chunk above version 0");
+        if (dplugMajor > 1)
+            throw new Exception("presetbank tool doesn't support Dplug chunk above version 1");
 
         int dplugMinor = inputFXP.popLE!int(&err);
         if (err) throw new Exception("Cannot read Dplug minor chunk version");
@@ -239,8 +257,32 @@ Preset loadPresetFromFXP(const(ubyte)[] inputFXP)
             preset.normalizedParams ~= paramValue;
         }
 
-        return preset;
+        // Chunk is V2, has a state part
+        // which means the plugin MUST NOT have legacyBinState
+        if (dplugMajor > 0)
+        {
+            preset.isV2Chunk = true;
+            if (!allowState)
+            {
+                throw new Exception("Preset was made with a plugin with binState option. But --state was not provided. Possible loss of compatibility. You can only add --state if your plugin IS NOT legacyBinState.");
+            }
 
+            int stateLen = inputFXP.popLE!int(&err); // ignore
+            if (err) throw new Exception("Cannot read state chunk length");
+            if (stateLen < 0)
+                throw new Exception("State chunk length has negative length, odd.");
+            const(ubyte)[] state = new ubyte[stateLen];
+            state = inputFXP[0..stateLen];
+            inputFXP = inputFXP[stateLen..$];
+            preset.stateData = state.dup;
+
+            if (preset.hasStateData)
+            {
+                // TODO: unsupported
+                throw new Exception("Preset with non-empty state chunks not supported yet in Dplug. Only parameters would be written.");
+            }
+        }
+        return preset;
     }
     else // this is a non-chunk VST2 .fxb
     {
@@ -317,7 +359,6 @@ ubyte[] savePresetsToFXB(Preset[] presets)
         {
             fxb.writeBE!ubyte(nameBuf[nch]);
         }
-
 
         for (int param = 0; param < numParams; ++param)
         {

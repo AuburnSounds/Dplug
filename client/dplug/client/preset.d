@@ -557,6 +557,7 @@ private:
 ///
 /// Note: It is **heavily recommended** to create the FXB chunk with the Dplug `presetbank` tool.
 ///       Else it is unknown if it will work.
+/// TODO: state chunk support! Issue #907
 Preset[] loadPresetsFromFXB(Client client, string inputFBXData, int maxCount = -1) nothrow @nogc
 {
     ubyte[] fbxCopy = cast(ubyte[]) mallocDup(inputFBXData);
