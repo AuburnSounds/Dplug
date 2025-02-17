@@ -359,7 +359,7 @@ nothrow:
 
 private:
 
-    enum MAX_POSSIBLE_SCALES = 12;
+    enum MAX_POSSIBLE_SCALES = 24;
 
     Type type;
 
