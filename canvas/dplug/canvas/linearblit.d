@@ -24,7 +24,6 @@ nothrow:
     void init(Gradient g, float x0, float y0, float x1, float y1)
     {
         assert(g !is null);
-        assert(isPow2(g.lutLength));
 
         this.gradient = g;
         int lutsize = g.lutLength;
