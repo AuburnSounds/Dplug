@@ -150,7 +150,6 @@ private:
     ubyte* _blueTransferTable = null;
 }
 
-// Apply color correction and convert RGBA8 to BGRA8
 void applyColorCorrection(ImageRef!RGBA image, const(ubyte*) rgbTable) pure nothrow @nogc
 {
     int w = image.w;
