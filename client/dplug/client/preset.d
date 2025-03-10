@@ -1,10 +1,9 @@
 /**
- * Definitions of presets and preset banks.
- *
- * Copyright: Copyright Auburn Sounds 2015 and later.
- * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Authors:   Guillaume Piolat
- */
+    Definitions of presets and preset banks.
+
+    Copyright: Copyright Guillaume Piolat 2015-2025
+    License:   http://www.boost.org/LICENSE_1_0.txt
+*/
 module dplug.client.preset;
 
 import core.stdc.stdlib: free;
@@ -701,6 +700,21 @@ Preset[] loadPresetsFromFXB(Client client, string inputFBXData, int maxCount = -
     {
         // Your preset file for the plugin is not meant to be invalid, so this is a bug.
         // If you fail here, parsing has created an `error()` call.
+        //
+        // The most likely cause it that you upgraded the unique plugin ID in your plugin
+        // (since it's a compeltely new version), however the individual presets are marked
+        // to be read with the former ID.
+        //
+        // Did you want to try to load those presets anyway? They probably contain partial
+        // parameter/state information, but perhaps they can be check/salvaged. 
+        // If yes, follow these guidelines:
+        // 1. Build a plugin without presets (comment out `buildPresets()`)
+        // 2. Load each .fxp individally in your DAW, then save them again, 
+        //    with the new plugin info (this might also fail?)
+        // 3. Regenerate your .fbx with the `presetbank` tool.
+        // 4. Renable presets in `buildPresets()` information.
+        //
+        // This is a time to review and enhance your presets with the new behaviour :)
         assert(false); 
     }
 
