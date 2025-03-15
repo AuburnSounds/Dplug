@@ -499,8 +499,8 @@ int main(string[] args)
 
             foreach (size_t archCount, arch; architectures)
             {
-                // Only build x86_64 on Windows
-                if (targetOS == OS.windows && arch != Arch.x86_64)
+                // Only build x86_64 and arm64 on Windows
+                if (targetOS == OS.windows && arch != Arch.x86_64 && arch != Arch.arm64)
                 {
                     cwritefln("info: Skipping architecture %s for Windows\n", arch);
                     continue;

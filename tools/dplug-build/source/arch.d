@@ -7,7 +7,7 @@ enum Arch
 {
     x86_64,
     arm32,           // ARM 32-bit for Raspberry Pi
-    arm64,           // Apple Silicon
+    arm64,           // Apple Silicon or Windows arm64
     universalBinary, // stitching x86_64 and arm64 in a single binary
     all              // all arch supported on target OS. Placeholder value.
 }
@@ -64,6 +64,8 @@ string convertArchToDUBFlag(Arch arch, OS targetOS) pure
         {
             if (targetOS == OS.macOS)
                 return "arm64-apple-macos ";
+            else if (targetOS == OS.windows)
+                return "aarch64-windows-msvc ";
             else
                 return "aarch64 ";
         }
@@ -134,7 +136,7 @@ Arch[] allArchitecturesWeCanBuildForThisOS(OS targetOS)
         case OS.windows:
         {
             if (buildArch == Arch.x86_64)
-                return [ Arch.x86_64 ];
+                return [ Arch.x86_64, Arch.arm64 ];
             else
                 throw new Exception("dplug-build on Windows should be built with a x86_64 architecture.");
         }
