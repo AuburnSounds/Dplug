@@ -45,12 +45,20 @@ uint nogc_unpredictableSeed() @nogc nothrow
     {
         version(AArch64)
         {
-            // llvm_readcyclecounter is forbidden as it reads a register we
-            // are not allowed to read.
-            import core.sys.posix.sys.time;
-            timeval tv;
-            gettimeofday(&tv, null);
-            result = cast(uint)( cast(ulong)(tv.tv_sec) * 1_000_000 + tv.tv_usec );
+            version(Windows)
+            {
+                import ldc.intrinsics;
+                result = cast(uint) llvm_readcyclecounter();
+            }
+            else
+            {
+                // On macOS, llvm_readcyclecounter is forbidden as it reads a register we
+                // are not allowed to read.
+                import core.sys.posix.sys.time;
+                timeval tv;
+                gettimeofday(&tv, null);
+                result = cast(uint)( cast(ulong)(tv.tv_sec) * 1_000_000 + tv.tv_usec );
+            }
         }
         else
         {
@@ -61,6 +69,10 @@ uint nogc_unpredictableSeed() @nogc nothrow
     else
         static assert(false, "Unsupported");
     return result;
+}
+unittest
+{
+    nogc_unpredictableSeed();
 }
 
 auto nogc_uniform_int(int min, int max, ref Xorshift32 rng) @nogc nothrow
