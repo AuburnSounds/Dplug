@@ -355,6 +355,8 @@ int main(string[] args)
         if (compiler_x86_64 is null)
             compiler_x86_64 = compiler;
 
+        bool AAXCodesignFailed = false;
+
         Plugin plugin = readPluginDescription(rootDir, quiet, verbose);
 
         // Get configurations
@@ -632,6 +634,7 @@ int main(string[] args)
                     }
                     catch(Exception e)
                     {
+                        AAXCodesignFailed = true;
                         error(e.msg);
                         warning(`AAX signature failed, plugin won't run in Pro Tools and won't notarize.` ~ "\n" ~
                                 `         Do NOT distribute such a build.` ~ "\n");
@@ -1491,6 +1494,11 @@ int main(string[] args)
             string windowsInstallerPath = outputDir ~ "/" ~ plugin.windowsInstallerName(configurations[0]);
             generateWindowsInstaller(outputDir, plugin, windowsPackages, windowsInstallerPath, verbose);
             cwriteln;
+        }
+
+        if (AAXCodesignFailed)
+        {
+            error("AAX codesigning failed, so you cannot in any way distribute your AAX build, nor load it in regular Protools. This could be due to: missing iLok, missing iLok licence manager, missing PACE Eden Tools, lack of iLok synbchronization or authorization."); 
         }
 
         return 0;
