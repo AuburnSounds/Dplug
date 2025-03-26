@@ -186,7 +186,8 @@ enum HorizontalAlignment
 enum VerticalAlignment
 {
     baseline, // positionY in surface corresponds to baseline coordinate in surface
-    center    // positionY in surface corresponds to the center of the vertical extent of the text
+    center,   // positionY in surface corresponds to the center of the vertical extent of the text
+    hanging   // positionY in surface corresponds to top of capitals
 }
 
 /// Draw text centered on a point on a DirectView.
@@ -216,6 +217,8 @@ void fillText(ImageRef!RGBA surface, Font font, const(char)[] s, float fontSizeP
 
     if (vertAlign == VerticalAlignment.center)
         offset.y -= area.center.y;
+    else if (vertAlign == VerticalAlignment.hanging)
+        offset.y -= area.min.y;
 
     void drawCharacter(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift) nothrow @nogc
     {
