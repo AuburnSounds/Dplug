@@ -82,3 +82,14 @@ else
     }
 }
 
+version(OSX)
+{
+    // HACK important to do nothing in this callback, linker will keep this one hopefully
+    // This erase a callback in druntime, that crash and creates the horrible #912
+    // True fix is #913, getting out of druntime
+    extern(C) void _d_dso_registry(void* data)
+    {
+    }
+}
+
+
