@@ -196,6 +196,7 @@ int nextSetBit(uint* mask, int start, int end)
     return nsb;
 }
 
+
 /*
   Arena Allocator, very fast allocation, free all memory at once. Essentialy
   it is a linked list of memory blocks and allocation is sequential through

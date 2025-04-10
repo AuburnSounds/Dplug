@@ -49,6 +49,7 @@ nothrow:
     void addStop(float pos, uint color)
     {
         m_stops.pushBack(ColorStop(color,clip(pos,0.0,1.0)));
+        m_isOpaque = m_isOpaque && ((color >>> 24) == 0xFF);
         m_changed = true;
     }
 
@@ -60,6 +61,7 @@ nothrow:
     {
         m_stops.clearContents();
         m_changed = true;
+        m_isOpaque = true;
     }
 
     /**
@@ -97,6 +99,14 @@ nothrow:
     bool hasChanged()
     {
         return m_changed;
+    }
+
+    /**
+        Returns: `true` if gradient fully opaque.
+    */
+    bool isOpaque()
+    {
+        return m_isOpaque;
     }
     
 private:
@@ -248,6 +258,7 @@ private:
     Vec!ColorStop m_stops;
     Vec!uint m_lookup;
     bool m_changed = true;
+    bool m_isOpaque = true;
 
     static void sortStopsInPlace(ColorStop[] stops)
     {    

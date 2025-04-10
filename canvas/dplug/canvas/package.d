@@ -40,6 +40,7 @@ import dplug.canvas.gradient;
 import dplug.canvas.colorblit;
 import dplug.canvas.linearblit;
 import dplug.canvas.ellipticalblit;
+import dplug.canvas.angularblit;
 import dplug.canvas.rasterizer;
 
 import colors;
@@ -202,8 +203,15 @@ nothrow:
                 break;
 
             case CanvasGradient.Type.radial:
-            case CanvasGradient.Type.angular:
                 assert(false); // not implemented yet
+
+            case CanvasGradient.Type.angular:
+                _angularGradientBlit.init(gradient._gradient,
+                                          gradient.x0, gradient.y0, 
+                                          gradient.x1, gradient.y1, 
+                                          gradient.x2, gradient.y2);
+                _currentBlitter.userData = &_angularGradientBlit;
+                _blitType = BlitType.angular;
         }
     }
 
@@ -599,6 +607,54 @@ nothrow:
         return createEllipticalGradient(pt0.x, pt0.y, pt1.x, pt1.y, r2);
     }
 
+
+    /// Angular Gradient.
+    /// Specifiy the orientation in terms of an circle, 
+    /// for that we need two points,
+    /// (x0,y0) is the center of the circle
+    /// (x1,y1) is radius at 0 degrees
+    CanvasGradient createAngularGradient(float x0, float y0, 
+                                         float x1, float y1)
+    {
+        return createAngularGradient(x0, y0, x1, y1, x0-y1+y0, y0+x1-x0);
+    }
+    ///ditto
+    CanvasGradient createAngularGradient(vec2f pt0, vec2f pt1)
+    {
+        return createAngularGradient(pt0.x, pt0.y, pt1.x, pt1.y);
+    }
+
+    /// Angular Gradient.
+    /// Specifiy the orientation in terms of an ellipse, for that we need 3 points.
+    /// (x0,y0) is the center of the elipse
+    /// (x1,y1) is radius at 0 degrees
+    /// (x2,y2) is radius at 90 degrees
+    /// The radii dont need to be at right angles, so it can handle 
+    /// ellipse that has been though any affine transform.
+    CanvasGradient createAngularGradient(float x0, float y0,
+                                         float x1, float y1,
+                                         float x2, float y2)
+    {
+        vec2f pt0 = transformPoint(x0, y0);
+        vec2f pt1 = transformPoint(x1, y1);
+        vec2f pt2 = transformPoint(x2, y2);
+        CanvasGradient result = newOrReuseGradient();
+        result.type = CanvasGradient.Type.angular;
+        result.x0 = pt0.x;
+        result.y0 = pt0.y;
+        result.x1 = pt1.x;
+        result.y1 = pt1.y;
+        result.x2 = pt2.x;
+        result.y2 = pt2.y;
+        return result;
+    }
+    ///ditto
+    CanvasGradient createAngularGradient(vec2f pt0, vec2f pt1, vec2f pt2)
+    {
+        return createAngularGradient(pt0.x, pt0.y, pt1.x, pt1.y, pt2.x, pt2.y);
+    }
+
+
     // </GRADIENT> functions
 
 
@@ -705,7 +761,8 @@ private:
     {
         color, // Blit is a ColorBlit
         linear,
-        elliptical
+        elliptical,
+        angular,
     }
 
     Rasterizer   _rasterizer;
@@ -732,6 +789,10 @@ private:
                 return nonZero
                         ? &doBlit_EllipticalBlit_NonZero
                         : &doBlit_EllipticalBlit_EvenOdd;
+            case BlitType.angular:
+                return nonZero
+                        ? &doBlit_AngularBlit_NonZero
+                        : &doBlit_AngularBlit_EvenOdd;
         }
 
     }
@@ -743,6 +804,7 @@ private:
         ColorBlit _plainColorBlit;
         LinearBlit _linearGradientBlit;
         EllipticalBlit _ellipticalGradientBlit;
+        AngularBlit _angularGradientBlit;
     }
 
     // Gradient cache
@@ -799,11 +861,15 @@ private:
 
 /// Holds both gradient data/table and positioning information.
 ///
-/// You can create a gradient with `createLinearGradient`, `createCircularGradient`, or `createEllipticalGradient`,
+/// You can create a gradient with:
+/// - `createLinearGradient`, 
+/// - `createCircularGradient`, 
+/// - `createEllipticalGradient`,
+/// - `createAngularGradient`,
 /// every frame.
 /// Then use `addColorStop` to set the color information.
 ///
-/// The gradient data is managed  by the `Canvas` object itself. All gradients are invalidated once
+/// The gradient data is managed by the `Canvas` object itself. All gradients are invalidated once
 /// `initialize` has been called.
 class CanvasGradient
 {
@@ -846,7 +912,7 @@ package:
         _gradient.reset();
     }
 
-    float x0, y0, x1, y1, r2;
+    float x0, y0, x1, y1, x2, y2, r2;
     Gradient _gradient;
 }
 
