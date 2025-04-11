@@ -37,10 +37,10 @@ nothrow @nogc:
         float h1 = y2 - y0;
         float q = w1*h0 - w0*h1;
         if (abs(q) < 0.1) q = (q < 0) ? -0.1 : 0.1;
-        xstep0 = -lutsize * h1 / q;
-        ystep0 =  lutsize * w1 / q;
-        xstep1 =  lutsize * h0 / q;
-        ystep1 = -lutsize * w0 / q;
+        xstep0 = - h1 / q;
+        ystep0 =   w1 / q;
+        xstep1 =   h0 / q;
+        ystep1 = - w0 / q;
     }
 
 private:
@@ -55,11 +55,9 @@ private:
         // main blit variables
 
         int bpos = x0 / 4;
-        int endbit = x1 / 4;       
+        int endbit = x1 / 4;
         __m128i xmWinding = 0;
         uint* lut = gradient.getLookup.ptr;
-
-        // TODO clamp to LUT length
 
         short lutMax = cast(short) gradient.lutLength;
         __m128 lutscale = _mm_set1_ps(gradient.lutLength);
@@ -105,7 +103,7 @@ private:
                     bpos = nsb;
                 }
 
-                // Or fill span with soid color
+                // Or fill span with solid color
 
                 else if (gradient.isOpaque && (cover > 0xFF00))
                 {
@@ -117,7 +115,7 @@ private:
                         __m128 grad = gradOfSorts(xmT0,xmT1);
                         __m128 poly = polyAprox(grad);
                         poly = fixupQuadrant(poly,xmT0,xmT1)*lutscale;
-                        __m128i ipos = _mm_cvtps_epi32(poly);
+                        __m128i ipos = _mm_cvttps_epi32(poly);
 
                         xmT0 = xmT0 + xmStep0;
                         xmT1 = xmT1 + xmStep1;
@@ -158,7 +156,7 @@ private:
 
                         __m128 poly = polyAprox(grad);
                         poly = fixupQuadrant(poly,xmT0,xmT1)*lutscale;
-                        __m128i ipos = _mm_cvtps_epi32(poly);
+                        __m128i ipos = _mm_cvttps_epi32(poly);
 
                         xmT0 = xmT0 + xmStep0;
                         xmT1 = xmT1 + xmStep1;
@@ -224,12 +222,12 @@ private:
 
                 // Integrate delta values
 
-                __m128i idv = _mm_load_si128(cast(__m128i*)dlptr);
+                __m128i idv = _mm_loadu_si128(cast(__m128i*)dlptr);
                 idv = _mm_add_epi32(idv, _mm_slli_si128!4(idv)); 
                 idv = _mm_add_epi32(idv, _mm_slli_si128!8(idv)); 
                 idv = _mm_add_epi32(idv, xmWinding); 
                 xmWinding = _mm_shuffle_epi32!255(idv);  
-                _mm_store_si128(cast(__m128i*)dlptr,XMZERO);
+                _mm_storeu_si128(cast(__m128i*)dlptr,XMZERO);
 
                 // eval angle
 
@@ -242,11 +240,11 @@ private:
 
                 // convert grad pos to integer
 
-                __m128i ipos = _mm_cvtps_epi32(poly);
+                __m128i ipos = _mm_cvttps_epi32(poly);
 
                 // Load destination pixels
 
-                __m128i d0 = _mm_load_si128(cast(__m128i*)ptr);
+                __m128i d0 = _mm_loadu_si128(cast(__m128i*)ptr);
                 __m128i d1 = _mm_unpackhi_epi8(d0,d0);
                 d0 = _mm_unpacklo_epi8(d0,d0);
 
@@ -295,7 +293,7 @@ private:
 
                 d0 = _mm_packus_epi16 (c0,c1);
 
-                _mm_store_si128 (cast(__m128i*)ptr,d0);
+                _mm_storeu_si128 (cast(__m128i*)ptr,d0);
                 
                 bpos++;
                 ptr+=4;
@@ -354,6 +352,7 @@ int calcCoverage(WindingRule rule)(int winding)
 
 immutable __m128 MINSUM = 0.001;
 immutable __m128 FQTWO = 0.5;
+immutable __m128 FQONE = 1.0;
 
 __m128 gradOfSorts(__m128 x, __m128 y)
 {
@@ -384,7 +383,9 @@ __m128 polyAprox(__m128 g)
 __m128 fixupQuadrant(__m128 pos, __m128 t0, __m128 t1)
 {
     pos = cast(__m128) (cast(__m128i) pos ^ ((cast(__m128i) t0 ^ cast(__m128i) t1) & XMSIGNMASK));
-    return pos + cast(__m128) (_mm_srai_epi32(cast(__m128i)t0,31) & cast(__m128i) FQTWO);
+    pos = pos + cast(__m128) (_mm_srai_epi32(cast(__m128i)t0,31) & cast(__m128i) FQTWO);
+    pos = pos + cast(__m128) (_mm_srai_epi32(cast(__m128i)pos,31) & cast(__m128i) FQONE);
+    return pos;
 }
 
 __m128i calcCoverage32(WindingRule rule)(__m128i winding)
