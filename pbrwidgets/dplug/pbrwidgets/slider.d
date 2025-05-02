@@ -44,10 +44,22 @@ nothrow:
         HandleStyle handleStyle = HandleStyle.shapeW;
         float handleHeightRatio = 0.25f;
         float handleWidthRatio  = 0.7f;
+
         RGBA handleDiffuse      = RGBA(248, 245, 233, 16);
+        bool legacyDiffuse      = true; // if true, preset emissive offset and no diffuse color change
+                                        // if false, the following two vars are used
+                                        // Another effect is to avoid off colors in hole top and bottom parts.
+        RGBA handleDiffuseHovered = RGBA(248, 245, 233, 66);
+        RGBA handleDiffuseDragged = RGBA(248, 245, 233, 16);
+
         RGBA handleMaterial     = RGBA(0, 255, 128, 255);
 
-        float sensivity = 1.0f; // Note: 0.6 not bad for volumes
+        float sensivity         = 1.0f; // Note: 0.6 not bad for volumes
+
+        // Kitsch animation, when dragged the handle reduce size
+        float animWidthReduce       = 0.06f; // Make it zero to avoid the goody reduce effect
+        float animHeightReduce      = 0.12f; // Make it zero to avoid the goody reduce effect
+        float animationTimeConstant = 30.0f;
     }
 
     this(UIContext context, Parameter param)
@@ -69,7 +81,7 @@ nothrow:
     override void onAnimate(double dt, double time) nothrow @nogc
     {
         float target = isDragged() ? 1 : 0;
-        float newAnimation = lerp(_pushedAnimation, target, 1.0 - exp(-dt * 30));
+        float newAnimation = lerp(_pushedAnimation, target, 1.0 - exp(-dt * animationTimeConstant));
         if (abs(newAnimation - _pushedAnimation) > 0.001f)
         {
             _pushedAnimation = newAnimation;
@@ -86,8 +98,9 @@ nothrow:
     {
         int width = _position.width;
         int height = _position.height;
-        int handleHeight = cast(int)(0.5f + this.handleHeightRatio * height * (1 - 0.12f * _pushedAnimation));
-        int handleWidth = cast(int)(0.5f + this.handleWidthRatio * width * (1 - 0.06f * _pushedAnimation));
+
+        int handleHeight = cast(int)(0.5f + this.handleHeightRatio * height * (1 - animHeightReduce * _pushedAnimation));
+        int handleWidth = cast(int)(0.5f + this.handleWidthRatio * width * (1 - animWidthReduce * _pushedAnimation));
         int trailWidth = cast(int)(0.5f + width * this.trailWidth);
 
         int handleHeightUnpushed = cast(int)(0.5f + this.handleHeightRatio * height);
@@ -127,10 +140,28 @@ nothrow:
                 return cast(int)(0.5f + (1 - value) * (height+4 - handleHeight) + handleHeight*0.5f - 2);
             }
 
+            int valueToTrailFixed(float value) nothrow @nogc
+            {
+                if (value < 0) value = 0;
+                if (value > 1) value = 1;
+                return cast(int)( 0.5f + linmap!float(value, 0, 1, holeRect.max.y, holeRect.min.x));
+            }
+
             void paintTrail(float from, float to, RGBA diffuse) nothrow @nogc
             {
-                int ymin = valueToTrail(from);
-                int ymax = valueToTrail(to);
+                int ymin, ymax;
+                if (legacyDiffuse)
+                {
+                    // FUTURE: remove that version, port all uses of sliders in PBR plugins...
+                    ymin = valueToTrail(from);
+                    ymax = valueToTrail(to);
+                }
+                else
+                {
+                    ymin = valueToTrailFixed(from);
+                    ymax = valueToTrailFixed(to);
+                }
+
                 if (ymin > ymax)
                 {
                     int temp = ymin;
@@ -157,14 +188,23 @@ nothrow:
             paintTrail(trailBase, value, litTrail);
         }
 
-        // Paint handle of slider
-        int emissive = handleDiffuse.a;
-        if (isMouseOver && !isDragged)
-            emissive += 50;
-        if (emissive > 255)
-            emissive = 255;
-
-        RGBA handleDiffuseLit = RGBA(handleDiffuse.r, handleDiffuse.g, handleDiffuse.b, cast(ubyte)emissive);
+        RGBA handleDiffuseLit;
+        if (legacyDiffuse)
+        {
+            // Paint handle of slider
+            int emissive = handleDiffuse.a;
+            if (isMouseOver && !isDragged)
+                emissive += 50;
+            if (emissive > 255)
+                emissive = 255;
+            handleDiffuseLit = RGBA(handleDiffuse.r, handleDiffuse.g, handleDiffuse.b, cast(ubyte)emissive);
+        }
+        else
+        {
+            handleDiffuseLit = handleDiffuse;
+            if (isMouseOver) handleDiffuseLit = handleDiffuseHovered;
+            if (isDragged) handleDiffuseLit = handleDiffuseDragged;
+        }
 
         diffuseMap.cropImageRef(handleRect).fillAll(handleDiffuseLit);
 
