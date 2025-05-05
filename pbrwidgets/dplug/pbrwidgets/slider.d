@@ -144,7 +144,7 @@ nothrow:
             {
                 if (value < 0) value = 0;
                 if (value > 1) value = 1;
-                return cast(int)( 0.5f + linmap!float(value, 0, 1, holeRect.max.y, holeRect.min.x));
+                return cast(int)( 0.5f + linmap!float(value, 0, 1, holeRect.max.y, holeRect.min.y));
             }
 
             void paintTrail(float from, float to, RGBA diffuse) nothrow @nogc
@@ -152,7 +152,6 @@ nothrow:
                 int ymin, ymax;
                 if (legacyDiffuse)
                 {
-                    // FUTURE: remove that version, port all uses of sliders in PBR plugins...
                     ymin = valueToTrail(from);
                     ymax = valueToTrail(to);
                 }
