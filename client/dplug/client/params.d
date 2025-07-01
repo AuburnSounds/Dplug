@@ -31,7 +31,7 @@ import core.atomic;
 import core.stdc.stdio;
 import core.stdc.string;
 
-import std.math: isNaN, log, exp, isFinite;
+import std.math: isNaN, log, pow, exp, isFinite;
 
 import dplug.core.math;
 import dplug.core.sync;
@@ -952,6 +952,82 @@ class LogFloatParameter : FloatParameter
     {
         return _min * exp(normalizedValue * log(_max / _min));
     }
+}
+
+/** 
+    `LogFloatParameterEx` is a parameter with log-mapping, but
+    - the part that is logged mapped is offset in log-space by
+      `offset`
+    - the normalized part is deformed by `exponent`.
+
+  Example:
+
+     // A modulation amount that is almost log from 0.0 to 30.0
+     // The parameter is internally mapped to 0.1 to 30.1 to make
+     // it work.
+     mallocNew!LogFloatParameterEx(index, "", "", 0.0, 30.0, 20, 0.1);
+
+     // A log parameter that is biased towards low values, but can 
+     // still go to 1000. (eg: predelay) 
+     mallocNew!LogFloatParameterEx(index, "", "", 10.0, 1000.0, 20, 0.0, 2.0);
+*/
+class LogFloatParameterEx : FloatParameter
+{
+    ///
+    this(int index, string name, string label, 
+         double min, double max, double defaultValue,
+         double offset = 0.0,   // 0.0 for no change vs a normal `LogFloatParameter`
+         double exponent = 1.0, // 1.0 for no change to the curve
+         ) nothrow @nogc
+    {
+        assert( (min + offset) > 0 && (max + offset) > 0 );
+
+        _exponent = exponent;
+        _offset   = offset;
+
+        super(index, name, label, min, max, defaultValue);
+    }
+
+    override double toNormalized(double value)
+    {
+        double minOfs = _min + _offset;
+        double maxOfs = _max + _offset;
+
+        value += _offset;
+        double result = log(value / minOfs) / log(maxOfs / minOfs);
+
+        if (result < 0) result = 0;
+        if (result > 1) result = 1;
+        result = pow(result, 1 / _exponent);
+        if (result < 0) result = 0;
+        if (result > 1) result = 1;
+        return result;
+    }
+
+    override double fromNormalized(double normalizedValue)
+    {
+        if (normalizedValue < 0) normalizedValue = 0;
+        if (normalizedValue > 1) normalizedValue = 1;
+        normalizedValue = pow(normalizedValue, _exponent);
+
+        double minOfs = _min + _offset;
+        double maxOfs = _max + _offset;
+        double r = minOfs * exp(normalizedValue * log(maxOfs / minOfs));
+        r -= _offset;
+        if (r < _min) r = _min;
+        if (r > _max) r = _max;
+        return r;
+    }
+private:
+    double _exponent;
+    double _offset;
+}
+
+unittest
+{
+    auto p = mallocNew!LogFloatParameterEx(0, "dummy", "ms", 0, 30.0, 20, 0.1);
+    assert(p.toNormalized(30.01) == 1);
+    assert(p.toNormalized(-0.01) == 0);
 }
 
 /// A parameter with [-inf to value] dB log mapping
