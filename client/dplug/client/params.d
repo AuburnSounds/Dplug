@@ -977,7 +977,7 @@ class LogFloatParameterEx : FloatParameter
     this(int index, string name, string label, 
          double min, double max, double defaultValue,
          double offset = 0.0,   // 0.0 for no change vs a normal `LogFloatParameter`
-         double exponent = 1.0, // 1.0 for no change to the curve
+         double exponent = 1.0, // 1.0 for no change to the curve, normally unused
          ) nothrow @nogc
     {
         assert( (min + offset) > 0 && (max + offset) > 0 );
