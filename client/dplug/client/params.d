@@ -176,6 +176,12 @@ nothrow:
         if (isEdited())
             return; 
 
+        // If locked, REFUSE host changes, in order to allow browsing 
+        // presets. Note that this will also ignore automation, not 
+        // sure if this is an issue.
+        if (isLocked())
+            return; 
+
         setNormalized(hostValue);
         notifyListeners();
     }
@@ -272,6 +278,26 @@ nothrow:
         debug assert(_hoverCount == 0);
     }
 
+    /**
+        Enable/disable changes from the host, as if the UI was 
+        editing this parameter. 
+
+        This is useful to eg:
+            - lock dry/wet in reverbs,
+            - lock thresholds in compressors.
+
+        The calls to `lock` and `unlock` do not need to be balanced.
+    */
+    final void lock()
+    {
+        atomicStore(_locked, true);
+    }
+    ///ditto
+    final void unlock()
+    {
+        atomicStore(_locked, false);
+    }
+
 protected:
 
     this(int index, string name, string label)
@@ -314,6 +340,11 @@ protected:
         return atomicLoad(_editCount) > 0;
     }
 
+    final bool isLocked()
+    {
+        return atomicLoad(_locked);
+    }
+
 package:
 
     /// Parameters are owned by a client, this is used to make them refer back to it.
@@ -339,6 +370,10 @@ private:
     // Current number of calls into `beginParamEdit()`/`endParamEdit()` pair.
     // Only checked in debug mode.
     shared(int) _editCount = 0; // if > 0, the UI is editing this parameter
+
+    // if `true`, host-based changes (and preset-based changed)
+    // are refused, as if the parameter was edited by the UI.
+    shared(bool) _locked = false; 
 
     // Current number of calls into `beginParamHover()`/`endParamHover()` pair.
     // Only checked in debug mode.
