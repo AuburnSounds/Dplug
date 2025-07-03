@@ -287,6 +287,8 @@ nothrow:
             - lock thresholds in compressors.
 
         The calls to `lock` and `unlock` do not need to be balanced.
+
+        See_also: `isLocked`.
     */
     final void lock()
     {
@@ -296,6 +298,15 @@ nothrow:
     final void unlock()
     {
         atomicStore(_locked, false);
+    }
+
+    /**
+        Returns: `true` when the parameter is locked.
+        See_also: `lock`, `unlock`.
+    */
+    final bool isLocked()
+    {
+        return atomicLoad(_locked);
     }
 
 protected:
@@ -340,10 +351,6 @@ protected:
         return atomicLoad(_editCount) > 0;
     }
 
-    final bool isLocked()
-    {
-        return atomicLoad(_locked);
-    }
 
 package:
 
