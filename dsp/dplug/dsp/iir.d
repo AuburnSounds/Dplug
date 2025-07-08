@@ -366,6 +366,10 @@ public
                 _mm_storeh_pd(&x1, XMM0);
                 _mm_storel_pd(&y0, XMM1);
                 _mm_storeh_pd(&y1, XMM1);
+                _x0 = x0;
+                _x1 = x1;
+                _y0 = y0;
+                _y1 = y1;
             }
 
             /// Special version of biquad processing, for a constant DC input.
