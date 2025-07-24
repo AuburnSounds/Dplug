@@ -20,13 +20,14 @@ import consolecolors;
 import yxml;
 import arch;
 
-
 // Use case: 
 // - compare algorithm
 // - batch processing
 // - speed measurements
 // - non-regressions
 
+// TODO document bufferPattern
+// TODO document parameter
 
 void usage()
 {
