@@ -126,19 +126,24 @@ nothrow:
 
     static if (is(T == float) || is(T == double))
     {
+        // PERF SOUND: tricky to test, but keeping delay in double
+        // for Delayline!double in all sampling mode should bring 
+        // a small sound and performance, like it had for 
+        // `sampleLinear`.
+
         /// Random access sampling of the delay-line with linear interpolation.
         /// Note that will the HF rollout of linear interpolation, it can 
         /// often sound quite good in 44.1 kHz
-        T sampleLinear(float delay) pure const
+        T sampleLinear(T delay) pure const
         {
             assert(delay > 0);
             int iPart;
-            float fPart;
-            decomposeFractionalDelay(delay, iPart, fPart);
+            T fPart;
+            decomposeFractionalDelay!T(delay, iPart, fPart);
             const(T)* pData = readPointer();
             T x0  = pData[iPart];
             T x1  = pData[iPart + 1];
-            return lerp(x0, x1, fPart);
+            return fPart * x1 + (1 - fPart) * x0;
         }
 
         /// Random access sampling of the delay-line with a 3rd order polynomial.
@@ -147,7 +152,7 @@ nothrow:
             assert(delay > 1);
             int iPart;
             float fPart;
-            decomposeFractionalDelay(delay, iPart, fPart);
+            decomposeFractionalDelay!float(delay, iPart, fPart);
             const(T)* pData = readPointer();
             T xm1 = pData[iPart-1];
             T x0  = pData[iPart  ];
@@ -163,7 +168,7 @@ nothrow:
             assert(delay > 1);
             int iPart;
             float fPart;
-            decomposeFractionalDelay(delay, iPart, fPart);
+            decomposeFractionalDelay!float(delay, iPart, fPart);
             assert(fPart >= 0.0f);
             assert(fPart <= 1.0f);
             const(T)* pData = readPointer();
@@ -187,7 +192,7 @@ nothrow:
             assert(delay > 2);
             int iPart;
             float fPart;
-            decomposeFractionalDelay(delay, iPart, fPart);
+            decomposeFractionalDelay!float(delay, iPart, fPart);
 
             align(16) __gshared static immutable float[8][5] MAT = 
             [
@@ -318,19 +323,21 @@ private:
     int _indexMask;
     int _numSamples;
 
-    void decomposeFractionalDelay(float delay, 
-                                  out int outIntegerPart, 
-                                  out float outFloatPart) pure const
+    void decomposeFractionalDelay(T)(T delay, 
+                                     out int outIntegerPart, 
+                                     out T outFloatPart) pure const
     {
-        // Because float index can yield suprising low precision with interpolation
-        // So we up the precision to double in order to have a precise fractional part
+        // Float index can yield suprising low precision with 
+        // interpolation. So precision is upped to double in order to
+        // have a precise fractional part in all cases.
+
         int offset = cast(int)(_data.length);
         double doubleDelayMinus = cast(double)(-delay);
         int iPart = cast(int)(doubleDelayMinus + offset);
         iPart -= offset;
-        float fPart = cast(float)(doubleDelayMinus - iPart);
-        assert(fPart >= 0.0f);
-        assert(fPart <= 1.0f);
+        T fPart = cast(T)(doubleDelayMinus - iPart);
+        assert(fPart >= 0);
+        assert(fPart <= 1);
         outIntegerPart = iPart;
         outFloatPart = fPart;
     }
