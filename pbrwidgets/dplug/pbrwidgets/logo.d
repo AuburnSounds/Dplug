@@ -20,6 +20,7 @@ nothrow:
 @nogc:
 
     /// Change this to point to your website
+    /// Can by `null` for no web browsing.
     string targetURL = "http://example.com";
     
     @ScriptProperty float animationTimeConstant = 30.0f;
@@ -106,8 +107,13 @@ nothrow:
 
     override Click onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
-        browseNoGC(targetURL);
-        return Click.startDrag;
+        if (targetURL) 
+        {
+            browseNoGC(targetURL);
+            return Click.startDrag;
+        }
+        else
+            return Click.unhandled;
     }
 
 private:

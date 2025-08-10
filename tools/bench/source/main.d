@@ -72,9 +72,9 @@ void usage()
     cwriteln(`      &lt;!-- This will compare challenger.dll to baseline.dll over presets 0 to 20,`.lmagenta);
     cwriteln(`           and display the speed-up and audio RMS differences.                           --&gt;`.lmagenta);
     cwriteln();    
-    cwriteln(`      &lt;baseline&gt;baseline.dll&lt;/baseline&gt;`.lgreen ~ `        &lt;!-- path to baseline VST2.4 executable   --&gt;`.lmagenta);
-    cwriteln(`      &lt;challenger&gt;challenger.dll&lt;/challenger&gt;`.lgreen ~ `  &lt;!-- path to challenger VST2.4 executable --&gt;`.lmagenta);
-    cwriteln(`      &lt;preset-range min="0" max="20"/&gt;`.lgreen ~ `         &lt;!-- range of VST2.4 presets to check     --&gt;`.lmagenta);
+    cwriteln(`      &lt;baseline&gt;baseline.dll&lt;/baseline&gt;`.lgreen ~ `        &lt;!-- path to baseline VST2 executable     --&gt;`.lmagenta);
+    cwriteln(`      &lt;challenger&gt;challenger.dll&lt;/challenger&gt;`.lgreen ~ `  &lt;!-- path to challenger VST2 executable   --&gt;`.lmagenta);
+    cwriteln(`      &lt;preset-range min="0" max="20"/&gt;`.lgreen ~ `         &lt;!-- range of VST2 presets to check       --&gt;`.lmagenta);
     cwriteln(`      &lt;source&gt;mysource.wav&lt;/source&gt;`.lgreen ~ `            &lt;!-- add a source to the test             --&gt;`.lmagenta);
     cwriteln(`      &lt;quality-compare/&gt;`.lgreen ~ `                       &lt;!-- perform quality comparison           --&gt;`.lmagenta);
     cwriteln(`      &lt;speed-measure/&gt;`.lgreen ~ `                         &lt;!-- perform speed comparison             --&gt;`.lmagenta);
