@@ -1,0 +1,12 @@
+{
+    "name": "evolve",
+    "description": "optimize sonic constants",
+    "importPaths": [ "source" ],
+    "sourcePaths": [ "source" ],
+
+    "dependencies":
+    {
+        "yxml": "~>0.0",
+        "console-colors": "~>1.0"
+    }
+}

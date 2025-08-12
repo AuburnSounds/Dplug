@@ -11,5 +11,6 @@ public
     import dplug.dsp.fir,
            dplug.dsp.iir,
            dplug.dsp.window,
-           dplug.dsp.delayline;
+           dplug.dsp.delayline,
+           dplug.dsp.udas;
 }

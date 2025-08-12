@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<training>
+
+  <!-- Both these variable will be evolved -->
+  <var name="MY_VAR" />
+  <var name="MY_OTHER_VAR" />
+
+  <fitness-command>mytest -param</fitness-command>
+  <build-command-windows>dub</build-command-windows>
+  <build-command-macos>dub</build-command-macos>
+  
+  <!-- Ignored package for parsing variables -->
+  <exclude-package name="gamut" />
+  <exclude-package name="dplug:dsp" />
+
+</training>
