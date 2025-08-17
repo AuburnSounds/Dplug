@@ -22,4 +22,5 @@ public import dplug.core.thread;
 public import dplug.core.file;
 public import dplug.core.map;
 public import dplug.core.binrange;
+public import dplug.core.profiler;
 

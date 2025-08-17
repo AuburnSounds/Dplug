@@ -14,6 +14,7 @@ import inteli.emmintrin;
 
 import dplug.core.math;
 import dplug.core.thread;
+import dplug.core.profiler;
 
 import dplug.client.client;
 import dplug.client.graphics;
@@ -29,7 +30,6 @@ import dplug.gui.element;
 import dplug.gui.compositor;
 import dplug.gui.legacypbr;
 import dplug.gui.sizeconstraints;
-import dplug.gui.profiler;
 
 /// In the whole package:
 /// The diffuse maps contains:

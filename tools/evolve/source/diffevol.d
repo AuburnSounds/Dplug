@@ -32,8 +32,9 @@ void differentialEvolution(Variable[] vars,
     float CR = 0.5f; 
     float CR_stddev = 0.1f;
 
-    // Note: litterature says CR should be 0.1 if we look for unimodal function, and 0.9 in multimodal functions
-    // ut I don't know which to take
+    // Note: litterature says CR should be 0.1 if we look 
+    // for unimodal function, and 0.9 in multimodal functions
+    // But I don't know which one to take
 
     cwritefln("     <lgreen>Starting</lgreen> <white>Differential Evolution</white> with NP = %s, F = %f, and CR = %f.", NP, F, CR);
 

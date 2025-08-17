@@ -1,14 +1,12 @@
 /**
-Trace Event Format profiling.
+    Trace Event Format profiling.
+    Allows to create flame graph easily.
 
-Copyright: Guillaume Piolat 2022.
-License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Guillaume Piolat
+    Copyright: Guillaume Piolat 2022-2025.
+    License:   http://www.boost.org/LICENSE_1_0.txt, BSL-1.0
 */
-module dplug.gui.profiler;
+module dplug.core.profiler;
 
-
-// TODO: clock should be monotonic per-thread
 
 import core.stdc.stdio;
 
@@ -31,7 +29,9 @@ nothrow @nogc:
 interface IProfiler
 {
 nothrow @nogc:
-    /// All functions for this interface can be called from many threads at once.
+    /// All functions for this interface can be called from 
+    /// many threads at once.
+    ///
     /// However, from the same thread, there is an ordering.
     /// - `begin/end` pairs must be balanced, per-thread
     /// - `begin/end` pairs can be nested, per-thread
@@ -63,24 +63,6 @@ nothrow @nogc:
     const(ubyte)[] toBytes();
 }
 
-/// Create an `IProfiler`.
-IProfiler createProfiler()
-{
-    version(Dplug_ProfileUI)
-    {
-        return mallocNew!TraceProfiler();
-    }
-    else
-    {
-        return mallocNew!NullProfiler();
-    }
-}
-
-/// Destroy an `IProfiler` created with `createTraceProfiler`.
-void destroyProfiler(IProfiler profiler)
-{
-    destroyFree(profiler);
-}
 
 
 class NullProfiler : IProfiler
@@ -110,10 +92,6 @@ class NullProfiler : IProfiler
         return [];
     }
 }
-
-
-version(Dplug_ProfileUI):
-
 
 /// Allows to generate a Trace Event Format profile JSON.
 class TraceProfiler : IProfiler
@@ -153,7 +131,8 @@ nothrow:
 
     override IProfiler end()
     {
-        // no ensureThreadContext, since by API can't begin with .end
+        // no ensureThreadContext, since by API can't begin 
+        // with .end
         long us = _clock.getTickUs();
         addEventNoname("E", us);
         return this;
@@ -297,7 +276,3 @@ private:
     }
 }
 
-version(Dplug_profileUI)
-{
-    pragma(msg, "You probably meant Dplug_ProfileUI, not Dplug_profileUI. Correct your dub.json");
-}

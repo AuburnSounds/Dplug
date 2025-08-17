@@ -19,6 +19,7 @@ import dplug.core.vec;
 import dplug.core.nogc;
 import dplug.core.math;
 import dplug.core.thread;
+import dplug.core.profiler;
 
 import dplug.gui.compositor;
 
@@ -29,7 +30,6 @@ import dplug.gui.ransac;
 
 import inteli.math;
 import inteli.smmintrin;
-import dplug.gui.profiler;
 
 // FUTURE: introduce a tonemap operator that doesn't break existing things and only "add" to the final render.
 // TODO: PBR rendering doesn't depend rightly on size of the plugin.

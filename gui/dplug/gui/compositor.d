@@ -14,11 +14,12 @@ import dplug.math.box;
 import dplug.core.vec;
 import dplug.core.nogc;
 import dplug.core.thread;
+import dplug.core.profiler;
 
 import dplug.graphics;
 
 import dplug.window.window;
-import dplug.gui.profiler;
+
 
 
 /// Only deals with rendering tiles.

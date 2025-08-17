@@ -12,6 +12,7 @@ import core.stdc.string : strcmp;
 import dplug.core.vec;
 import dplug.core.nogc;
 import dplug.core.thread;
+import dplug.core.profiler;
 
 import dplug.window.window;
 
@@ -23,7 +24,6 @@ import dplug.gui.element;
 import dplug.gui.boxlist;
 import dplug.gui.graphics;
 import dplug.gui.sizeconstraints;
-import dplug.gui.profiler;
 
 
 /// Work in progress. An ensemble of calls `UIElement` are allowed to make, that
@@ -394,5 +394,28 @@ private:
     void*[16] _userPointers; // Opaque pointer for Wren VM and things.
 
     IProfiler _profiler;
+}
+
+private:
+nothrow @nogc:
+
+/// Create an `IProfiler` for the UI.
+IProfiler createProfiler()
+{
+    version(Dplug_ProfileUI)
+    {
+        return mallocNew!TraceProfiler();
+    }
+    else
+    {
+        return mallocNew!NullProfiler();
+    }
+}
+
+
+/// Destroy an `IProfiler` created with `createTraceProfiler`.
+void destroyProfiler(IProfiler profiler)
+{
+    destroyFree(profiler);
 }
 
