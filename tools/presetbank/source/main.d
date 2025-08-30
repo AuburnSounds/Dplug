@@ -30,6 +30,9 @@ void usage()
     writeln("        -h, --help  Shows this help");
     writeln("        -o          Output bank. For now, this need to be a .fxb file path.");
     writeln("        --state     Allow support for state chunk in presets. Only available if your plugin is NOT legacyBinState.");
+    writeln();
+    writeln("Note:");
+    writeln("        File ending with + (eg: \"mypreset+.fxp\") are stripped of their '+' to show visually premium presets, if any.");
     writeln;
 }
 
@@ -84,9 +87,12 @@ int main(string[] args)
                 ubyte[] fxpData = cast(ubyte[]) std.file.read(input);
                 Preset preset = loadPresetFromFXP(fxpData, allowState);
 
+                // stuff+.fxp is a visual aid to find premium plugins,
+                // remove the '+'
+                input = input.replace("+.fxp", ".fxp");
+
                 // take name from filename
                 preset.name = baseName(stripExtension(input));
-
                 presets ~= preset;
             }
             else
