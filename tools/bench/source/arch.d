@@ -12,6 +12,7 @@ enum Arch
 {
     windows_x86,
     windows_x86_64,
+    windows_arm64,
     mac_x86_64,
     mac_arm64,
     mac_UB,
@@ -21,7 +22,7 @@ enum Arch
 
 Arch detectArch(const(char)[] pluginPath)
 {
-    static bool detectPEBitness(const(char)[] pluginPath) // true if 64-bit, false else
+    version(Windows)
     {
         import std.stdio;
         File f = File(pluginPath, "rb");
@@ -36,27 +37,13 @@ Arch detectArch(const(char)[] pluginPath)
         ubyte[] flag = f.rawRead(buf[]);
 
         if (flag[] == "PE\x00\x00\x4C\x01")
-            return false;
+            return Arch.windows_x86;
         else if (flag[] == "PE\x00\x00\x64\x86")
-            return true;
+            return Arch.windows_x86_64;
+        else if (flag[] == "PE\x00\x00\x64\xAA")
+            return Arch.windows_arm64;
         else
-            throw new Exception("Couldn't parse file as PE");
-    }
-
-    version(Windows)
-    {
-        // check if PE file and if so which arch
-        try
-        {
-            if (detectPEBitness(pluginPath))
-                return Arch.windows_x86_64;
-            else
-                return Arch.windows_x86;
-        }
-        catch(Exception e)
-        {
-        	throw new Exception("Unsupported OS/arch combination in bench, please modify the bench tool");
-        }
+            throw new Exception("Unsupported OS/arch combination in bench, please modify the bench tool");
     }
     else version(OSX)
     {
@@ -91,6 +78,7 @@ string archName(Arch arch)
     {
         case windows_x86:    return "x86";
         case windows_x86_64: return "x86_64";
+        case windows_arm64:  return "arm64";
         case mac_x86_64:     return "x86_64";
         case mac_arm64:      return "arm64";
         case mac_UB:         return "Universal Binary";
@@ -114,6 +102,7 @@ string processExecutablePathForThisArch(Arch arch)
     {
         case windows_x86:    return "process.exe";
         case windows_x86_64: return "process64.exe";
+        case windows_arm64:  return "process-arm64.exe";
         case mac_x86_64:     return "process-x86_64";
         case mac_arm64:      return "process-arm64";
         case mac_UB:         return "process-arm64"; // Can use any, so might as well take the fastest option
