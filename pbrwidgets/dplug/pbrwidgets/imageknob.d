@@ -1,8 +1,8 @@
 /**
-A PBR knob with texture.
+    A PBR knob with texture.
 
-Copyright: Guillaume Piolat 2019.
-License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+    Copyright: Guillaume Piolat 2019-2025
+    License:   http://www.boost.org/LICENSE_1_0.txt, BSL-1.0
 */
 module dplug.pbrwidgets.imageknob;
 
@@ -32,9 +32,9 @@ version = KnobImage_resizedInternal;
 enum KnobImageType
 {
     /// Legacy KnobImage format.
-    ABDME_8, 
+    ABDME_8,
 
-    /// New KnobImage format.
+    /// New `KnobImage` format.
     BADAMA_16
 }
 
@@ -44,72 +44,97 @@ enum KnobInterpolationType
     cubic
 }
 
-/// Type of image being used for Knob graphics.
-/// It used to be a one level deep Mipmap (ie. a flat image with sampling capabilities).
-/// It is now a regular `OwnedImage` since it is resized in `reflow()`.
-/// Use it an opaque type: its definition can change.
+/** 
+    Image with a special format, used for for knob graphics.
+
+    It used to be a one level deep Mipmap (ie. a flat image with 
+    sampling capabilities).
+    It is now a regular `OwnedImage` since resized in `reflow()`.
+    Use it an opaque type: its definition could change.
+
+    See_also: `UIImageKnob`, `loadKnobImage`, `destroyKnobImage`.
+*/
 class KnobImage
 {
 nothrow @nogc:
-    /// Type of KnobImage.
-    KnobImageType type;    
 
-    /// A gamut image, must be RGBA, can be 8-bit or 16-bit.
+    /// Type of KnobImage: `ABDME_8` or `BADAMA_16`.
+    KnobImageType type;
+
+    /// A Gamut image, must be RGBA, can be 8-bit or 16-bit.
     Image image;
 
+    /// If legacy `ABDME_8` format.
     bool isLegacy()
     {
         return type == KnobImageType.ABDME_8;
     }
 }
 
-/// Loads a knob image and rearrange channels to be fit to pass to `UIImageKnob`.
-/// Warning: the returned `KnobImage` should be destroyed by the caller with `destroyFree`.
-/// Note: internal resizing does not preserve aspect ratio exactly for 
-///       approximate scaled rectangles.
-///
-/// # ABDME_8 format (legacy 8-bit depth knobs)
-///
-/// The input format of such an image is an an arrangement of squares:
-///
-///         h              h           h            h         h
-///   +------------+------------+------------+------------+-----------+
-///   |            |            |            |            |           |
-///   |  alpha     |  basecolor |   depth    |  material  |  emissive |
-/// h |  grayscale |     RGB    |  grayscale |    RMS     | grayscale |
-///   |  (R used)  |            |(sum of RGB)|            | (R used)  |
-///   |            |            |            |            |           |
-///   +------------+------------+------------+------------+-----------+
-///
-/// This format is extended so that:
-/// - the emissive component is copied into the diffuse channel to form a full RGBA quad,
-/// - same for material with the physical channel, which is assumed to be always "full physical"
-///
-/// Recommended format: PNG, for example a 230x46 24-bit image.
-/// Note that such an image is formatted and resized in `reflow` before use.
-///
-///
-/// # BADAMA_16 format (new 16-bit depth + more alpha channels)
-///
-///           h           h            h      
-///   +------------+------------+------------+
-///   |            |            |            |
-///   |  basecolor |   depth    |  material  |
-/// h |    RGB     | (G used)   |    RMS     |
-///   |     +      |     +      |     +      |
-///   |   alpha    |   alpha    |   alpha    |
-///   +------------+------------+------------+
-///
-/// Recommended format: QOIX, for example a 512x128 16-bit QOIX image.
-/// Note that such an image is formatted and resized in `reflow` before use.
-///
-/// 8-bit images are considered ABDME_8, and 16-bit images are considered BADAMA_16.
+/** 
+    Loads a knob image for use in `UIImageKnob`.
+
+    Those images can follow two formats: 
+      - legacy `ABDME_8`
+      - recommended `BADAMA_16`
+
+    8-bit images are considered to be `ABDME_8`, and 16-bit images are 
+    considered `BADAMA_16`.
+
+    Warning: the returned `KnobImage` MUST be destroyed by the caller 
+    with `destroyKnobImage`.
+
+   
+    # ABDME_8 format (legacy knobs with 8-bit depth)
+   
+    The only instance of them is in Auburn Sounds Renegate and 
+    Dplug Distort.
+
+    The input format of such an image was an arrangement of squares:
+
+            h             h           h            h         h
+      +------------+-----------+------------+------------+-----------+
+      |            |           |            |            |           |
+      |  alpha     | diffuse   |   depth    |  material  |  emissive |
+    h |  grayscale |    RGB    |  grayscale |    RMS     | grayscale |
+      |  (R used)  |(basecolor)|(sum of RGB)|            | (R only)  |
+      |            |           |            |            |           |
+      +------------+-----------+------------+------------+-----------+
+   
+    This format is extended so that:
+     - the emissive component is copied into the diffuse channel to 
+       form a RGBE diffuse texture
+
+    Recommended format: PNG, for example a 230x46 24-bit image.
+    Note that such an image is formatted and resized in `reflow` 
+    before use. Size of widget command the final aspect-ratio.
+
+
+    # BADAMA_16 format (new 16-bit depth + more alpha channels)
+   
+    The recommended format for a new `UIImageKnob`.
+
+                     h           h            h
+             +------------+------------+------------+
+             |            |            |            |
+             |  basecolor |   depth    |  material  |
+           h |    RGB     | (G used)   |    RMS     |
+             |     +      |     +      |     +      |
+             |   alpha    |   alpha    |   alpha    |
+             +------------+------------+------------+
+   
+    Recommended format: QOIX, for example a 512x128 16-bit QOIX image.
+    Again, formatted and resized in `reflow` before use.
+*/
 KnobImage loadKnobImage(in void[] data)
 {
-    // If the input image is 8-bit, this is assumed to be in ABDME_8 format.
-    // Else this is assumed to be in BADAMA_16 format.
+    
     KnobImage res = mallocNew!KnobImage;
-    res.image.loadFromMemory(data, LOAD_RGB | LOAD_ALPHA | LOAD_NO_PREMUL); // Force RGB and Alpha channel.
+
+    // Force RGB and Alpha channel on load.
+    res.image.loadFromMemory(data, LOAD_RGB
+                                 | LOAD_ALPHA
+                                 | LOAD_NO_PREMUL);
     if (res.image.isError)
     {
         return null;
@@ -118,29 +143,33 @@ KnobImage loadKnobImage(in void[] data)
     if (res.image.isFP32())
         res.image.convertTo16Bit();
 
-    res.type = res.image.is8Bit() ? KnobImageType.ABDME_8 : KnobImageType.BADAMA_16;
+    // If the input image is 8-bit, this is assumed to be in ABDME_8 format.
+    // Else this is assumed to be in BADAMA_16 format.
+    res.type = res.image.is8Bit() ? KnobImageType.ABDME_8
+                                  : KnobImageType.BADAMA_16;
 
-    int h = res.image.height;
+    int H = res.image.height;
 
     if (res.type == KnobImageType.ABDME_8)
     {
         assert(res.image.type == PixelType.rgba8);
-
-        // Expected dimension is 5H x H
+        
+        // If you fail here, your image was recogized as ABDME_8 but
+        // doesn't follow right format. Expected dimension is 5H x H.
         assert(res.image.width == res.image.height * 5);
 
-        for (int y = 0; y < h; ++y)
+        for (int y = 0; y < H; ++y)
         {
             RGBA[] line = cast(RGBA[]) res.image.scanline(y);
 
-            RGBA[] basecolor = line[h..2*h];
-            RGBA[] material = line[3*h..4*h];
-            RGBA[] emissive = line[4*h..5*h];
+            RGBA[] diffuse  = line[  H..2*H];
+            RGBA[] material = line[3*H..4*H];
+            RGBA[] emissive = line[4*H..5*H];
 
-            for (int x = 0; x < h; ++x)
+            for (int x = 0; x < H; ++x)
             {
-                // Put emissive red channel into the alpha channel of base color
-                basecolor[x].a = emissive[x].r;
+                // Put emissive red channel into the alpha of diffuse
+                diffuse[x].a = emissive[x].r;
 
                 // Fills unused with 255
                 material[x].a = 255;
@@ -155,10 +184,10 @@ KnobImage loadKnobImage(in void[] data)
         assert(res.image.width == res.image.height * 3);
 
         // The whole image is alpha-premultiplied.
-        for (int y = 0; y < h; ++y)
+        for (int y = 0; y < H; ++y)
         {
             ushort[] scan = cast(ushort[]) res.image.scanline(y);
-            for (int x = 0; x < 3*h; ++x)
+            for (int x = 0; x < 3*H; ++x)
             {
                 uint R = scan[4*x+0];
                 uint G = scan[4*x+1];
@@ -178,51 +207,105 @@ KnobImage loadKnobImage(in void[] data)
     return res;
 }
 
+/**
+    Destroy a `KnobImage` loaded with `loadKnobImage`.
 
-/// UIKnob which replace the knob part by a rotated PBR image.
+    See_also: `loadKnobImage`
+*/
+void destroyKnobImage(KnobImage image)
+{
+    destroyFree(image);
+}
+
+
+/** 
+    An `UIKnob` for which the knob part is a rotated PBR image,
+    contained in `KnobImage`.
+*/
 class UIImageKnob : UIKnob
 {
 public:
 nothrow:
 @nogc:
 
-    /// If `true`, diffuse data is blended in the diffuse map using alpha information.
-    /// If `false`, diffuse is left untouched.
-    @ScriptProperty bool drawToDiffuse = true;
+    @ScriptProperty
+    {
+        /**
+            Draw to diffuse.
+        */
+        bool drawToDiffuse = true;
 
-    /// If `true`, depth data is blended in the depth map using alpha information.
-    /// If `false`, depth is left untouched.
-    @ScriptProperty bool drawToDepth = true;
+        /**
+            Draw to depth.
+        */
+        bool drawToDepth = true;
 
-    /// If `true`, material data is blended in the material map using alpha information.
-    /// If `false`, material is left untouched.
-    @ScriptProperty bool drawToMaterial = true;
+        /**
+            Draw to material.
+        */
+        bool drawToMaterial = true;
 
-    /// Amount of static emissive energy to the Emissive channel.
-    @ScriptProperty ubyte emissive = 0;
+        /** 
+            Amount of static emissive energy to the Emissive channel.
+        */
+        ubyte emissive = 0;
 
-    /// Amount of static emissive energy to add when mouse is over, but not dragging.
-    @ScriptProperty ubyte emissiveHovered = 0;
+        /**
+            Amount of static emissive energy to add when mouse is 
+            over, but not dragging.
+        */
+        ubyte emissiveHovered = 0;
 
-    /// Amount of static emissive energy to add when mouse is over, but not dragging.
-    @ScriptProperty ubyte emissiveDragged = 0;
+        /**
+            Amount of static emissive energy to add when mouse is 
+            over, but not dragging.
+        */
+        ubyte emissiveDragged = 0;
 
-    /// Only used in non-legacy mode (BADAMA_16 format). The texture is oversampled on resize, so that rotated image is sharper.
-    /// This costs more CPU and memory, for better visual results.
-    /// But this is also dangerous and not always better! Try it on a big screen preferably.
-    @ScriptProperty float oversampleTexture = 1.0f;
+        /**
+            The texture is oversampled on resize, so that rotated 
+            image is sharper. This helps a bit when your source image
+            is too small.
 
-    /// Texture interpolaton used, only for non-legacy mode (BADAMA_16 format). Try it on a big screen preferably.
-    @ScriptProperty KnobInterpolationType diffuseInterpolation = KnobInterpolationType.linear;
+            This costs more CPU and memory, for better visual results.
+            Warning: this isn't always better! Try on a large screen 
+                     to check.
 
-    ///ditto
-    @ScriptProperty KnobInterpolationType depthInterpolation = KnobInterpolationType.linear;
+            Only used in `BADAMA_16` format.
+        */
+        float oversampleTexture = 1.0f;
 
-    ///ditto
-    @ScriptProperty KnobInterpolationType materialInterpolation = KnobInterpolationType.linear;
+        /**
+            Texture interpolation used. 
+            Only used in `BADAMA_16` format.
+        */
+        KnobInterpolationType diffuseInterpolation 
+            = KnobInterpolationType.linear;
 
-    /// `knobImage` should have been loaded with `loadKnobImage`.
-    /// Warning: `knobImage` must outlive the knob, it is borrowed.
+        ///ditto
+        KnobInterpolationType depthInterpolation 
+            = KnobInterpolationType.linear;
+
+        ///ditto
+        KnobInterpolationType materialInterpolation 
+            = KnobInterpolationType.linear;
+
+    }
+    
+    /**
+        Create an `UIKnowImage`
+        
+        Params:
+           context   = The UI context.
+           knobImage = A `KnobImage` loaded with `loadKnobImage`. This
+                       image must outlive the knob, as it is borrowed.
+           parameter = The knob parameter.
+
+        Note: destroy your `KnobImage` in your UI destructor, using
+              `destroyKnobImage`.
+
+        See_also: `loadKnobImage`, `destroyKnobImage`.
+    */
     this(UIContext context, KnobImage knobImage, Parameter parameter)
     {
         super(context, parameter);
@@ -587,7 +670,6 @@ nothrow:
                                     }
                                 }
 
-                            
                                 if (drawToDepth)
                                 {
                                     vec4f fDepth;
@@ -780,7 +862,7 @@ vec4f linearSampleRGBA16(ref Image image, float x, float y) nothrow @nogc
     if (ixp1 > maxX)
         ixp1 = maxX;
     if (iyp1 > maxY)
-        iyp1 = maxY;  
+        iyp1 = maxY;
 
     float fxm1 = 1 - fx;
     float fym1 = 1 - fy;
@@ -840,7 +922,6 @@ vec4f cubicSampleRGBA16(ref Image image, float x, float y) nothrow @nogc
     L[2] = cast(COLOR*) image.scanptr(y_indices.array[2]);
     L[3] = cast(COLOR*) image.scanptr(y_indices.array[3]);
 
-  
     {
         // actually optimized ok by LDC
         static vec4f clamp_0_to_65535(vec4f a)
