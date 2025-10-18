@@ -151,7 +151,7 @@ nothrow:
     tresult getUnitByBus (MediaType type, BusDirection dir, int32 busIndex,
         int32 channel, ref UnitID unitId /*out*/);
 
-    /** Receives a preset data stream.
+    /* Receives a preset data stream.
         - If the component supports program list data (IProgramListData), the destination of the data
           stream is the program specified by list-Id and program index (first and second parameter)
         - If the component supports unit data (IUnitData), the destination is the unit specified by the first

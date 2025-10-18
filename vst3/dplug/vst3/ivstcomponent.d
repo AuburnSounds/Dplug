@@ -82,15 +82,15 @@ struct BusInfo
 {
 nothrow:
 @nogc:
-    MediaType mediaType;    ///< Media type - has to be a value of \ref MediaTypes
-    BusDirection direction; ///< input or output \ref BusDirections
-    int32 channelCount;     ///< number of channels (if used then need to be recheck after \ref
-                            /// IAudioProcessor::setBusArrangements is called).
-                            /// For a bus of type MediaTypes::kEvent the channelCount corresponds
-                            /// to the number of supported MIDI channels by this bus
-    String128 name;         ///< name of the bus
-    BusType busType;        ///< main or aux - has to be a value of \ref BusTypes
-    uint32 flags;           ///< flags - a combination of \ref BusFlags
+    MediaType mediaType;    //< Media type - has to be a value of \ref MediaTypes
+    BusDirection direction; //< input or output \ref BusDirections
+    int32 channelCount;     //< number of channels (if used then need to be recheck after \ref
+                            // IAudioProcessor::setBusArrangements is called).
+                            // For a bus of type MediaTypes::kEvent the channelCount corresponds
+                            // to the number of supported MIDI channels by this bus
+    String128 name;         //< name of the bus
+    BusType busType;        //< main or aux - has to be a value of \ref BusTypes
+    uint32 flags;           //< flags - a combination of \ref BusFlags
     enum BusFlags
     {
         kDefaultActive = 1 << 0 ///< bus active per default

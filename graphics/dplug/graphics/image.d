@@ -253,21 +253,21 @@ nothrow:
     /// Create with given initial size.
     ///
     /// Params:
-    ///   w               Width of meaningful area in pixels.
-    ///   h               Height of meaningful area in pixels.
-    ///   border          Number of border pixels around the meaningful area. For the right border, this could actually be more depending on other constraints.
-    ///   rowAlignment    Alignment of the _first_ pixel of each row, in bytes (excluding border).
-    ///   xMultiplicity   Starting with the first meaningful pixel of a line, force the number of adressable
-    ///                   pixels to be a multiple of `xMultiplicity`.
-    ///                   All these "padding" samples added at the right of each line if needed will be considered 
-    ///                   part of the border and replicated if need be.
-    ///                   This is eg. to process a whole line with only aligned loads.
-    ///                   Implemented with additional right border.
-    ///   trailingSamples When reading from a meaningful position, you can read 1 + `trailingSamples` neightbours
-    ///                   Their value is NOT guaranteed in any way and is completely undefined. 
-    ///                   They are guaranteed non-NaN if you've generated borders and did not write into borders.
-    ///                   Because of row alignment padding, this is not implemented with a few samples at the end 
-    ///                   of the buffer, but is instead again a right border extension.
+    ///   w               = Width of meaningful area in pixels.
+    ///   h               = Height of meaningful area in pixels.
+    ///   border          = Number of border pixels around the meaningful area. For the right border, this could actually be more depending on other constraints.
+    ///   rowAlignment    = Alignment of the _first_ pixel of each row, in bytes (excluding border).
+    ///   xMultiplicity   = Starting with the first meaningful pixel of a line, force the number of adressable
+    ///                     pixels to be a multiple of `xMultiplicity`.
+    ///                     All these "padding" samples added at the right of each line if needed will be considered 
+    ///                     part of the border and replicated if need be.
+    ///                     This is eg. to process a whole line with only aligned loads.
+    ///                     Implemented with additional right border.
+    ///   trailingSamples = When reading from a meaningful position, you can read 1 + `trailingSamples` neightbours
+    ///                     Their value is NOT guaranteed in any way and is completely undefined. 
+    ///                     They are guaranteed non-NaN if you've generated borders and did not write into borders.
+    ///                     Because of row alignment padding, this is not implemented with a few samples at the end 
+    ///                     of the buffer, but is instead again a right border extension.
     ///
     /// Note: default arguments leads to a gapless representation.
     this(int w, int h, int border = 0, int rowAlignment = 1, int xMultiplicity = 1, int trailingSamples = 0) nothrow @nogc
@@ -320,21 +320,21 @@ nothrow:
     /// Resize the image, the content is lost and the new content is undefined.
     ///
     /// Params:
-    ///   w               Width of meaningful area in pixels.
-    ///   h               Height of meaningful area in pixels.
-    ///   border          Number of border pixels around the meaningful area. For the right border, this could actually be more depending on other constraints.
-    ///   rowAlignment    Alignment of the _first_ pixel of each row, in bytes (excluding border).
-    ///   xMultiplicity   Starting with the first meaningful pixel of a line, force the number of adressable
-    ///                   pixels to be a multiple of `xMultiplicity`.
-    ///                   All these "padding" samples added at the right of each line if needed will be considered 
-    ///                   part of the border and replicated if need be.
-    ///                   This is eg. to process a whole line with only aligned loads.
-    ///                   Implemented with additional right border.
-    ///   trailingSamples When reading from a meaningful position, you can read 1 + `trailingSamples` neightbours
-    ///                   Their value is NOT guaranteed in any way and is completely undefined. 
-    ///                   They are guaranteed non-NaN if you've generated borders and did not write into borders.
-    ///                   Because of row alignment padding, this is not implemented with a few samples at the end 
-    ///                   of the buffer, but is instead again a right border extension.
+    ///   width           = Width of meaningful area in pixels.
+    ///   height          = Height of meaningful area in pixels.
+    ///   border          = Number of border pixels around the meaningful area. For the right border, this could actually be more depending on other constraints.
+    ///   rowAlignment    = Alignment of the _first_ pixel of each row, in bytes (excluding border).
+    ///   xMultiplicity   = Starting with the first meaningful pixel of a line, force the number of adressable
+    ///                     pixels to be a multiple of `xMultiplicity`.
+    ///                     All these "padding" samples added at the right of each line if needed will be considered 
+    ///                     part of the border and replicated if need be.
+    ///                     This is eg. to process a whole line with only aligned loads.
+    ///                     Implemented with additional right border.
+    ///   trailingSamples = When reading from a meaningful position, you can read 1 + `trailingSamples` neightbours
+    ///                     Their value is NOT guaranteed in any way and is completely undefined. 
+    ///                     They are guaranteed non-NaN if you've generated borders and did not write into borders.
+    ///                     Because of row alignment padding, this is not implemented with a few samples at the end 
+    ///                     of the buffer, but is instead again a right border extension.
     ///
     /// Note: Default arguments leads to a gapless representation.
     void size(int width, 

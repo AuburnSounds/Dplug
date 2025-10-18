@@ -587,12 +587,12 @@ void aaFillSector(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, 
 /**
     Fill rectangle while interpolating a `COLOR` (can be depth) horiontally.
     Params:
-         v     The surface to write to. That be clipped by a dirtyRect.
-         rect  The bounds of the slopped plane. The drawing itself will be 
-               clipped to its limit, and the limits of the surface.
-               Should NOT be clipped by the dirtyRect.
-         c0    Color at left edge.
-         c1    Color at right edge.
+         v     = The surface to write to. That be clipped by a dirtyRect.
+         rect  = The bounds of the slopped plane. The drawing itself will be 
+                 clipped to its limit, and the limits of the surface.
+                 Should NOT be clipped by the dirtyRect.
+         c0    = Color at left edge.
+         c1    = Color at right edge.
 */
 void horizontalSlope(float curvature = 1.0f, V, COLOR)(auto ref V v, 
                                                        box2i rect, 
@@ -625,12 +625,12 @@ void horizontalSlope(float curvature = 1.0f, V, COLOR)(auto ref V v,
     Fill rectangle while interpolating a `COLOR` (can be depth) vertically.
 
     Params:
-         v     The surface to write to. That be clipped by a dirtyRect.
-         rect  The bounds of the slopped plane. The drawing itself will be 
-               clipped to its limit, and the limits of the surface.
-               Should NOT be clipped by the dirtyRect.
-         c0    Color at top edge.
-         c1    Color at bottom edge.
+         v     = The surface to write to. That be clipped by a dirtyRect.
+         rect  = The bounds of the slopped plane. The drawing itself will be 
+                 clipped to its limit, and the limits of the surface.
+                 Should NOT be clipped by the dirtyRect.
+         c0    = Color at top edge.
+         c1    = Color at bottom edge.
 */
 void verticalSlope(float curvature = 1.0f, V, COLOR)(auto ref V v, box2i rect, COLOR c0, COLOR c1)
     if (isWritableView!V && is(COLOR : ViewColor!V))

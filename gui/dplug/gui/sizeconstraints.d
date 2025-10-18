@@ -25,14 +25,14 @@ SizeConstraints makeSizeConstraintsFixed(int width, int height)
 /// Aspect ratio is preserved.
 ///
 /// Params:
-///     defaultWidth base width in pixels.
-///     defaultHeight base height in pixels.
-///     availableRatios sorted list of UI scale factors, should contain 1.0f.
-///                     That list of scale factors: - must be increasing
-///                                                 - must contain 1.0f
-///                                                 - all factors must be > 0.0f
+///     defaultWidth  = Base width in pixels.
+///     defaultHeight = Base height in pixels.
+///     availableScales = sorted list of UI scale factors, should contain 1.0f.
+///                       That list of scale factors: - must be increasing
+///                                                   - must contain 1.0f
+///                                                   - all factors must be > 0.0f
 ///
-/// Warning: no more than 8 possible scales are possible.
+/// Warning: no more than `SizeConstraints.MAX_POSSIBLE_SCALES` possible scales are possible.
 SizeConstraints makeSizeConstraintsDiscrete(int defaultWidth, 
                                             int defaultHeight, 
                                             scope const(float)[] availableScales)
@@ -52,9 +52,10 @@ SizeConstraints makeSizeConstraintsDiscrete(int defaultWidth,
 /// Aspect ratio is preserved over a range of continuously possible scale factors.
 ///
 /// Params:
-///     defaultWidth base width in pixels.
-///     defaultHeight base height in pixels.
-///     availableRatios sorted list of ratios, should contain 1.0f.
+///     defaultWidth = base width in pixels.
+///     defaultHeight = base height in pixels.
+///     minScale = Minimum UI scale factor.
+///     maxScale = Maximum UI scale factor.
 SizeConstraints makeSizeConstraintsContinuous(int defaultWidth, 
                                               int defaultHeight,
                                               float minScale, 
@@ -100,13 +101,13 @@ SizeConstraints makeSizeConstraintsBounds(int minWidth,
 /// Aspect ratio is NOT preserved.
 ///
 /// Params:
-///     defaultWidth base width in pixels.
-///     defaultHeight base height in pixels.
-///     availableRatiosX sorted list of UI scale factors for the X dimension, should contain 1.0f.
+///     defaultWidth = Base width in pixels.
+///     defaultHeight = Base height in pixels.
+///     availableRatiosX = Sorted list of UI scale factors for the X dimension, should contain 1.0f.
 ///                      That list of scale factors: - must be increasing
 ///                                                  - must contain 1.0f
 ///                                                  - all factors must be > 0.0f
-///     availableRatiosY  sorted list of UI scale factors for the Y dimension. Same as above.
+///     availableRatiosY = Sorted list of UI scale factors for the Y dimension. Same as above.
 ///
 /// Warning: no more than 8 possible scales are possible for each axis.
 SizeConstraints makeSizeConstraintsDiscreteXY(int defaultWidth, 

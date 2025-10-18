@@ -364,8 +364,8 @@ nothrow:
         positionned in your gui.d `this()` or `reflow()`.
 
         Params:
-            context The global UI context of this UI.
-            flags   Flags as defined in `UIFlags`.
+            context = The global UI context of this UI.
+            flags   = Flags as defined in `UIFlags`.
     */
     this(UIContext context, uint flags)
     {
@@ -563,7 +563,7 @@ nothrow:
         widget parts in the neighbourhood.
 
         Params:
-            layer Which layers need to be redrawn.
+            layer = Which layers need to be redrawn.
 
         Important: While you _can_ call this from the audio
                    thread, it is much more efficient to mark
@@ -584,9 +584,9 @@ nothrow:
         all other widget parts in the neighbourhood.
 
         Params:
-            rect  Position of the dirtied rectangle,
-                  given in **local coordinates**.
-            layer Which layers need to be redrawn.
+            rect  =  Position of the dirtied rectangle,
+                     given in **local coordinates**.
+            layer =  Which layers need to be redrawn.
 
         Warning: `rect` must be inside `.position()`, but
             is given in widget (local) coordinates.
@@ -1007,8 +1007,8 @@ nothrow:
         overlap (you can also use Z-order to solve that).
 
         Params:
-            x X position in local coordinates.
-            x Y position in local coordinates.
+            x = X position in local coordinates.
+            x = Y position in local coordinates.
 
         Returns: `true` if point `(x, y)` is inside widget.
 
@@ -1055,10 +1055,11 @@ nothrow:
         This function is meant to be overridden.
 
         Params:
-            x Mouse X position in local coordinates.
-            y Mouse Y position in local coordinates.
-            isDoubleClick `true` if double-click.
-            mstate General mouse state.
+            x = Mouse X position in local coordinates.
+            y = Mouse Y position in local coordinates.
+            button = Button that was just clicked.
+            isDoubleClick = `true` if double-click.
+            mstate = General mouse state.
 
         Returns: What do with the click event. This is the
         only place where you can start a drag operation.
@@ -1082,11 +1083,11 @@ nothrow:
         This function is meant to be overridden.
 
         Params:
-            x Mouse X position in local coordinates.
-            y Mouse Y position in local coordinates.
-            wheelDeltaX Amount of mouse X wheel (rare).
-            wheelDeltaY Amount of mouse Y wheel.
-            mstate General mouse state.
+            x = Mouse X position in local coordinates.
+            y = Mouse Y position in local coordinates.
+            wheelDeltaX = Amount of mouse X wheel (rare).
+            wheelDeltaY = Amount of mouse Y wheel.
+            mstate = General mouse state.
 
         Returns: `true` if the wheel event was handlded,
             else propagated.
@@ -1104,11 +1105,11 @@ nothrow:
         This function is meant to be overridden.
 
         Params:
-            x Mouse X position in local coordinates.
-            y Mouse Y position in local coordinates.
-            dx Mouse X relative displacement.
-            dy Mouse Y relative displacement.
-            mstate General mouse state.
+            x = Mouse X position in local coordinates.
+            y = Mouse Y position in local coordinates.
+            dx = Mouse X relative displacement.
+            dy = Mouse Y relative displacement.
+            mstate = General mouse state.
 
         Warning: If `legacyMouseDrag` version identifier is
             used, this will be called even during a drag.
@@ -1171,11 +1172,11 @@ nothrow:
         `param.setFromGUI()`.
 
         Params:
-            x Mouse X position in local coordinates.
-            y Mouse Y position in local coordinates.
-            dx Mouse X relative displacement.
-            dy Mouse Y relative displacement.
-            mstate General mouse state.
+            x = Mouse X position in local coordinates.
+            y = Mouse Y position in local coordinates.
+            dx = Mouse X relative displacement.
+            dy = Mouse Y relative displacement.
+            mstate = General mouse state.
     */
     void onMouseDrag(int x, int y, int dx, int dy,
         MouseState mstate)
@@ -1252,10 +1253,10 @@ protected:
         have bad rendering with surrounding updates.
 
         Params:
-            rawMap     Raw RGBA pixels (input and output),
-                       cropped to widget position.
-                       Blending allowed.
-            dirtyRects Where to draw in this rawMap.
+            rawMap     = Raw RGBA pixels (input and output),
+                         cropped to widget position.
+                         Blending allowed.
+            dirtyRects = Where to draw in this rawMap.
 
         TODO: Not sure if dirtyRects are widget-space or
           cropped-space.
@@ -1283,13 +1284,13 @@ protected:
         have bad rendering with surrounding updates.
 
         Params:
-            diffuseMap  Contain 4 channels:
-                        Red, Green, Blue, Emissive.
-            depthMap    One channel of 16-bit depth.
-            materialMap Contain 3 channels:
-                        Roughness, Metalness, Specular, and
-                        a unused 4th channel.
-            dirtyRects Where to draw in these maps.
+            diffuse     = Contain 4 channels:
+                          Red, Green, Blue, Emissive.
+            depth       = One channel of 16-bit depth.
+            material    = Contain 3 channels:
+                          Roughness, Metalness, Specular, and
+                          a unused 4th channel.
+            dirtyRects = Where to draw in these maps.
 
         TODO: Not sure if dirtyRects are widget-space or
           cropped-space.

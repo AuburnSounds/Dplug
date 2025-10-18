@@ -579,7 +579,7 @@ nothrow:
     }
 
     /// Creates an elliptical gradient.
-    /// First radius is given by (x1, y1), second radius with a radius at 90° with the first one).
+    /// First radius is given by (x1, y1), second radius with a radius at 90° with the first one.
     CanvasGradient createEllipticalGradient(float x0, float y0, float x1, float y1, float r2)
     { 
         // TODO: delay this transform upon point of use with CTM

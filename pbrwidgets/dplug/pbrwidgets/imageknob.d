@@ -1,7 +1,7 @@
 /**
     A PBR knob with texture.
 
-    Copyright: Guillaume Piolat 2019-2025
+    Copyright: Guillaume Piolat (c) 2019-2025.
     License:   http://www.boost.org/LICENSE_1_0.txt, BSL-1.0
 */
 module dplug.pbrwidgets.imageknob;

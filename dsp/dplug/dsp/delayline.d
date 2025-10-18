@@ -16,9 +16,10 @@ import inteli.emmintrin;
 /// Allow to sample signal back in time.
 /// This delay-line has a twin write index, so that the read pointer 
 /// can read a contiguous memory area.
-/// ____________________________________________________________________________________
-/// |     | _index |                  | readPointer = _index + half size |             |
-/// ------------------------------------------------------------------------------------
+///
+/// ┌────────────────────────────────────────────────────────────────────────────────────┐
+/// │    │ _index │                  │ readPointer = _index + half size │                │
+/// └────────────────────────────────────────────────────────────────────────────────────┘
 ///
 /// A Delayline is initialized with an internal length of N = numSamples,
 /// in order to do a simple delay of N samples.

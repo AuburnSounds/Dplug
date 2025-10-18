@@ -33,10 +33,10 @@ nothrow:
     /// Setup the compositor to output a particular output size.
     ///
     /// Params:
-    ///     width      The width of the given input mipmaps, and the width of the output image.
-    ///     height     The height of the given input mipmaps, and the height of the output image.
-    ///     areaMaxWidth  The maximum width of the `area` passed in `compositeTile`. This is useful to allocate smaller thread-local buffers.
-    ///     areaMaxHeight The maximum height of the `area` passed in `compositeTile`. This is useful to allocate smaller thread-local buffers.
+    ///     width      = The width of the given input mipmaps, and the width of the output image.
+    ///     height     = The height of the given input mipmaps, and the height of the output image.
+    ///     areaMaxWidth  = The maximum width of the `area` passed in `compositeTile`. This is useful to allocate smaller thread-local buffers.
+    ///     areaMaxHeight = The maximum height of the `area` passed in `compositeTile`. This is useful to allocate smaller thread-local buffers.
     ///
     /// Note: this call is always called before `compositeTile` is called, and never simultaneously.
     ///
@@ -48,13 +48,14 @@ nothrow:
     /// From given input mipmaps, write output image into `wfb` with pixel format `pf`, for the output area `area`.
     ///
     /// Params:
-    ///     wfb         Image to write the output pixels to.
-    ///     diffuseMap  Diffuse input.  Basecolor + Emissive, the Compositor decides how it uses these channels.
-    ///     materialMap Material input. Roughness + Metalness + Specular + Unused, the Compositor decides how it uses these channels.
-    ///     depthMap    Depth input. A different of `FACTOR_Z` in the Z direction has a similar size as a displacement of one pixels.
-    ///                 As such, the range of possible simulated depth is (ushort.max / FACTOR_Z) pixels.
-    ///                 But ultimately, the Compositor decides how it uses these channels.
-    ///     skybox      Environment texture. Cheap and dirty reflections, to simulate metals.
+    ///     wfb         = Image to write the output pixels to.
+    ///     areas       = Disjointed rectangles areas to composite.
+    ///     diffuseMap  = Diffuse input.  Basecolor + Emissive, the Compositor decides how it uses these channels.
+    ///     materialMap = Material input. Roughness + Metalness + Specular + Unused, the Compositor decides how it uses these channels.
+    ///     depthMap    = Depth input. A different of `FACTOR_Z` in the Z direction has a similar size as a displacement of one pixels.
+    ///                   As such, the range of possible simulated depth is (ushort.max / FACTOR_Z) pixels.
+    ///                   But ultimately, the Compositor decides how it uses these channels.
+    ///     profiler    = Graphics profiler.
     ///
     /// Note: several threads will call this function concurrently. 
     ///       It is important to only deal with `area` to avoid clashing writes.
@@ -83,9 +84,6 @@ public:
 nothrow:
 @nogc:
 
-    /// Params:
-    ///     threadPool The thread instance this compositor is allowed to use while in `compositeTile`.
-    ///
     this(CompositorCreationContext* context)
     {
         _threadPool = context.threadPool;
