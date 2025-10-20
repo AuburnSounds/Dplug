@@ -743,7 +743,22 @@ public nothrow @nogc:
                     int               frames,
                     const(BiquadCoeff) coeff)
     {
+        // This SIMD intrinsics optimization makes 
+        // Panagement 2 10% slower in Windows arm64, disabled
         version(LDC)
+        {
+            version(X86)
+                enum bool enableInteli = true;
+            else version(X86_64)
+                enum bool enableInteli = true;
+            else
+                enum bool enableInteli = false;
+        }
+        else 
+            enum bool enableInteli = false;
+
+
+        static if (enableInteli)
         {
             double x0 = _x0,
                    x1 = _x1,
@@ -838,6 +853,8 @@ public nothrow @nogc:
                     int               frames,
                     const(BiquadCoeff) coeff)
     {
+        // PERF: try on arm64, inteli probably slower?
+
         double x0 = _x0,
                x1 = _x1,
                y0 = _y0,
