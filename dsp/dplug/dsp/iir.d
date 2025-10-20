@@ -853,7 +853,10 @@ public nothrow @nogc:
                     int               frames,
                     const(BiquadCoeff) coeff)
     {
-        // PERF: try on arm64, inteli probably slower?
+        // PERF: on Windows arm64, this loop makes Selene
+        // 5% slower with inteli vs naive. Remove that, but
+        // also listen since the result is also quite 
+        // different! like -20 dB/RMS, odd
 
         double x0 = _x0,
                x1 = _x1,
