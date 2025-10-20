@@ -101,10 +101,11 @@ nothrow @nogc:
 
             // close plugin
             _dispatcher(_aeffect, effClose, 0, 0, null, 0.0f);
-            
-            // remove mapping
-            // TODO Is this safe though? What if the host is still calling audio processing?
-            _aeffect.resvd2 = 0;
+
+            // Mapping stays on, since it used to crash in Windows arm64
+            // for some reason.
+            // Probable bad fix.
+            //_aeffect.resvd2 = 0;
 
             _aeffect = null;
         }
