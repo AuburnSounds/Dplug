@@ -49,7 +49,6 @@ import dplug.au.dfxutil;
 import dplug.au.cocoaviewfactory;
 import dplug.au.audiocomponentdispatch;
 
-
 //debug = logDispatcher;
 
 // Difference with IPlug

@@ -562,6 +562,22 @@ nothrow:
             _size -= (last - first);
         }
 
+        /// Insert a value at index `index`, values after that get 
+        /// moved.
+        /// Warning: O(N) complexity.
+        void insert(size_t index, T value)
+        {
+            assert(index <= _size);
+
+            resizeGrow(_size + 1);
+            size_t last = _size - 1;
+            for (size_t i = last; i > index; --i)
+            {
+                _data[i] = _data[i-1];
+            }
+            _data[index] = value;
+        }
+
         /// Appends another buffer to this buffer.
         void pushBack(ref Vec other) @trusted
         {
@@ -809,6 +825,18 @@ unittest
     assert(vec == vec.init);
     vec.fill("filler");
     assert(vec.ptr is null);
+}
+
+// Vec insertion
+unittest
+{
+    Vec!int v;
+    v.insert(0, 42);
+    v.insert(0, 6);
+    v.insert(2, 3);
+    assert(v[0] == 6);
+    assert(v[1] == 42);
+    assert(v[2] == 3);    
 }
 
 // Issue #312: vec.opIndex not returning ref which break struct assignment
