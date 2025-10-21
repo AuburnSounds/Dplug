@@ -160,6 +160,8 @@ public:
 nothrow:
 @nogc:
 
+    enum AU_BUFFER_ALIGN = 64;
+
     // this allows to pass AUClient instance, whether we are using the Audio Component API or the Component Manager API
     enum kAudioUnitProperty_DPLUG_AUCLIENT_INSTANCE = 0xDEADBEEF;
 
@@ -174,22 +176,26 @@ nothrow:
         int queueSize = 256;
         _messageQueue = makeLockedQueue!AudioThreadMessage(queueSize);
 
-        _maxInputs = _client.maxInputs();
+        _maxInputs  = _client.maxInputs();
         _maxOutputs = _client.maxOutputs();
 
-        _inputScratchBuffer = mallocSlice!(Vec!float)(_maxInputs);
-        _outputScratchBuffer = mallocSlice!(Vec!float)(_maxOutputs);
+        _inputScratchBuffer  = mallocSlice!(float*)(_maxInputs);
+        _outputScratchBuffer = mallocSlice!(float*)(_maxOutputs);
 
         for (int i = 0; i < _maxInputs; ++i)
-            _inputScratchBuffer[i] = makeVec!float(0, 64);
+        {
+            _inputScratchBuffer[i] = null;
+        }
 
         for (int i = 0; i < _maxOutputs; ++i)
-            _outputScratchBuffer[i] = makeVec!float(0, 64);
+        {
+            _outputScratchBuffer[i] = null;
+        }
 
-        _inputPointers = mallocSlice!(float*)(_maxInputs);
+        _inputPointers  = mallocSlice!(float*)(_maxInputs);
         _outputPointers = mallocSlice!(float*)(_maxOutputs);
 
-        _inputPointersNoGap = mallocSlice!(float*)(_maxInputs);
+        _inputPointersNoGap  = mallocSlice!(float*)(_maxInputs);
         _outputPointersNoGap = mallocSlice!(float*)(_maxOutputs);
 
         // Create input buses
@@ -246,11 +252,11 @@ nothrow:
         _messageQueue.destroy();
 
         for (int i = 0; i < _maxInputs; ++i)
-            _inputScratchBuffer[i].destroy();
+            alignedFree(_inputScratchBuffer[i], AU_BUFFER_ALIGN);
         _inputScratchBuffer.freeSlice();
 
         for (int i = 0; i < _maxOutputs; ++i)
-            _outputScratchBuffer[i].destroy();
+            alignedFree(_outputScratchBuffer[i], AU_BUFFER_ALIGN);
         _outputScratchBuffer.freeSlice();
 
         _inputPointers.freeSlice();
@@ -304,8 +310,8 @@ private:
 
     bool _isUIOpenedAlready = false;
 
-    Vec!float[] _inputScratchBuffer;  // input buffer, one per possible input
-    Vec!float[] _outputScratchBuffer; // input buffer, one per output
+    float*[] _inputScratchBuffer;  // input buffer, one per possible input
+    float*[] _outputScratchBuffer; // input buffer, one per output
 
     float*[] _inputPointers;  // where processAudio will take its audio input, one per possible input
     float*[] _outputPointers; // where processAudio will output audio, one per possible output
@@ -465,11 +471,17 @@ private:
     void resizeScratchBuffers(int nFrames) nothrow @nogc
     {
         for (int i = 0; i < _maxInputs; ++i)
-            _inputScratchBuffer[i].resize(nFrames);
-
+        {
+            _inputScratchBuffer[i] = cast(float*) alignedRealloc(_inputScratchBuffer[i],
+                                                                 nFrames * float.sizeof,
+                                                                 AU_BUFFER_ALIGN);
+        }
         for (int i = 0; i < _maxOutputs; ++i)
-            _outputScratchBuffer[i].resize(nFrames);
-
+        {
+            _outputScratchBuffer[i] = cast(float*) alignedRealloc(_outputScratchBuffer[i],
+                                                                 nFrames * float.sizeof,
+                                                                 AU_BUFFER_ALIGN);
+        }
     }
 
     // </scratch-buffers>
@@ -2117,7 +2129,7 @@ private:
                         {
                             AudioBuffer* pBuffer = &(pInBufList.mBuffers.ptr[b]);
                             int whichScratch = pInBus.plugChannelStartIdx + b;
-                            float* buffer = _inputScratchBuffer[whichScratch].ptr;
+                            float* buffer = _inputScratchBuffer[whichScratch];
                             pBuffer.mData = buffer;
                             pBuffer.mNumberChannels = 1;
                             pBuffer.mDataByteSize = cast(uint)(nFrames * AudioSampleType.sizeof);
@@ -2165,7 +2177,7 @@ private:
                 if (pData == null)
                 {
                     // No output buffers given, we use scratch buffers instead
-                    pData = _outputScratchBuffer[chIdx].ptr;
+                    pData = _outputScratchBuffer[chIdx];
                     pOutBufList.mBuffers.ptr[i].mData = pData;
                 }
 
@@ -2247,7 +2259,7 @@ private:
                         {
                             // Assuming here that the scratch buffer couldn't be in input AND output, though
                             // I'm not 100% certain to be fair.
-                            float* buffer = _inputScratchBuffer[b].ptr;
+                            float* buffer = _inputScratchBuffer[b];
                             buffer[0..nFrames] =  _inputPointersNoGap[b][0..nFrames]; // copy
                             _inputPointersNoGap[b] = buffer;
                         }
