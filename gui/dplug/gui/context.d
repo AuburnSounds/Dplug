@@ -120,6 +120,15 @@ nothrow @nogc:
     /// If you use `dplug:wren-support`, this is called by the `$` operator or the `UI.getElementById`.
     UIElement getElementById(const(char)* id);
 
+    /// Set the focus to va particular widget.
+    /// `onFocusExit` then `onFocusEnter` are called
+    /// accordingly.
+    /// Having "focus" means getting keyboard events.
+    /// This happens automatically when a widget is clicked,
+    /// si typically there is never a reason to call 
+    /// `setFocused` manually.
+    void setFocused(UIElement focused);
+
     /// If one `UIElement` was focused, loose that focus.
     /// Allows to loose focus from a widget callback.
     /// To be effective from a mouse click, you also need 
@@ -279,7 +288,7 @@ nothrow:
             new_.onMouseEnter();
     }
 
-    final void setFocused(UIElement focused)
+    final override void setFocused(UIElement focused)
     {
         UIElement old = this.focused;
         UIElement new_ = focused;

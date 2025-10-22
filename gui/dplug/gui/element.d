@@ -619,6 +619,7 @@ nothrow:
     // Explanation: an invisible widget is not displayed
     //              nor considered for most events.
     // Widgets start their life being visible.
+    // THIS SHALL NOT BE USED FROM THE AUDIO THREAD.
     //
 
     /**
