@@ -532,11 +532,11 @@ template box3(T)
 
 
 alias box2!int box2i; /// 2D box with integer coordinates.
-alias box3!int box3i; /// 3D box with integer coordinates.
+deprecated("Will be removed in Dplug v17") alias box3!int box3i; /// 3D box with integer coordinates.
 alias box2!float box2f; /// 2D box with float coordinates.
-alias box3!float box3f; /// 3D box with float coordinates.
+deprecated("Will be removed in Dplug v17") alias box3!float box3f; /// 3D box with float coordinates.
 alias box2!double box2d; /// 2D box with double coordinates.
-alias box3!double box3d; /// 3D box with double coordinates.
+deprecated("Will be removed in Dplug v17") alias box3!double box3d; /// 3D box with double coordinates.
 
 /// Returns: A 2D rectangle with point `x`,`y`, `width` and `height`.
 box2i rectangle(int x, int y, int width, int height) pure nothrow @nogc
@@ -566,69 +566,8 @@ unittest
     box2i b = box2i(vec2i(1, 2), vec2i(3, 4));
     assert(a == b);
 
-    box3i q = box3i(-3, -2, -1, 0, 1, 2);
-    q.bound_t s = q.bound_t(11, 17, 19);
-    q.bound_t q_min = q.min;
-    assert((q.size = s) == s);
-    assert(q.size == s);
-    assert(q.min == q_min);
-    assert(q.max == q.min + s);
-    assert(q.max -  q.min == s);
-
-    assert((q.width = s.z) == s.z);
-    assert(q.width == s.z);
-    assert(q.min.x == q_min.x);
-    assert(q.max.x == q.min.x + s.z);
-    assert(q.max.x -  q.min.x == s.z);
-
-    assert((q.height = s.y) == s.y);
-    assert(q.height == s.y);
-    assert(q.min.y == q_min.y);
-    assert(q.max.y == q.min.y + s.y);
-    assert(q.max.y -  q.min.y == s.y);
-
-    assert((q.depth = s.x) == s.x);
-    assert(q.depth == s.x);
-    assert(q.min.z == q_min.z);
-    assert(q.max.z == q.min.z + s.x);
-    assert(q.max.z -  q.min.z == s.x);
-
-    assert(q.size == s.zyx);
-
-    box3i n = box3i(2, 1, 0, -1, -2, -3);
-    assert(n.abs == box3i(-1, -2, -3, 2, 1, 0));
-
     box2f bf = cast(box2f)b;
     assert(bf == box2f(1.0f, 2.0f, 3.0f, 4.0f));
-
-    box3f qf = box3f(-0, 1f, 2.5f, 3.25f, 5.125f, 7.0625f);
-    qf.bound_t sf = qf.bound_t(-11.5f, -17.25f, -19.125f);
-    qf.bound_t qf_min = qf.min;
-    assert((qf.size = sf) == sf);
-    assert(qf.size == sf);
-    assert(qf.min == qf_min);
-    assert(qf.max == qf.min + sf);
-    assert(qf.max -  qf.min == sf);
-
-    assert((qf.width = sf.z) == sf.z);
-    assert(qf.width == sf.z);
-    assert(qf.min.x == qf_min.x);
-    assert(qf.max.x == qf.min.x + sf.z);
-    assert(qf.max.x -  qf.min.x == sf.z);
-
-    assert((qf.height = sf.y) == sf.y);
-    assert(qf.height == sf.y);
-    assert(qf.min.y == qf_min.y);
-    assert(qf.max.y == qf.min.y + sf.y);
-    assert(qf.max.y -  qf.min.y == sf.y);
-
-    assert((qf.depth = sf.x) == sf.x);
-    assert(qf.depth == sf.x);
-    assert(qf.min.z == qf_min.z);
-    assert(qf.max.z == qf.min.z + sf.x);
-    assert(qf.max.z -  qf.min.z == sf.x);
-
-    assert(qf.size == sf.zyx);
 
     box2i c = box2i(0, 0, 1,1);
     assert(c.translate(vec2i(3, 3)) == box2i(3, 3, 4, 4));
@@ -672,7 +611,6 @@ enum isBox(T) = is(T : Box!U, U...);
 unittest
 {
     static assert( isBox!box2f);
-    static assert( isBox!box3d);
     static assert( isBox!(Box!(real, 2)));
     static assert(!isBox!vec2f);
 }
@@ -684,6 +622,5 @@ alias DimensionType(T : Box!U, U...) = U[0];
 unittest
 {
     static assert(is(DimensionType!box2f == float));
-    static assert(is(DimensionType!box3d == double));
 }
 
