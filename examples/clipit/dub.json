@@ -19,11 +19,8 @@
     {
         "dplug:dsp": { "path": "../.." },
         "dplug:vst2": { "path": "../.." },
-        "dplug:lv2": { "path": "../.."},
-        "dplug:au": { "path": "../.." },
+        "dplug:formats": { "path": "../.."},
         "dplug:vst3": { "path": "../.." },
-        "dplug:flp": { "path": "../.." },
-        "dplug:clap": { "path": "../.." },
         "dplug:gui": { "path": "../.." },
         "dplug:canvas": { "path": "../.." },
         "dplug:flat-widgets": { "path": "../.." }

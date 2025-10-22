@@ -1,5 +1,3 @@
-<img alt="logo" src="https://cdn.rawgit.com/AuburnSounds/dplug/master/tools/dplug-logos/logo-coloured-on-transparent.png" width="130">
-
 # ![Build and Test](https://github.com/AuburnSounds/Dplug/workflows/ci/badge.svg) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a>
 
 `Dplug` lets you create professional audio plug-ins with minimal headaches and maintenance cost.

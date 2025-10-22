@@ -18,7 +18,7 @@
     {
         "dplug:vst2": { "path": "../.." },
         "dplug:vst3": { "path": "../.." },
-        "dplug:au": { "path": "../.." }
+        "dplug:formats": { "path": "../.." }
     },
 
     "versions": ["futureVST3MIDICC"],

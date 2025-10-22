@@ -20,9 +20,7 @@
     {
         "dplug:vst2": { "path": "../.." },
         "dplug:vst3": { "path": "../.." },
-        "dplug:lv2": { "path": "../.."},
-        "dplug:clap": { "path": "../.."},
-        "dplug:flp": { "path": "../.."}
+        "dplug:formats": { "path": "../.."}
     },
 
     "configurations": [

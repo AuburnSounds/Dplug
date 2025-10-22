@@ -16,21 +16,18 @@
 
     "dependencies":
     {
-        "dplug:au": "*",
         "dplug:audio": "*",
         "dplug:canvas": "*",
         "dplug:client": "*",
         "dplug:core": "*",
-        "dplug:clap": "*",
         "dplug:dsp": "*",
         "dplug:fft": "*",
-        "dplug:flp": "*",
+        "dplug:formats": "*",
         "dplug:flat-widgets": "*",
         "dplug:graphics": "*",
         "dplug:gui": "*",
         "dplug:host": "*",
         "dplug:iir": "*",
-        "dplug:lv2": "*",
         "dplug:macos": "*",
         "dplug:pbr-widgets": "*",
         "dplug:vst2": "*",
@@ -42,15 +39,6 @@
 
     "subPackages": [
 
-        {
-            "name": "au",
-            "sourcePaths": [ "au/dplug/au" ],
-            "importPaths": [ "au" ],
-            "dependencies": {
-                "dplug:client": "*",
-                "dplug:macos": "*"
-            }
-        },
         {
             "name": "audio",
             "sourcePaths": [ "audio/dplug/audio" ],
@@ -70,14 +58,6 @@
                 "colors": "~>0.0",
                 "dplug:math": "*",
                 "intel-intrinsics": "~>1.0"
-            }
-        },
-        {
-            "name": "clap",
-            "sourcePaths": [ "clap/dplug/clap" ],
-            "importPaths": [ "clap" ],
-            "dependencies": {
-                "dplug:client": "*"
             }
         },
         {
@@ -169,11 +149,12 @@
             }
         },
         {
-            "name": "flp",
-            "sourcePaths": [ "flp/dplug/flp" ],
-            "importPaths": [ "flp" ],
+            "name": "formats",
+            "sourcePaths": [ "formats/dplug" ],
+            "importPaths": [ "formats" ],
             "dependencies": {
-                "dplug:client": "*"
+                "dplug:client": "*",
+                "dplug:macos": "*"
             }
         },
         {
@@ -224,14 +205,6 @@
                 "dplug:core": "*",
                 "dplug:audio": "*",
                 "intel-intrinsics": "~>1.0"
-            }
-        },
-        {
-            "name": "lv2",
-            "sourcePaths": [ "lv2/dplug/lv2" ],
-            "importPaths": [ "lv2" ],
-            "dependencies": {
-                "dplug:client": "*"
             }
         },
         {

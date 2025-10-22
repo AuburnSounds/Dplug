@@ -19,9 +19,8 @@
 
     "dependencies":
     {
-        "dplug:clap":          { "path": "../.." },
+        "dplug:formats":       { "path": "../.." },
         "dplug:vst3":          { "path": "../.." },
-        "dplug:au":            { "path": "../.." },
         "dplug:vst2":          { "path": "../.." },
         "dplug:gui":           { "path": "../.." },
         "dplug:flat-widgets":  { "path": "../.." }

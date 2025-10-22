@@ -18,7 +18,7 @@
     {
         "dplug:vst2": { "path": "../.." },
         "dplug:vst3": { "path": "../.." },
-        "dplug:clap": { "path": "../.." }
+        "dplug:formats": { "path": "../.." }
     },
 
     "configurations": [

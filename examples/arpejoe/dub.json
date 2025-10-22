@@ -14,16 +14,11 @@
     "dflags-linux-x86_64-ldc": ["-fvisibility=hidden"],
     "dflags-windows-ldc": ["-mscrtlib=libcmt","-fvisibility=hidden", "-link-defaultlib-shared=false"],
 
-    "versions": ["futureVST3MIDICC"],
-
     "dependencies":
     {
         "dplug:vst2": { "path": "../.." },
         "dplug:vst3": { "path": "../.." },
-        "dplug:au": { "path": "../.." },
-        "dplug:lv2": { "path": "../.." },
-        "dplug:clap": { "path": "../.." },
-        "dplug:flp": { "path": "../.." }
+        "dplug:formats": { "path": "../.." }
     },
 
     "configurations": [
