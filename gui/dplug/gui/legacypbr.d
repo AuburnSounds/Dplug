@@ -107,7 +107,9 @@ nothrow @nogc:
         (cast(PassAmbientOcclusion)getPass(PASS_AO)).amount = amount;
     }
 
-    version(futurePBREmissive)
+    version(legacyPBREmissive)
+    {}
+    else
     {
         void tonemapThreshold(float value)
         {
@@ -965,19 +967,27 @@ public:
                 vec4f colorLevel2 = diffuseMap.linearSample(2, ic, jc);
                 vec4f colorLevel3 = diffuseMap.linearSample(3, ic, jc);
 
-                version(futurePBREmissive)
+                version(legacyPBREmissive)
+                {
+                    vec4f colorLevel4 = diffuseMap.linearSample(4, ic, jc);
+                    vec4f colorLevel5 = diffuseMap.linearSample(5, ic, jc);
+                }
+                else
                 {
                     // See Issue #827; this was a problem for Emissive highlights.
                     vec4f colorLevel4 = diffuseMap.cubicSample(4, ic, jc);
                     vec4f colorLevel5 = diffuseMap.cubicSample(5, ic, jc);
                 }
-                else
-                {
-                    vec4f colorLevel4 = diffuseMap.linearSample(4, ic, jc);
-                    vec4f colorLevel5 = diffuseMap.linearSample(5, ic, jc);
-                }
 
-                version(futurePBREmissive)
+                version(legacyPBREmissive)
+                {
+                    vec4f emitted = colorLevel1 * 0.00117647f;
+                    emitted += colorLevel2      * 0.00176471f;
+                    emitted += colorLevel3      * 0.00147059f;
+                    emitted += colorLevel4      * 0.00088235f;
+                    emitted += colorLevel5      * 0.00058823f;
+                }
+                else
                 {
                     // What is super nice with the linear-space mipmap in Diffuse, is that
                     // taking a blurred samples seemingly take equal weights in several layers.
@@ -989,14 +999,8 @@ public:
                     emitted += colorLevel4      * AMT;
                     emitted += colorLevel5      * AMT * (1 + noise);
                 }
-                else
-                {
-                    vec4f emitted = colorLevel1 * 0.00117647f;
-                    emitted += colorLevel2      * 0.00176471f;
-                    emitted += colorLevel3      * 0.00147059f;
-                    emitted += colorLevel4      * 0.00088235f;
-                    emitted += colorLevel5      * 0.00058823f;
-                }
+                
+           
                 accumScan[i - area.min.x] += RGBAf(emitted.r, emitted.g, emitted.b, emitted.a);
             }
         }
@@ -1031,7 +1035,10 @@ nothrow:
 @nogc:
 public:
 
-    version(futurePBREmissive)
+    version(legacyPBREmissive)
+    {
+    }
+    else
     {
         /// Normally not much reason to change this. This is the threshold above which colors are 
         /// allowed to "bleed" into others in a gray way.
@@ -1056,7 +1063,8 @@ public:
         immutable __m128 mm255_99 = _mm_set1_ps(255.99f);
         immutable __m128i zero = _mm_setzero_si128();
 
-        version(futurePBREmissive)
+        version(legacyPBREmissive){}
+        else
         {
             float toneRatio = tonemapRatio / 3;
         }
@@ -1072,7 +1080,8 @@ public:
                 RGBAf accum = accumScan[i - area.min.x];
                 __m128 color = _mm_setr_ps(accum.r, accum.g, accum.b, 1.0f);
 
-                version(futurePBREmissive)
+                version(legacyPBREmissive){}
+                else
                 {
                     // Try to weight green higher.
                     // This avoids shifting hue when tonemapping.

@@ -40,8 +40,8 @@ nothrow:
 
         /// Box-filter, and after such a step the next level is alpha-premultiplied.
         /// This is intended for the first level 0 to level 1 transition, in case of bloom.
-        /// Within version(futurePBREmissive), this also transitions to linear space to have 
-        /// more natural highlights.
+        /// This also transitions to linear space to have 
+        /// more natural highlights (with PBREmissive option)
         boxAlphaCovIntoPremul, 
     }
 
@@ -818,7 +818,26 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(OwnedImage!RGBA thisLevel,
         RGBA* L1   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2 + 1) + updateRect.min.x * 2;
         RGBA* dest =     thisLevel.scanlinePtr(           updateRect.min.y + y) + updateRect.min.x;
 
-        version(futurePBREmissive)
+        version(legacyPBREmissive)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                RGBA A = L0[2 * x];
+                RGBA B = L0[2 * x + 1];
+                RGBA C = L1[2 * x];
+                RGBA D = L1[2 * x + 1];
+                int red =   (A.r * A.a + B.r * B.a + C.r * C.a + D.r * D.a);
+                int green = (A.g * A.a + B.g * B.a + C.g * C.a + D.g * D.a);
+                int blue =  (A.b * A.a + B.b* B.a + C.b * C.a + D.b * D.a);
+                int alpha =  (A.a * A.a + B.a* B.a + C.a * C.a + D.a * D.a);
+                RGBA finalColor = RGBA( cast(ubyte)((red + 512) >> 10),
+                                        cast(ubyte)((green + 512) >> 10),
+                                       cast(ubyte)((blue + 512) >> 10),
+                                       cast(ubyte)((alpha + 512) >> 10));
+                dest[x] = finalColor;
+            }
+        }
+        else
         {
             // Note: basically very hard to beat with intrinsics.
             // Hours lost trying to do that: 4.
@@ -861,25 +880,7 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(OwnedImage!RGBA thisLevel,
                 dest[x] = finalColor;
             }
         }
-        else
-        {
-            for (int x = 0; x < width; ++x)
-            {
-                RGBA A = L0[2 * x];
-                RGBA B = L0[2 * x + 1];
-                RGBA C = L1[2 * x];
-                RGBA D = L1[2 * x + 1];
-                int red =   (A.r * A.a + B.r * B.a + C.r * C.a + D.r * D.a);
-                int green = (A.g * A.a + B.g * B.a + C.g * C.a + D.g * D.a);
-                int blue =  (A.b * A.a + B.b* B.a + C.b * C.a + D.b * D.a);
-                int alpha =  (A.a * A.a + B.a* B.a + C.a * C.a + D.a * D.a);
-                RGBA finalColor = RGBA( cast(ubyte)((red + 512) >> 10),
-                                        cast(ubyte)((green + 512) >> 10),
-                                       cast(ubyte)((blue + 512) >> 10),
-                                       cast(ubyte)((alpha + 512) >> 10));
-                dest[x] = finalColor;
-            }
-        }
+       
     }
 }
 
