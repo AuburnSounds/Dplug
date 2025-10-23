@@ -54,7 +54,7 @@ nothrow:
 
         RGBA handleMaterial     = RGBA(0, 255, 128, 255);
 
-        float sensivity         = 1.0f; // Note: 0.6 not bad for volumes
+        float sensitivity       = 1.0f; // Note: 0.6 not bad for volumes
 
         // Kitsch animation, when dragged the handle reduce size
         float animWidthReduce       = 0.06f; // Make it zero to avoid the goody reduce effect
@@ -296,7 +296,7 @@ nothrow:
             modifier *= 0.1f;
 
         double oldParamValue = _param.getNormalized() + _draggingDebt;
-        double newParamValue = oldParamValue - displacementInHeight * modifier * sensivity;
+        double newParamValue = oldParamValue - displacementInHeight * modifier * sensitivity;
         if (mstate.altPressed)
             newParamValue = _param.getNormalizedDefault();
 

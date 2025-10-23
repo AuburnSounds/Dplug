@@ -22,15 +22,18 @@ public:
 nothrow:
 @nogc:
 
-    // This will change to 1.0f at one point for consistency, so better express your knob
-    // sensivity with that.
-    enum defaultSensivity = 0.25f;
+    // Note: `defaultSensivity` is gone, its value was 0.25
 
-    this(UIContext context, Parameter param, OwnedImage!RGBA mipmap, int numFrames, float sensitivity = 0.25)
+    @ScriptProperty float sensitivity = 0.25;
+
+
+    this(UIContext context, 
+         Parameter param, 
+         OwnedImage!RGBA mipmap, 
+         int numFrames)
     {
         super(context, flagRaw);
         _param = param;
-        _sensitivity = sensitivity;
         _filmstrip = mipmap;
         _numFrames = numFrames;
         _knobWidth = _filmstrip.w;
@@ -57,18 +60,6 @@ nothrow:
             _filmstripScaled.size(position.width, position.height * _numFrames);
             _frameNthResized[] = false;
         }
-    }
-
-    /// Returns: sensivity.
-    float sensivity()
-    {
-        return _sensitivity;
-    }
-
-    /// Sets sensivity.
-    float sensivity(float sensitivity)
-    {
-        return _sensitivity = sensitivity;
     }
 
     void disable()
@@ -161,7 +152,7 @@ nothrow:
                 modifier *= 0.1f;
 
             double oldParamValue = _normalizedValueWhileDragging;
-            double newParamValue = oldParamValue - displacementInHeight * modifier * _sensitivity;
+            double newParamValue = oldParamValue - displacementInHeight * modifier * sensitivity;
             if (mstate.altPressed)
                 newParamValue = _param.getNormalizedDefault();
 
@@ -267,10 +258,6 @@ protected:
     int _knobHeight;
 
     float _pushedAnimation;
-
-    /// Sensivity: given a mouse movement in 100th of the height of the knob,
-    /// how much should the normalized parameter change.
-    float _sensitivity;
 
     float _mousePosOnLast0Cross;
     float _mousePosOnLast1Cross;

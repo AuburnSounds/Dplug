@@ -29,9 +29,9 @@ public:
 nothrow:
 @nogc:
 
-    // This will change to 1.0f at one point for consistency, so better express your knob
-    // sensivity with that.
-    enum defaultSensivity = 0.25f;
+    // FUTURE: This will change to 1.0f at one point for consistency.
+    // Note: `defaultSensitivity` is gone. sensitivity is now a 
+    // regular ScriptProperty with a value of 0.25 by default.
 
     //
     // Modify these public members to customize knobs!
@@ -77,9 +77,10 @@ nothrow:
 
     @ScriptProperty float animationTimeConstant = 40.0f;
 
-    /// Sensivity: given a mouse movement in 100th of the height of the knob,
-    /// how much should the normalized parameter change.
-    @ScriptProperty float sensivity = defaultSensivity;
+    /// Given a mouse movement 100% of the height of the 
+    /// widget, how much should the normalized parameter 
+    /// change?
+    @ScriptProperty float sensitivity = 0.25;
 
     this(UIContext context, Parameter param)
     {
@@ -333,7 +334,7 @@ nothrow:
             modifier *= 0.1f;
 
         double oldParamValue = _normalizedValueWhileDragging;
-        double newParamValue = oldParamValue - _displacementInHeightDebt * modifier * sensivity;
+        double newParamValue = oldParamValue - _displacementInHeightDebt * modifier * sensitivity;
         if (mstate.altPressed)
             newParamValue = _param.getNormalizedDefault();
 

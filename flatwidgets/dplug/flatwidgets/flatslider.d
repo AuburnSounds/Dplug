@@ -27,13 +27,16 @@ nothrow:
     }
 
     @ScriptProperty Direction direction = Direction.vertical;
+    @ScriptProperty float sensitivity = 0.25;
 
-    this(UIContext context, FloatParameter param, OwnedImage!RGBA sliderImage, int numFrames, float sensitivity = 0.25)
+    this(UIContext context, 
+         FloatParameter param, 
+         OwnedImage!RGBA sliderImage, 
+         int numFrames)
     {
         super(context, flagRaw);
         _param = param;
         _param.addListener(this);
-        _sensivity = sensitivity;
 
         // Borrow original image.
         _filmstrip = sliderImage;
@@ -51,18 +54,6 @@ nothrow:
         _frameNthResized.reallocBuffer(0);
         destroyFree(_filmstripResized);
         _param.removeListener(this);
-    }
-
-    /// Returns: sensivity.
-    float sensivity()
-    {
-        return _sensivity;
-    }
-
-    /// Sets sensivity.
-    float sensivity(float sensivity)
-    {
-        return _sensivity = sensivity;
     }
 
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
@@ -178,7 +169,7 @@ nothrow:
                 modifier *= 0.1f;
 
             double oldParamValue = _param.getNormalized() + _draggingDebt;
-            double newParamValue = oldParamValue - displacementInHeight * modifier * _sensivity;
+            double newParamValue = oldParamValue - displacementInHeight * modifier * sensitivity;
             if (mstate.altPressed)
                 newParamValue = _param.getNormalizedDefault();
 
@@ -292,11 +283,6 @@ protected:
     /// The pixel height of slider frames in _filmstrip image.
     /// _frameHeightOrig x _numFrames is the useful range of pixels, excess ones aren't used, if any.
     int _frameHeightOrig;
-
-    /// Sensivity: given a mouse movement in 100th of the height of the knob,
-    /// how much should the normalized parameter change.
-    float _sensivity;
-
 
     float _mousePosOnLast0Cross;
     float _mousePosOnLast1Cross;
