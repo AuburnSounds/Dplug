@@ -1,31 +1,29 @@
-//-----------------------------------------------------------------------------
-// LICENSE
-// (c) 2018, Steinberg Media Technologies GmbH, All Rights Reserved
-// (c) 2018, Guillaume Piolat (contact@auburnsounds.com)
-//-----------------------------------------------------------------------------
-//
-// This Software Development Kit is licensed under the terms of the General
-// Public License (GPL) Version 3.
-//
-// This source is part of the "Auburn Sounds (Guillaume Piolat) extension to the 
-// Steinberg VST 3 Plug-in SDK".
-//
-// Details of that license can be found at: www.gnu.org/licenses/gpl-3.0.html
-//
-// Dual-licence:
-// 
-// The "Auburn Sounds (Guillaume Piolat) extension to the Steinberg VST 3 Plug-in
-// SDK", hereby referred to as DPLUG:VST3, is a language translation of the VST3 
-// SDK suitable for usage in Dplug. Any Licensee of a currently valid Steinberg 
-// VST 3 Plug-In SDK Licensing Agreement (version 2.2.4 or ulterior, hereby referred
-// to as the AGREEMENT), is granted by Auburn Sounds (Guillaume Piolat) a non-exclusive, 
-// worldwide, nontransferable license during the term the AGREEMENT to use parts
-// of DPLUG:VST3 not covered by the AGREEMENT, as if they were originally 
-// inside the Licensed Software Developer Kit mentionned in the AGREEMENT. 
-// Under this licence all conditions that apply to the Licensed Software Developer 
-// Kit also apply to DPLUG:VST3.
-//
-//-----------------------------------------------------------------------------
+/*
+
+MIT License
+
+Copyright (c) 2025, Steinberg Media Technologies GmbH, All rights reserved.
+Copyright (c) 2025, Guillaume Piolat
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following condition.s:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
 module dplug.vst3.ftypes;
 
 version(VST3):
