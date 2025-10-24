@@ -19,7 +19,6 @@
     {
         "dplug:dsp":  { "path": "../.." },
         "dplug:vst2": { "path": "../.." },
-        "dplug:vst3": { "path": "../.." },
         "dplug:formats": { "path": "../.." },
         "dplug:gui":  { "path": "../.." },
         "dplug:pbr-widgets":  { "path": "../.." },
@@ -31,7 +30,6 @@
     "versions": [
         "futureMouseDrag",
         "futureBinState",
-        "futurePBREmissive",
         "Dplug_RightClickMoveWidgets"
     ],
 

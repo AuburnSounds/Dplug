@@ -21,7 +21,6 @@
     {
         "dplug:gui":           "~>16.0",
         "dplug:flat-widgets":  "~>16.0",
-        "dplug:vst3":          "~>16.0",
         "dplug:formats":       "~>16.0"
     },
 

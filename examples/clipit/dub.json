@@ -20,7 +20,6 @@
         "dplug:dsp": { "path": "../.." },
         "dplug:vst2": { "path": "../.." },
         "dplug:formats": { "path": "../.."},
-        "dplug:vst3": { "path": "../.." },
         "dplug:gui": { "path": "../.." },
         "dplug:canvas": { "path": "../.." },
         "dplug:flat-widgets": { "path": "../.." }

@@ -19,7 +19,6 @@
     "dependencies":
     {
         "dplug:vst2": { "path": "../.." },
-        "dplug:vst3": { "path": "../.." },
         "dplug:formats": { "path": "../.."}
     },
 

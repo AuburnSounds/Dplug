@@ -10,7 +10,6 @@ dub test dplug:window
 dub test dplug:macos
 dub test dplug:pbr-widgets
 dub test dplug:flat-widgets
-dub test dplug:vst3
 dub test dplug:graphics
 dub test dplug:canvas
 dub test dplug:wren-support

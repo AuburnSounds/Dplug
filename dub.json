@@ -31,7 +31,6 @@
         "dplug:macos": "*",
         "dplug:pbr-widgets": "*",
         "dplug:vst2": "*",
-        "dplug:vst3": "*",
         "dplug:window": "*",
         "dplug:wren-support": "*",
         "dplug:x11": "*"
@@ -241,14 +240,6 @@
             "sourcePaths": [ "vst2/dplug/vst2" ],
             "importPaths": [ "vst2" ],
             "stringImportPaths": [ "$VST2_SDK/pluginterfaces/vst2.x" ],
-            "dependencies": {
-                "dplug:client": "*"
-            }
-        },
-        {
-            "name": "vst3",
-            "sourcePaths": [ "vst3/dplug/vst3" ],
-            "importPaths": [ "vst3" ],
             "dependencies": {
                 "dplug:client": "*"
             }
