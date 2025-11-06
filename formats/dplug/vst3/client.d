@@ -53,6 +53,8 @@ import dplug.vst3.ipluginbase;
 import dplug.vst3.ibstream;
 import dplug.vst3.ivstunit;
 
+import dplug.window;
+
 //debug = logVST3Client;
 
 
@@ -1921,9 +1923,16 @@ nothrow:
     handled. </b> Otherwise key command handling of the host might be blocked! */
     extern(Windows) tresult onKeyDown (char16 key, int16 keyCode, int16 modifiers)
     {
-        debug(logVST3Client) debugLog(">onKeyDown".ptr);
-        debug(logVST3Client) scope(exit) debugLog("<onKeyDown".ptr);
-        return kResultFalse;
+        // supposedly, the plugin has an UI if key event was sent?
+        if (!_vst3Client._client.hasGUI())
+            return kResultFalse;
+
+        // handle key as if event came from windowing
+        _graphicsMutex.lock();
+        scope(exit) _graphicsMutex.unlock();
+        Key dkey = convertKeyToDplug(key, keyCode, modifiers);
+        bool used = _vst3Client._client.getGraphics().hostKeyboardEvent(false, dkey);
+        return used ? kResultTrue : kResultFalse;
     }
 
     /** Handling of keyboard events : Key Up.
@@ -1933,9 +1942,16 @@ nothrow:
     \return kResultTrue if the key is handled, otherwise return kResultFalse. */
     extern(Windows) tresult onKeyUp (char16 key, int16 keyCode, int16 modifiers)
     {
-        debug(logVST3Client) debugLog(">onKeyUp".ptr);
-        debug(logVST3Client) scope(exit) debugLog("<onKeyUp".ptr);
-        return kResultFalse;
+        // supposedly, the plugin has an UI if key event was sent?
+        if (!_vst3Client._client.hasGUI())
+            return kResultFalse;
+
+        // handle key as if event came from windowing
+        _graphicsMutex.lock();
+        scope(exit) _graphicsMutex.unlock();
+        Key dkey = convertKeyToDplug(key, keyCode, modifiers);
+        bool used = _vst3Client._client.getGraphics().hostKeyboardEvent(true, dkey);
+        return used ? kResultTrue : kResultFalse;
     }
 
     /** Returns the size of the platform representation of the view. */
@@ -2188,4 +2204,140 @@ struct ParameterTracks
 {
     ParamID id;
     double* values; // values for each split sub-buffer, plus the final value. This points into a buffer shared across parameters.
+}
+
+
+// keycodes.h
+
+enum
+{
+    KEY_BACK = 1,
+    KEY_TAB,
+    KEY_CLEAR,
+    KEY_RETURN,
+    KEY_PAUSE,
+    KEY_ESCAPE,
+    KEY_SPACE,
+    KEY_NEXT,
+    KEY_END,
+    KEY_HOME,
+
+    KEY_LEFT,
+    KEY_UP,
+    KEY_RIGHT,
+    KEY_DOWN,
+    KEY_PAGEUP,
+    KEY_PAGEDOWN,
+
+    KEY_SELECT,
+    KEY_PRINT,
+    KEY_ENTER,
+    KEY_SNAPSHOT,
+    KEY_INSERT,
+    KEY_DELETE,
+    KEY_HELP,
+    KEY_NUMPAD0,
+    KEY_NUMPAD1,
+    KEY_NUMPAD2,
+    KEY_NUMPAD3,
+    KEY_NUMPAD4,
+    KEY_NUMPAD5,
+    KEY_NUMPAD6,
+    KEY_NUMPAD7,
+    KEY_NUMPAD8,
+    KEY_NUMPAD9,
+    KEY_MULTIPLY,
+    KEY_ADD,
+    KEY_SEPARATOR,
+    KEY_SUBTRACT,
+    KEY_DECIMAL,
+    KEY_DIVIDE,
+    KEY_F1,
+    KEY_F2,
+    KEY_F3,
+    KEY_F4,
+    KEY_F5,
+    KEY_F6,
+    KEY_F7,
+    KEY_F8,
+    KEY_F9,
+    KEY_F10,
+    KEY_F11,
+    KEY_F12,
+    KEY_NUMLOCK,
+    KEY_SCROLL,
+
+    KEY_SHIFT,
+    KEY_CONTROL,
+    KEY_ALT,
+
+    KEY_EQUALS,             // only occurs on a Mac
+    KEY_CONTEXTMENU,        // Windows only
+
+    // multimedia keys
+    KEY_MEDIA_PLAY,
+    KEY_MEDIA_STOP,
+    KEY_MEDIA_PREV,
+    KEY_MEDIA_NEXT,
+    KEY_VOLUME_UP,
+    KEY_VOLUME_DOWN,
+
+    KEY_F13,
+    KEY_F14,
+    KEY_F15,
+    KEY_F16,
+    KEY_F17,
+    KEY_F18,
+    KEY_F19,
+    KEY_F20,
+    KEY_F21,
+    KEY_F22,
+    KEY_F23,
+    KEY_F24,
+
+    KEY_SUPER,  // Win-Key on Windows, Ctrl-Key on macOS
+
+    VKEY_FIRST_CODE = KEY_BACK,
+    VKEY_LAST_CODE = KEY_SUPER,
+
+    VKEY_FIRST_ASCII = 128
+    /*
+     KEY_0 - KEY_9 are the same as ASCII '0' - '9' (0x30 - 0x39) + FIRST_ASCII
+     KEY_A - KEY_Z are the same as ASCII 'A' - 'Z' (0x41 - 0x5A) + FIRST_ASCII
+    */
+};
+
+static Key convertKeyToDplug(char16 key, int16 keyCode, int16 modifiers)
+{
+    switch( keyCode )
+    {
+        case KEY_BACK: return Key.backspace;
+        case KEY_SPACE: return Key.space;
+        case KEY_LEFT: return Key.leftArrow;
+        case KEY_UP:   return Key.upArrow;  // ok
+        case KEY_RIGHT: return Key.rightArrow;
+        case KEY_DOWN: return Key.downArrow; // ok
+        case KEY_RETURN: return Key.enter;   // ok
+        case KEY_ESCAPE: return Key.escape;  // ok
+        case KEY_DELETE: return Key.suppr;
+        case KEY_SHIFT:
+        case KEY_CONTROL:
+        case KEY_ALT:
+           // modifiers come through other ways in Dplug
+           return Key.unsupported;
+
+        case KEY_NUMPAD0: .. case KEY_NUMPAD9:
+           return cast(Key)(Key.digit0 + keyCode - KEY_NUMPAD0);
+
+       case VKEY_FIRST_ASCII + '0': .. case VKEY_FIRST_ASCII + '9':
+           return cast(Key)(Key.digit0 + keyCode - '0');
+
+       case VKEY_FIRST_ASCII + 'a': .. case VKEY_FIRST_ASCII + 'z':
+           return cast(Key)(Key.digit0 + keyCode - 'a');
+
+       case VKEY_FIRST_ASCII + 'A': .. case VKEY_FIRST_ASCII + 'S':
+           return cast(Key)(Key.digit0 + keyCode - 'A');
+       default:
+            return Key.unsupported;
+    }
 }

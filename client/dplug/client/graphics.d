@@ -79,5 +79,15 @@ nothrow:
     /// Used by CLAP.
     /// Only makes sense if `isAspectRatioPreserved` returned true, else it's UB.
     abstract int[2] getPreservedAspectRatio();
+
+    /// Used by VST3.
+    /// Host gave keydown/keyup events though the plugin API.
+    /// Only used in VST3 + Windows. Supposedly host steal keyboard focus
+    /// because plugins do not bubble up keyboard events properly, so now we
+    /// have this new mess of VST3 API still sending those events.
+    /// See_also: Issue #921.
+    /// Returns: true if handled.
+    abstract bool hostKeyboardEvent(bool up, // true = up   false = down
+                                    int key); // as defined in dplug:window `Key`.
 }
 

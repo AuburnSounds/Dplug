@@ -288,6 +288,28 @@ nothrow:
         return _window.requestResize(newWidthLogicalPixels, newHeightLogicalPixels, false);
     }
 
+    // Other way for some host to send keyboard events.
+    bool hostKeyboardEvent(bool up, int vkey)
+    {
+        // Only enabled in VST3 + REAPER + Windows
+        // though maybe other hosts than REAPER do that?
+        version(Windows)
+        {
+            if (_client.getDAW() != DAW.Reaper)
+                return false;
+
+            // was untyped to avoid one dependency on dplug:window
+            Key key = cast(Key)vkey;
+
+            if (up)
+                return _windowListener.onKeyUp(key);
+            else
+                return _windowListener.onKeyDown(key);
+        }
+        else
+            return false;
+    }
+
     // </IGraphics implementation>
 
     // This class is only here to avoid name conflicts between
