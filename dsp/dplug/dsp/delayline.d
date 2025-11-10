@@ -125,7 +125,7 @@ nothrow:
         if (toAllocate <= E)
         {
             // In case of reducing length of delay, since
-            // it would reallocate to keep proper history, 
+            // it would be hard to keep proper history, 
             // simply lie and keep the larger buffer.
             _numSamples = numSamples;
             return;
