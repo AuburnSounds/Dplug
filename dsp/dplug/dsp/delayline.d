@@ -1,6 +1,6 @@
 /**
 * Delay-line implementation.
-* Copyright: Guillaume Piolat 2015-2024.
+* Copyright: Guillaume Piolat 2015-2025.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.dsp.delayline;
@@ -40,6 +40,7 @@ import inteli.emmintrin;
 ///
 ///         // desiredDelay = 0 would be the sample we just fed
 ///         // the delayline with.
+///         // desiredDelay = maxPossibleDelay for the oldest
 ///         delayed[n] = delayline.fullSample(desiredDelay); 
 ///     }
 /// }
@@ -60,7 +61,10 @@ public:
 nothrow:
 @nogc:
 
-    /// Initialize the delay line. Can delay up to `numSamples` samples.
+    /// Initialize the delay line.
+    /// Clear state. 
+    /// Can delay up to `numSamples` samples.
+    /// Equivalent: `resize`.
     void initialize(int numSamples)
     {
         resize(numSamples);
@@ -81,10 +85,13 @@ nothrow:
             assert(false);
 
         // Over-allocate to support POW2 delaylines.
-        // This wastes memory but allows delay-line of length 0 without tests.
-        // The reason to add +1 here is that fundamentally in a delay line of length = 1
-        // we want to keep track of the current sample (at delay 0) and the former one 
-        // (at delay 1). That's two samples.
+        // This wastes memory but allows delay-line of 
+        // length 0 without tests.
+        // The reason to add +1 here is that fundamentally 
+        // in a delay line of "length = 1", in doubt
+        // we want to keep track of the current sample
+        // (at delay 0) and the former one (at delay 1). 
+        // That's two samples.
 
         int toAllocate = nextPow2HigherOrEqual(numSamples + 1);
         _data.reallocBuffer(toAllocate * 2);
@@ -92,10 +99,63 @@ nothrow:
         _indexMask = toAllocate - 1;
         _numSamples = numSamples;
         _index = _indexMask;
-
         _data[] = 0;
     }
 
+    /// Resize the delay line, keeping existing history if any.
+    /// Only newly added samples get cleared to 0.0.
+    /// Can be used to resize up or down a delay without 
+    /// loosing the history.
+    void resizeKeep(int numSamples)
+    {
+        if (numSamples < 0)
+            assert(false);
+
+        // Existing data in pow2 buffer?
+        int E = _half;
+        {
+            // content must be the same
+            T[] src0 = _data[0..E];
+            T[] src1 = _data[E..E*2];
+            assert(src0[] == src1[]);
+        }
+
+        int toAllocate = nextPow2HigherOrEqual(numSamples + 1);
+
+        if (toAllocate <= E)
+        {
+            // In case of reducing length of delay, since
+            // it would reallocate to keep proper history, 
+            // simply lie and keep the larger buffer.
+            _numSamples = numSamples;
+            return;
+        }
+        
+        _half = toAllocate;
+        _data.reallocBuffer(toAllocate * 2);        
+        _indexMask = toAllocate - 1;
+        _numSamples = numSamples;
+
+        // _index can be anywhere
+        if (E == 0)
+            _index = _indexMask;
+
+        assert (E < _half);
+        {
+            // We want to preserve the two history buffers,
+            // 0..E And E..E*2
+            // index doesn't need to move, since the oldest
+            // data (to be zeroed) is at its right.
+            T[] src1  = _data[E..E*2];
+            T[] zero0 = _data[E.._half];
+            T[] dst1  = _data[_half.._half+E];
+            T[] zero1 = _data[_half+E.._half*2];            
+            memmove(dst1.ptr, src1.ptr, E * T.sizeof);
+            zero0[] = 0;
+            zero1[] = 0;
+        }
+
+    }
     /// Adds a new sample at end of delay.
     void feedSample(T incoming) pure
     {
@@ -103,7 +163,6 @@ nothrow:
         _data.ptr[_index] = incoming;
         _data.ptr[_index + _half] = incoming;
     }
-
 
 
     /// Random access sampling of the delay-line at integer points.
@@ -245,9 +304,9 @@ nothrow:
         // maxFrames for example. Though this is normally unexpected, but it's
         // useful when using silence detection.
 
-        if (N > _numSamples)
+        if (N > _numSamples + 1)
         {
-            N = _numSamples;
+            N = _numSamples + 1;
             incoming = incoming[$-N .. $];
         }
 
@@ -415,6 +474,47 @@ unittest
     d.feedBuffer(data[0..256]); // now work, only data[128..256] considered
     for (int n = 0; n < 128; ++n)
         assert(d.sampleFull(n) == 255 - n);
+}
+
+// Resize-keep
+unittest
+{
+    int[] D = [8, 8, 8, 4, 5, 6];
+    Delayline!int d;
+    d.initialize(2);
+
+    d.feedSample(1);
+    d.feedSample(2);
+    d.feedSample(3);
+    assert(d.sampleFull(0) == 3);
+    assert(d.sampleFull(1) == 2);
+    assert(d.sampleFull(2) == 1);
+
+    d.feedBuffer(D);
+    assert(d.sampleFull(0) == 6);
+    assert(d.sampleFull(1) == 5);
+    assert(d.sampleFull(2) == 4);
+    
+    d.resizeKeep(10);
+    d.feedSample(7);
+    d.feedSample(8);
+    d.feedSample(9);
+    d.feedSample(10);
+    assert(d.sampleFull(0) == 10);
+    assert(d.sampleFull(1) == 9);
+    assert(d.sampleFull(2) == 8);
+    assert(d.sampleFull(3) == 7);
+    assert(d.sampleFull(4) == 6);
+    assert(d.sampleFull(5) == 5);
+    for (int n = 6; n <= 10; ++n)
+        assert(d.sampleFull(n) == 0);
+    
+    // resize down
+    d.resizeKeep(3);
+    assert(d.sampleFull(0) == 10);
+    assert(d.sampleFull(1) == 9);
+    assert(d.sampleFull(2) == 8);
+    assert(d.sampleFull(3) == 7);
 }
 
 /// Simplified delay line, mostly there to compensate latency manually.
