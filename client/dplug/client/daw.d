@@ -174,7 +174,8 @@ enum DAW
     Ardour,
     ClapValidator,
     ClapInfo,
-    OBSStudio
+    OBSStudio,
+    Bitwig
     // These hosts don't report the host name (maybe they use vendor string?)
     // EnergyXT2
     // MiniHost
@@ -216,6 +217,7 @@ DAW identifyDAW(const(char*) s) pure nothrow @nogc
     if (hasSubstring(s, "standalone")) return DAW.Standalone;
     if (hasSubstring(s, "clap-validator")) return DAW.ClapValidator;
     if (hasSubstring(s, "clap-info")) return DAW.ClapInfo;
+    if (hasSubstring(s, "bitwig")) return DAW.Bitwig;
     return DAW.Unknown;
 }
 

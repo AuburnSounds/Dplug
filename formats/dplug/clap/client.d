@@ -180,6 +180,12 @@ private:
 
         // Detect DAW here
         _daw = _host.getDAW();
+        
+        // Do we need the Bitwig + Linux UI workaround? (Issue #906)
+        version(linux)
+            _workaroundUIAttachDoesShow = (_daw == DAW.Bitwig);
+        else
+            _workaroundUIAttachDoesShow = false;
 
         expose_param_as_normalized.resize(_client.params.length);
         expose_param_as_normalized.fill(false);
@@ -1345,11 +1351,23 @@ private:
         IGraphics gr = _client.getGraphics();
         return gr.nativeWindowResize(width, height);
     }
+    
+    // Bitwig expect set_parent to actually attach the window
+    // else it consider the set_parent failed.
+    // However we do not have the concept in other formats of
+    // attaching without showing. Because of that, most CLAP
+    // client started to do gui_show inside gui_set_parent and
+    // that became the actual standard, for now it is only
+    // needed in CLAP + Linux + Bitwig situation, but possibly
+    // other DAWs will follow suit?
+    bool _workaroundUIAttachDoesShow;
 
     bool gui_set_parent(const(clap_window_t)* window)
     {
         mixin(GraphicsMutexLock);
         gui_parent_handle = cast(void*)(window.ptr);
+        if (_workaroundUIAttachDoesShow)
+            _client.openGUI(gui_parent_handle, null, gui_backend);
         return true;
     }
 
@@ -1366,8 +1384,11 @@ private:
 
     bool gui_show()
     {
-        mixin(GraphicsMutexLock);
-        _client.openGUI(gui_parent_handle, null, gui_backend);
+        if (!_workaroundUIAttachDoesShow)
+        {
+            mixin(GraphicsMutexLock);
+            _client.openGUI(gui_parent_handle, null, gui_backend);
+        }
         return true;
     }
 
