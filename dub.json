@@ -153,7 +153,8 @@
             "importPaths": [ "formats" ],
             "dependencies": {
                 "dplug:client": "*",
-                "dplug:macos": "*"
+                "dplug:macos": "*",
+                "dplug:window": "*"
             }
         },
         {
