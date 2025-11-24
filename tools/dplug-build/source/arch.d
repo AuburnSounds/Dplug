@@ -53,13 +53,15 @@ string convertArchToDUBFlag(Arch arch, OS targetOS) pure
 {
     final switch(arch) with (Arch)
     {
-        case x86_64:
+        case x86_64: 
         {
             if (targetOS == OS.macOS)
                 return "x86_64-apple-macosx10.12 ";
+            else if (targetOS == OS.windows)
+                return "x86_64-windows-msvc ";
             else
                 return "x86_64 ";
-        } 
+        }
 
         // Explanation: the dub and ldc2 bundled on Raspberry Pi OS build to the right arch by default
         // aka: arm-linux-gnueabihf

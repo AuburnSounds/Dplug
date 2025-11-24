@@ -89,7 +89,7 @@ void usage()
     cwriteln();
     cwriteln("────────── <on_blue> FLAGS </> ────────── 😸🚩".white);
     cwriteln();
-    flag("-a --arch", "Select target architectures", "x86 | x86_64 | arm64 | all", "Windows=&gt;x86_64  macOS=&gt;all  Linux=&gt;x86_64");
+    flag("-a --arch", "Select target architectures", "x86_64 | arm64 | all", "Windows=&gt;x86_64  macOS=&gt;all  Linux=&gt;x86_64");
     flag("-b --build", "Select DUB build type", null, "debug");
     flag("-c --config", "Select DUB configs. Known prefix needed", "VST2x | VST3x | AUx | AAXx | LV2x | CLAPx\n                            | FLPx", "first one found");
     flag("--compiler", "Select D compiler", null, "ldc2");
@@ -121,8 +121,8 @@ void usage()
     cwriteln("  💠   # Build arm64 Audio Unit plugin for profiling with LDC".lgreen);
     cwriteln("       dplug-build --compiler ldc2 -a arm64 -c AU -b release-debug".lcyan);
     cwriteln;
-    cwriteln("  💠   # Build an x86 VST3 in given directory".lgreen);
-    cwriteln("       dplug-build --root ../products/my-product -c VST3-CONF -a x86".lcyan);
+    cwriteln("  💠   # Build an x86_64 VST3 in given directory".lgreen);
+    cwriteln("       dplug-build --root ../products/my-product -c VST3-CONF -a x86_64".lcyan);
     cwriteln;
     cwriteln;
     cwriteln("──────────── <on_blue> LORE </> ──────────── 😸📖".white);
@@ -285,7 +285,7 @@ int main(string[] args)
                     archs = [ Arch.all ];
                 }
                 else
-                    throw new Exception("Unrecognized arch combination (available: x86, x86_64, arm32, arm64, UB, all)");            
+                    throw new Exception("Unrecognized arch combination (available: x86_64, arm32, arm64, UB, all)");            
             }
             else if (arg == "-h" || arg == "-help" || arg == "--help")
                 help = true;
