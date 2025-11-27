@@ -203,8 +203,8 @@ else{
      *  ximage          = Specifies the image.
      *  x               = Specify the x coordinate.
      *  y               = Specify the y coordinate.
-     *  subimage_width  = Specifies the width of the new subimage, in pixels.
-     *  subimage_height = Specifies the height of the new subimage, in pixels.
+     *  width  = Specifies the width of the new subimage, in pixels.
+     *  height = Specifies the height of the new subimage, in pixels.
      * See_Also:
      *  XAddPixel(), XCreateImage(), XGetPixel(), XPutPixel(), XSubImage(), http://tronche.com/gui/x/xlib/utilities/manipulating-images.html
      */

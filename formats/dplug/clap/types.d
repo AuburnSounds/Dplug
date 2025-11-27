@@ -1331,7 +1331,7 @@ extern(C) nothrow @nogc:
 ///    the host doesn't have to call clap_plugin_gui->set_size().
 ///    If the host returns false, the new size is rejected.
 ///
-/// Resizing the window (drag, if embedded)):
+/// Resizing the window (drag, if embedded):
 /// 1. Only possible if clap_plugin_gui->can_resize() returns true
 /// 2. Mouse drag -> new_size
 /// 3. clap_plugin_gui->adjust_size(new_size) -> working_size
