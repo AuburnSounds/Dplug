@@ -702,7 +702,8 @@ unittest
 /// MAYDO: does it preserve amplitude?
 ///
 /// Params:
-///    tempoStorate Should be at least `tempBufferSizeForMinPhase` items.
+///    inoutImpulse = Impulse to be turned minimum phase.
+///    tempStorage = Should be at least `tempBufferSizeForMinPhase` items.
 void minimumPhaseImpulse(T)(T[] inoutImpulse, Complex!T[] tempStorage) nothrow @nogc // alloc free version
 {
     assert(tempStorage.length >= tempBufferSizeForMinPhase(inoutImpulse));

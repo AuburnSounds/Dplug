@@ -101,15 +101,6 @@ void destroyNoGC(T)(ref T obj) nothrow @nogc if (is(T == struct))
             return destroy(x);
         })(obj);
 }
-/*
-void destroyNoGC(T : U[n], U, size_t n)(ref T obj) nothrow @nogc
-{
-    assumeNothrowNoGC(
-        (T x)
-        {
-            return destroy(x);
-        })(obj);
-}*/
 
 void destroyNoGC(T)(ref T obj) nothrow @nogc
     if (!is(T == struct) && !is(T == class) && !is(T == interface))
