@@ -100,6 +100,7 @@ void usage()
     flag("-q --quiet", "Quieter output", null, null);
     flag("-v --verbose", "Verbose output", null, null);
     flag("--no-color", "Disable colored output", null, null);
+    flag("--breadth", "When using redub, use --breadth", null, null);
     flag("--parallel", "Use dub --parallel", null, null);
     flag("--redub",  "Use redub instead of dub (must be in PATH)", null, null);
     flag("--reggae", "Use reggae+ninja instead of dub (must be in PATH)", null, null);
@@ -167,6 +168,7 @@ int main(string[] args)
         bool reggae = false;
         bool legacyPT10 = false;
         bool finalFlag = false;
+        bool breadth = false;
         string prettyName = null;
         string rootDir = ".";
 
@@ -217,6 +219,8 @@ int main(string[] args)
                 skipRegistry = true;
             else if (arg == "--parallel")
                 parallel = true;
+            else if (arg == "--breadth")
+                breadth = true;
             else if (arg == "--rez")  // this flag left undocumented, noone ever used it
             {
                 if (targetOS == OS.macOS)
@@ -576,7 +580,7 @@ int main(string[] args)
                         pathOverriden = false;
                     }
 
-                    buildPlugin(targetOS, compilerPath, pathOverriden, config, build, arch, rootDir, verbose, force, combined, quiet, skipRegistry, parallel, redub, reggae);
+                    buildPlugin(targetOS, compilerPath, pathOverriden, config, build, arch, rootDir, verbose, force, combined, quiet, skipRegistry, parallel, redub, breadth, reggae);
                     double bytes = getSize(plugin.dubOutputFileName()) / (1024.0 * 1024.0);
                     string formatName = stripFormat(config);
                     cwritefln("    =&gt; %s plug-in built in %s (size = %0.1f mb)".lgreen, formatName, normalizedPath("./" ~ path), bytes);
@@ -1533,7 +1537,7 @@ void buildPlugin(OS targetOS,
                  string compiler, bool pathOverriden, string config, string build, Arch arch, 
                  string rootDir,
                  bool verbose, bool force, bool combined, bool quiet, 
-                 bool skipRegistry, bool parallel,  bool useRedub, bool useReggae)
+                 bool skipRegistry, bool parallel,  bool useRedub, bool breadth, bool useReggae)
 {
     cwritefln("*** Building configuration %s with %s%s, %s arch...", 
               config, 
@@ -1609,7 +1613,11 @@ void buildPlugin(OS targetOS,
 
     string dubBinary = useRedub ? "redub" : "dub";
 
-    string cmd = format("%s build --build=%s --arch=%s--compiler=%s%s%s%s%s%s%s%s%s",
+    string doParallel = parallel ? " --parallel" : "";
+    if (useRedub)
+        doParallel = " --parallel no";
+
+    string cmd = format("%s build --build=%s --arch=%s--compiler=%s%s%s%s%s%s%s%s%s%s",
         dubBinary,
         build, 
         convertArchToDUBFlag(arch, targetOS),
@@ -1620,7 +1628,8 @@ void buildPlugin(OS targetOS,
         combined ? " --combined" : "",
         config ? " --config=" ~ config : "",
         skipRegistry ? " --skip-registry=all" : "",
-        parallel ? " --parallel" : "",
+        doParallel,
+        (breadth && useRedub) ? " --breadth" : "",
         rootDir != "." ? " --root=" ~ escapeShellArgument(rootDir) : ""
         );
     safeCommand(cmd);
