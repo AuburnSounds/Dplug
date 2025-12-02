@@ -77,7 +77,8 @@
             "importPaths": [ "core" ],
 
             "dependencies": {
-                "intel-intrinsics": "~>1.0"
+                "intel-intrinsics": "~>1.0",
+                "numem": "~>1.5"
             },
 
             "buildTypes":
