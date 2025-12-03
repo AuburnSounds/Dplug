@@ -16,7 +16,7 @@
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-/**
+/*
    @defgroup state State
 
    An interface for LV2 plugins to save and restore state, see
@@ -50,7 +50,7 @@ alias LV2_State_Handle           = void*; ///b< Opaque handle for state save/res
 alias LV2_State_Map_Path_Handle  = void*; ///< Opaque handle for state:mapPath feature
 alias LV2_State_Make_Path_Handle = void*; ///< Opaque handle for state:makePath feature
 
-/**
+/*
    Flags describing value characteristics.
 
    These flags are used along with the value's type URI to determine how to
@@ -107,7 +107,7 @@ enum : int {
    LV2_STATE_ERR_NO_SPACE    = 6   /**< Failed due to insufficient space. */
 }
 
-/**
+/*
    A host-provided function to store a property.
    @param handle Must be the handle passed to LV2_State_Interface.save().
    @param key The key to store `value` under (URID).
@@ -145,7 +145,7 @@ extern(C)
     alias LV2_State_Store_Function = LV2_State_Status function(LV2_State_Handle handle, uint key, const(void)* value, size_t size, uint type, uint flags);
 }
 
-/**
+/*
    A host-provided function to retrieve a property.
    @param handle Must be the handle passed to LV2_State_Interface.restore().
    @param key The key of the property to retrieve (URID).
@@ -168,7 +168,7 @@ extern(C)
     alias LV2_State_Retrieve_Function = const(void)* function(LV2_State_Handle handle, uint key, size_t* size, uint* type, uint* flags);
 }
 
-/**
+/*
    LV2 Plugin State Interface.
 
    When the plugin's extension_data is called with argument
@@ -189,7 +189,7 @@ extern(C)
 struct LV2_State_Interface 
 {
 nothrow @nogc:
-   /**
+   /*
       Save plugin state using a host-provided `store` callback.
 
       @param instance The instance handle of the plugin.
@@ -235,7 +235,7 @@ nothrow @nogc:
     }
     saveFun_t save;
 
-   /**
+   /*
       Restore plugin state using a host-provided `retrieve` callback.
 
       @param instance The instance handle of the plugin.
