@@ -24,7 +24,7 @@
         "dplug:canvas": { "path": "../.." },
         "dplug:flat-widgets": { "path": "../.." }
     },
-
+    
     "versions": [
         "futureMouseDrag",
         "futureBinState",

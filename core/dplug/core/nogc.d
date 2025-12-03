@@ -14,13 +14,12 @@ module dplug.core.nogc;
 import core.stdc.stdarg;
 import core.stdc.string: strdup, memcpy, strlen;
 import core.stdc.stdlib: malloc, free, getenv;
-import core.memory: GC;
-import core.exception: onOutOfMemoryErrorNoGC;
 
-import std.conv: emplace;
-import std.traits;
+import numem.lifetime;
 
 import dplug.core.vec: Vec;
+
+import std.traits;
 
 // This module provides many utilities to deal with @nogc nothrow, in a situation with the runtime 
 // disabled.
@@ -120,59 +119,32 @@ void destroyNoGC(T)(ref T obj) nothrow @nogc
 
 /// Allocates and construct a struct or class object.
 /// Returns: Newly allocated object.
-auto mallocNew(T, Args...)(Args args)
+auto mallocNew(T, Args...)(Args args) @nogc if (is(T == class))
 {
-    static if (is(T == class))
-        immutable size_t allocSize = __traits(classInstanceSize, T);
-    else
-        immutable size_t allocSize = T.sizeof;
+    return nogc_trynew!T(args);
+}
 
-    void* rawMemory = malloc(allocSize);
-    if (!rawMemory)
-        onOutOfMemoryErrorNoGC();
-
-    static if (is(T == class))
-    {
-        T obj = emplace!T(rawMemory[0 .. allocSize], args);
-    }
-    else
-    {
-        T* obj = cast(T*)rawMemory;
-        emplace!T(obj, args);
-    }
-
-    return obj;
+auto mallocNew(T, Args...)(Args args) @nogc if (is(T == struct))
+{
+    return nogc_trynew!T(args);
 }
 
 /// Destroys and frees a class object created with $(D mallocEmplace).
-void destroyFree(T)(T p) if (is(T == class))
+void destroyFree(T)(T p) @nogc if (is(T == class))
 {
-    if (p !is null)
-    {
-        destroyNoGC(p);
-        free(cast(void*)p);
-    }
+    nogc_trydelete(p);
 }
 
 /// Destroys and frees an interface object created with $(D mallocEmplace).
-void destroyFree(T)(T p) if (is(T == interface))
+void destroyFree(T)(T p) @nogc if (is(T == interface))
 {
-    if (p !is null)
-    {
-        void* here = cast(void*)(cast(Object)p);
-        destroyNoGC(p);
-        free(cast(void*)here);
-    }
+    nogc_trydelete(p);
 }
 
 /// Destroys and frees a non-class object created with $(D mallocEmplace).
-void destroyFree(T)(T* p) if (!is(T == class))
+void destroyFree(T)(T* p) @nogc if (!is(T == class))
 {
-    if (p !is null)
-    {
-        destroyNoGC(p);
-        free(cast(void*)p);
-    }
+    nogc_trydelete(p);
 }
 
 
@@ -180,6 +152,7 @@ unittest
 {
     class A
     {
+    @nogc:
         int _i;
         this(int i)
         {

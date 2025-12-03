@@ -7,6 +7,11 @@
  */
 module dplug.core.traits;
 
+
+enum bool isFunctionPointer(alias T) = is(typeof(*T) == function);
+
+enum bool isDelegate(alias T) = is(typeof(T) == delegate) || is(T == delegate);
+
 // Like `Unqual` but does not remove "shared" or "inout"
 template RemoveConst(T)
 {    
