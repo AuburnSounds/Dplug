@@ -41,14 +41,14 @@ jobs:
     steps:
     # Checkout
     - name: Checkout master branch
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
     # Cache
     - name: Cache
       id: dplug-cache
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       env:
         cache-name: dplug-cache
       with:
@@ -158,13 +158,13 @@ jobs:
     # You may need to repeat this for each plugin that you build
     # Pattern matching is not supported here
     - name: Upload distort
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: distort-${{ matrix.os }}
         path: ./examples/distort/builds/
 
     - name: Upload clipit
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: clipit-${{ matrix.os }}
         path: ./examples/clipit/builds/
