@@ -35,9 +35,7 @@ jobs:
           - 'x86_64'
         compiler:
           - ldc-latest
-          - ldc-1.26.0
-          - ldc-1.25.1
-          - ldc-1.24.0
+          - ldc-1.41.0
     steps:
     # Checkout
     - name: Checkout master branch
