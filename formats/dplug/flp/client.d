@@ -112,7 +112,7 @@ nothrow @nogc:
         {
             destroyFree(_client);
             _client = null;
-            destroyFree(this);
+            destroyFreePascal(this);
         }
 
         @guiThread @mixerThread

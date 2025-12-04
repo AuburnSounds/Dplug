@@ -43,7 +43,7 @@ void* CreatePlugInstance_templated(ClientClass)(void* Host, size_t Tag)
     ClientClass client = mallocNew!ClientClass();
 
     bool err;
-    FLPCLient plugin = mallocNew!FLPCLient(pHost, tag, client, &err);
+    FLPCLient plugin = mallocNewPascal!FLPCLient(pHost, tag, client, &err);
 
     if (err)
     {

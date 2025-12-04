@@ -16,7 +16,8 @@ import core.stdc.string: strdup, memcpy, strlen;
 import core.stdc.stdlib: malloc, free, getenv;
 
 import numem.lifetime;
-
+import numem.core.lifetime: destruct;
+import numem.core.traits;
 import dplug.core.vec: Vec;
 
 import std.traits;
@@ -132,19 +133,76 @@ auto mallocNew(T, Args...)(Args args) @nogc if (is(T == struct))
 /// Destroys and frees a class object created with $(D mallocEmplace).
 void destroyFree(T)(T p) @nogc if (is(T == class))
 {
+    //static assert(!isCPP!T);
     nogc_trydelete(p);
 }
 
 /// Destroys and frees an interface object created with $(D mallocEmplace).
 void destroyFree(T)(T p) @nogc if (is(T == interface))
 {
+    //static assert(!isCPP!T);
     nogc_trydelete(p);
 }
 
 /// Destroys and frees a non-class object created with $(D mallocEmplace).
 void destroyFree(T)(T* p) @nogc if (!is(T == class))
 {
+    //static assert(!isCPP!T);
     nogc_trydelete(p);
+}
+
+/// Allocate/deallocate an extern(C++) class with a D construction. Useful because extern(C++) is abused to mean:
+/// "no hidden fields and virtuals". Hence absolutely vital for some interop.
+auto mallocNewPascal(T, Args...)(Args args) @nogc if (is(T == class))
+{
+    static assert(isCPP!T);
+    if (Ref!T newobject = cast(Ref!T)nu_malloc(AllocSize!T)) {
+        try {
+            nogc_construct(newobject, args);
+            return newobject;
+        } catch(Exception ex) {
+            nu_free(cast(void*)newobject);
+            // ex leaked and ignored
+            return null;
+        }
+    }
+    return null;
+}
+///ditto
+void destroyFreePascal(T)(T p) @nogc if (is(T == class))
+{
+    static assert(isCPP!T);
+    try 
+    {
+        destruct!(T, false)(p);
+    } 
+    catch (Exception ex) 
+    {
+        // leaked and ignored
+    }
+}
+
+/** 
+    Allocates a new instance of $(D T) on the specified heap.
+
+    Params:
+        heap = The heap to allocate the instance on.
+        args = The arguments to pass to the type's constructor.
+*/
+Ref!T nogc_new(T, Args...)(NuHeap heap, auto ref Args args) @trusted {
+    static if (isCPP!T) {
+        static assert(0, "Can't custom-heap allocate C++ Objects.");
+    } else {
+        if (Ref!T newobject = cast(Ref!T)heap.alloc(AllocSize!T)) {
+            try {
+                nogc_construct(newobject, args);
+            } catch(Exception ex) {
+                nu_free(cast(void*)newobject);
+                throw ex;
+            }
+        }
+        return null;
+    }
 }
 
 
