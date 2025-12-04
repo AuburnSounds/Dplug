@@ -72,7 +72,7 @@ jobs:
         # arch: ${{ matrix.arch }}  # 'x64'by default
 
     - name: Install compiler
-      uses: dlang-community/setup-dlang@v1
+      uses: dlang-community/setup-dlang@v2
       with:
         compiler: ${{ matrix.compiler }}
 
