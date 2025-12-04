@@ -150,26 +150,3 @@ jobs:
         $esc = '--%'
         ${{ env.DPlugBuild }} -a ${{ matrix.arch }} $esc $Plugins
       working-directory: ./examples/template
-
-    # Upload
-    # This task uploads the builds directory that contains all artifacts produced by dplug-build
-    # You may need to repeat this for each plugin that you build
-    # Pattern matching is not supported here
-    - name: Upload distort
-      uses: actions/upload-artifact@v4
-      with:
-        name: distort-${{ matrix.os }}
-        path: ./examples/distort/builds/
-
-    - name: Upload clipit
-      uses: actions/upload-artifact@v4
-      with:
-        name: clipit-${{ matrix.os }}
-        path: ./examples/clipit/builds/
-
-  Skip:
-    if: "contains(github.event.head_commit.message, '[skip ci]')"
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip CI 🚫
-        run: echo skip CI
