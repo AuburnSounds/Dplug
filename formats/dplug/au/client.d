@@ -492,7 +492,16 @@ private:
     {
         if (select == kComponentCloseSelect) // -2
         {
-            destroyFree(cast(void*)this); // free all resources except the runtime
+            // Issue #925 
+            // https://github.com/AuburnSounds/Dplug/issues
+            // Destruction of the AUClient has been disabled here since 2016.
+            // So this doesn't happen in all AU versions.
+            // Since passing a pointer, here the destroyFree() calls just does a free() not destroy.
+            // To port to numem, might as well do nothing and leak the memory.
+            // TODO INVESTIGATE.
+
+            // destroyFree(cast(void*)this); // only frees the memory, but doesn't call destructor
+
             releaseAUFunctions();
             return noErr;
         }
