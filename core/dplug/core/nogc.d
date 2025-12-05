@@ -183,6 +183,25 @@ void destroyFreePascal(T)(T p) @nogc if (is(T == class))
     }
 }
 
+unittest
+{
+    extern(C++) static class __just_for_tests
+    {
+    nothrow @nogc:
+        int b = 42;
+        int* toChange;
+        this(int a) { this.b = a; }
+        ~this() { *toChange = 8; }
+    }
+
+    __just_for_tests a = mallocNewPascal!__just_for_tests(37);
+    int c = 7;
+    a.toChange = &c;
+    assert(a.b == 37);
+    destroyFreePascal(a);
+    assert(c == 8);
+}
+
 /** 
     Allocates a new instance of $(D T) on the specified heap.
 
