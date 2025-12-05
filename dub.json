@@ -78,7 +78,7 @@
 
             "dependencies": {
                 "intel-intrinsics": "~>1.0",
-                "numem": "~>1.5"
+                "numem": ">=1.5.1 <2.0.0"
             },
 
             "buildTypes":
