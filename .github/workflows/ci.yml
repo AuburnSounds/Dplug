@@ -12,7 +12,6 @@ env:
   SETUP_VST2_SDK: true
   # List of commands
   DPlugBuild: ${{ github.workspace }}/tools/dplug-build/dplug-build
-  DplugProcess: ${{ github.workspace }}/tools/process/process
 
 
 defaults:
@@ -90,11 +89,6 @@ jobs:
         dub build
       working-directory: ./tools/dplug-build
 
-    - name: Install process
-      run: |
-        dub build
-      working-directory: ./tools/process
-
     # Test
     # Here you can customize the flags, or build multiple plugins
 
@@ -113,7 +107,6 @@ jobs:
         }
         $esc = '--%'
         ${{ env.DPlugBuild }} -a ${{ matrix.arch }} $esc $Plugins
-        ${{ env.DplugProcess }} $BuiltLib -t 10
       working-directory: ./examples/distort
 
     ## Clipit Plugin
@@ -131,7 +124,6 @@ jobs:
         }
         $esc = '--%'
         ${{ env.DPlugBuild }} -a ${{ matrix.arch }} $esc $Plugins
-        ${{ env.DplugProcess }} $BuiltLib -t 10
       working-directory: ./examples/clipit
 
     ## Template Plugin
