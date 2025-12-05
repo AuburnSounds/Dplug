@@ -18,6 +18,7 @@ import core.stdc.stdlib: malloc, free, getenv;
 import numem.lifetime;
 import numem.core.lifetime: destruct;
 import numem.core.traits;
+import numem.core.hooks;
 import dplug.core.vec: Vec;
 
 import std.traits;
@@ -208,7 +209,7 @@ Ref!T nogc_new(T, Args...)(NuHeap heap, auto ref Args args) @trusted {
 
 unittest
 {
-    class A
+    static class A
     {
     @nogc:
         int _i;
