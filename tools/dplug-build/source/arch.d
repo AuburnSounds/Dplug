@@ -49,12 +49,17 @@ string convertArchToVST3WindowsDirectoryName(Arch arch) pure
     }
 }
 
-string convertArchToDUBFlag(Arch arch, OS targetOS) pure
+string convertArchToDUBFlag(Arch arch, OS targetOS, bool isDMD, bool isDUB) pure
 {
     final switch(arch) with (Arch)
     {
         case x86_64: 
         {
+            // when using DUB + DMD, doesn't support target triple
+            // redub, on the other hand, requires a triple.
+            if (isDMD && isDUB)
+                return "x86_64 ";
+
             if (targetOS == OS.macOS)
                 return "x86_64-apple-macosx10.12 ";
             else if (targetOS == OS.windows)
@@ -63,7 +68,6 @@ string convertArchToDUBFlag(Arch arch, OS targetOS) pure
                 return "x86_64-linux ";
             else
                 return "x86_64 ";
-
         }
 
         // Explanation: the dub and ldc2 bundled on Raspberry Pi OS build to the right arch by default
@@ -73,6 +77,8 @@ string convertArchToDUBFlag(Arch arch, OS targetOS) pure
         // LLVM Triple for Apple Silicon
         case arm64:
         {
+            // FUTURE: DMD support
+
             if (targetOS == OS.macOS)
                 return "arm64-apple-macos ";
             else if (targetOS == OS.windows)
@@ -181,4 +187,11 @@ bool compilerIsLDC(string compilerPath)
 {
     // if compiler path contains "ldc2", we assume it's LDC.
     return indexOf(compilerPath, "ldc2") != -1;
+}
+
+
+bool compilerIsDMD(string compilerPath)
+{
+    // if compiler path contains "dmd", we assume it's DMD.
+    return indexOf(compilerPath, "dmd") != -1;
 }

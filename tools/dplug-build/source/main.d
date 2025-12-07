@@ -1591,7 +1591,7 @@ void buildPlugin(OS targetOS,
             string cmd = format("reggae --dub-build-type %s --dflags=\"--flto=thin\" --dc %s --dub-arch %s%s%s %s",
                                 build,
                                 compiler,
-                                convertArchToDUBFlag(arch, targetOS),
+                                convertArchToDUBFlag(arch, targetOS, compilerIsDMD(compiler), false),
                                 (combined ? " --all-at-once" : ""),
                                 (config ? " --dub-config " ~ config : ""),
                                 escapeShellArgument(rootDir)
@@ -1613,14 +1613,17 @@ void buildPlugin(OS targetOS,
 
     string dubBinary = useRedub ? "redub" : "dub";
 
-    string doParallel = parallel ? " --parallel" : "";
-    if (useRedub)
+    string doParallel = (parallel && !useRedub) ? " --parallel" : "";
+    if (useRedub && !parallel)
         doParallel = " --parallel no";
+
+    bool isDMD = compilerIsDMD(compiler);
+    bool isDUB = !useRedub && !useReggae;
 
     string cmd = format("%s build --build=%s --arch=%s--compiler=%s%s%s%s%s%s%s%s%s%s",
         dubBinary,
         build, 
-        convertArchToDUBFlag(arch, targetOS),
+        convertArchToDUBFlag(arch, targetOS, isDMD, isDUB),
         compiler,
         force ? " --force" : "",
         verbose ? " -v" : "",
