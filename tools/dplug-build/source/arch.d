@@ -49,7 +49,7 @@ string convertArchToVST3WindowsDirectoryName(Arch arch) pure
     }
 }
 
-string convertArchToDUBFlag(Arch arch, OS targetOS, bool isDMD, bool isDUB) pure
+string convertArchToDUBFlag(Arch arch, OS targetOS, bool isDMD, bool isDUB) 
 {
     final switch(arch) with (Arch)
     {
