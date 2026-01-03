@@ -56,6 +56,7 @@
                 "dplug:graphics": "*",
                 "colors": "~>0.0",
                 "dplug:math": "*",
+                "godot-math": ">=0.0.0 <2.0.0",
                 "intel-intrinsics": "~>1.0"
             }
         },
@@ -179,6 +180,7 @@
             "importPaths": [ "gui" ],
 
             "dependencies": {
+                "godot-math": ">=0.0.0 <2.0.0",
                 "dplug:math": "*",
                 "dplug:client": "*",
                 "dplug:window": "*",

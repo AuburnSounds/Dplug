@@ -84,16 +84,16 @@ nothrow:
 
         float S = W / cast(float)(context.getDefaultUIWidth());
 
-        _inputGainKnob.position  = rectangle(70, 101, 128, 128).scaleByFactor(S);
-        _clipKnob.position       = rectangle(308, 101, 128, 128).scaleByFactor(S);
-        _outputGainKnob.position = rectangle(70, 320, 128, 128).scaleByFactor(S);
-        _mixKnob.position        = rectangle(308, 320, 128, 128).scaleByFactor(S);
+        _inputGainKnob.position  = Rect2i(70, 101, 128, 128).scaled(S);
+        _clipKnob.position       = Rect2i(308, 101, 128, 128).scaled(S);
+        _outputGainKnob.position = Rect2i(70, 320, 128, 128).scaled(S);
+        _mixKnob.position        = Rect2i(308, 320, 128, 128).scaled(S);
 
-        _modeSwitch.position = rectangle(380, 28, 50, 20).scaleByFactor(S);
+        _modeSwitch.position = Rect2i(380, 28, 50, 20).scaled(S);
 
-        _bassSlider.position = rectangle(208, 27, 96, 24).scaleByFactor(S);
+        _bassSlider.position = Rect2i(208, 27, 96, 24).scaled(S);
 
-        _resizerHint.position = rectangle(W-30, H-30, 30, 30);
+        _resizerHint.position = Rect2i(W-30, H-30, 30, 30);
     }
 
 private:

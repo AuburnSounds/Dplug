@@ -14,8 +14,10 @@ import core.stdc.string: strlen, strcmp;
 
 import std.math: round;
 
-public import dplug.math.vector;
-public import dplug.math.box;
+public import godotmath;
+public import dplug.math.vector; // FUTURE: replaced by godot-math
+public import dplug.math.box;    // FUTURE: replaced by godot-math
+
 public import dplug.graphics;
 public import dplug.window.window;
 public import dplug.core.sync;
@@ -460,6 +462,21 @@ nothrow:
         int y1 = cast(int) round(p.min.y);
         int x2 = cast(int) round(p.max.x);
         int y2 = cast(int) round(p.max.y);
+        box2i r = box2i(x1, y1, x2, y2);
+        position = r;
+    }    
+    ///ditto
+    final void position(Rect2i p)
+    {
+        position = box2i(p.left, p.top, p.right, p.bottom);
+    }
+    ///ditto
+    final void position(Rect2 p)
+    {
+        int x1 = cast(int) round(p.left);
+        int y1 = cast(int) round(p.top);
+        int x2 = cast(int) round(p.right);
+        int y2 = cast(int) round(p.bottom);
         box2i r = box2i(x1, y1, x2, y2);
         position = r;
     }
