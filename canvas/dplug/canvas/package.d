@@ -47,26 +47,12 @@ import colors;
 
 // dplug:canvas whole public API should live here.
 
+public import godotmath;
 public import dplug.math.vector;
 public import dplug.math.box;
 
 /// `dplug:canvas` operates on RGBA 8-bit buffers.
 alias ImageDest = ImageRef!RGBA;
-
-/// dplug:canvas used to have CSS color parsing, now it's in 
-/// `colors` package
-deprecated("Use parseCSSColor and package colors instead. This will be removed in Dplug v16") 
-bool parseHTMLColor(const(char)[] htmlColorString, 
-                    out RGBA outColor, 
-                    out string error) pure nothrow @nogc @safe
-{
-    Color c;
-    if (!parseCSSColor(htmlColorString, c, error))
-        return false;
-    RGBA8 c8 = c.toRGBA8();
-    outColor = RGBA(c8.r, c8.g, c8.b, c8.a);
-    return true;
-}
 
 /// How to fill pixels.
 enum FillRule
@@ -267,6 +253,11 @@ nothrow:
     {
         moveTo(point.x, point.y);
     }
+    ///ditto
+    void moveTo(Vector2 point)
+    {
+        moveTo(point.x, point.y);
+    }
 
     /// Connects the last point in the current sub-path to the specified (x, y) coordinates with a straight line.
     /// If several points are provided, it is equivalent to consecutive single-point `lineTo` calls.
@@ -277,6 +268,11 @@ nothrow:
     }
     ///ditto
     void lineTo(vec2f point)
+    {
+        lineTo(point.x, point.y);
+    }
+    ///ditto
+    void lineTo(Vector2 point)
     {
         lineTo(point.x, point.y);
     }
@@ -297,11 +293,16 @@ nothrow:
     {
         vec2f cp1 = transformPoint(cp1x, cp1y);
         vec2f cp2 = transformPoint(cp2x, cp2y);
-        vec2f pt = transformPoint(x, y);
+        vec2f pt  = transformPoint(x, y);
         _rasterizer.cubicTo(cp1.x, cp1.y, cp2.x, cp2.y, pt.x, pt.y);
     }
     ///ditto
     void bezierCurveTo(vec2f controlPoint1, vec2f controlPoint2, vec2f dest)
+    {
+        bezierCurveTo(controlPoint1.x, controlPoint1.y, controlPoint2.x, controlPoint2.y, dest.x, dest.y);
+    }
+    ///ditto
+    void bezierCurveTo(Vector2 controlPoint1, Vector2 controlPoint2, Vector2 dest)
     {
         bezierCurveTo(controlPoint1.x, controlPoint1.y, controlPoint2.x, controlPoint2.y, dest.x, dest.y);
     }
@@ -315,6 +316,11 @@ nothrow:
     }
     ///ditto
     void quadraticCurveTo(vec2f controlPoint, vec2f dest)
+    {
+        quadraticCurveTo(controlPoint.x, controlPoint.y, dest.x, dest.y);
+    }
+    ///ditto
+    void quadraticCurveTo(Vector2 controlPoint, Vector2 dest)
     {
         quadraticCurveTo(controlPoint.x, controlPoint.y, dest.x, dest.y);
     }
@@ -334,6 +340,11 @@ nothrow:
         rect(topLeftPoint.x, topLeftPoint.y, dimension.x, dimension.y);
     }
     ///ditto
+    void rect(Vector2 topLeftPoint, Vector2 dimension)
+    {
+        rect(topLeftPoint.x, topLeftPoint.y, dimension.x, dimension.y);
+    }
+    ///ditto
     void rect(box2f rectangle)
     {
         rect(rectangle.min.x, rectangle.min.y, rectangle.width, rectangle.height);
@@ -342,6 +353,16 @@ nothrow:
     void rect(box2i rectangle)
     {
         rect(rectangle.min.x, rectangle.min.y, rectangle.width, rectangle.height);
+    }
+    ///ditto
+    void rect(Rect2 rectangle)
+    {
+        rect(rectangle.left, rectangle.top, rectangle.width, rectangle.height);
+    }
+    ///ditto
+    void rect(Rect2i rectangle)
+    {
+        rect(rectangle.left, rectangle.top, rectangle.width, rectangle.height);
     }
 
     /// Adds an arc to the current path (used to create circles, or parts of circles).
@@ -470,6 +491,12 @@ nothrow:
     {
         arc(center.x, center.y, radius, startAngle, endAngle, anticlockwise);
     }
+    ///ditto
+    void arc(Vector2 center, float radius, float startAngle, float endAngle, bool anticlockwise = false)
+    {
+        arc(center.x, center.y, radius, startAngle, endAngle, anticlockwise);
+    }
+
 
     /// Fills all subpaths of the current path using the current `fillStyle`.
     /// Open subpaths are implicitly closed when being filled.
@@ -511,6 +538,11 @@ nothrow:
         fillRect(topLeft.x, topLeft.y, dimension.x, dimension.y);
     }
     ///ditto
+    void fillRect(Vector2 topLeft, Vector2 dimension)
+    {
+        fillRect(topLeft.x, topLeft.y, dimension.x, dimension.y);
+    }
+    ///ditto
     void fillRect(box2f rect)
     {
         fillRect(rect.min.x, rect.min.y, rect.width, rect.height);
@@ -519,6 +551,16 @@ nothrow:
     void fillRect(box2i rect)
     {
         fillRect(rect.min.x, rect.min.y, rect.width, rect.height);
+    }
+    ///ditto
+    void fillRect(Rect2 rect)
+    {
+        fillRect(rect.left, rect.top, rect.width, rect.height);
+    }
+    ///ditto
+    void fillRect(Rect2i rect)
+    {
+        fillRect(rect.left, rect.top, rect.width, rect.height);
     }
 
     /// Fill a disc using the current `fillStyle`.
@@ -854,6 +896,12 @@ private:
     }
 
     vec2f transformPoint(vec2f pt)
+    {
+        return transformPoint(pt.x, pt.y);
+    }
+
+    // FUTURE: internals in Vector2
+    vec2f transformPoint(Vector2 pt)
     {
         return transformPoint(pt.x, pt.y);
     }
