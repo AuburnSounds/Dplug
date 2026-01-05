@@ -17,18 +17,19 @@
 
     "dependencies":
     {
-        "dplug:dsp": { "path": "../.." },
-        "dplug:vst2": { "path": "../.." },
-        "dplug:formats": { "path": "../.."},
-        "dplug:gui": { "path": "../.." },
-        "dplug:canvas": { "path": "../.." },
+        "dplug:dsp":          { "path": "../.." },
+        "dplug:vst2":         { "path": "../.." },
+        "dplug:formats":      { "path": "../.." },
+        "dplug:gui":          { "path": "../.." },
+        "dplug:canvas":       { "path": "../.." },
         "dplug:flat-widgets": { "path": "../.." }
     },
     
     "versions": [
         "futureMouseDrag",
         "futureBinState",
-        "Dplug_RightClickMoveWidgets"
+        "Dplug_RightClickMoveWidgets",
+        "Dplug_NoMouseCursor"
     ],
 
     "configurations": [

@@ -17,10 +17,10 @@
 
     "dependencies":
     {
-        "dplug:dsp":  { "path": "../.." },
-        "dplug:vst2": { "path": "../.." },
-        "dplug:formats": { "path": "../.." },
-        "dplug:gui":  { "path": "../.." },
+        "dplug:dsp":          { "path": "../.." },
+        "dplug:vst2":         { "path": "../.." },
+        "dplug:formats":      { "path": "../.." },
+        "dplug:gui":          { "path": "../.." },
         "dplug:pbr-widgets":  { "path": "../.." },
         "dplug:flat-widgets": { "path": "../.." },
         "canvasity": "~>1.0",
@@ -30,7 +30,8 @@
     "versions": [
         "futureMouseDrag",
         "futureBinState",
-        "Dplug_RightClickMoveWidgets"
+        "Dplug_RightClickMoveWidgets",
+        "Dplug_NoMouseCursor"
     ],
 
     "configurations": [

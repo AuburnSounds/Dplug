@@ -13,8 +13,15 @@ so that developers can focus on a portable codebase for audio software.
 ## Plugin clients
 
 
-`dplug:vst2`, `dplug:vst3`, `dplug:au`, `dplug:lv2`, `dplug:flp`, and `dplug-aax` are "plugin clients" libraries.
+`dplug:vst2`, `dplug:formats`, and `dplug-aax` are "plugin clients" libraries.
 These subpackage depends on the "generic client" `dplug:client`.
+
+`dplug:formats` implements all the formats that have an open-source licence:
+ - VST3
+ - AU
+ - LV2
+ - CLAP
+ - FLP
 
 
 
@@ -45,9 +52,9 @@ Within each layer, widgets are Z-ordered for drawing and events.
 
 `dplug:math` defines small vectors, rectangles, and matrices.
 
-`dplug:graphics` defines drawing surfaces and a lot of low-level rendering routines. They are considered a legacy way to draw on screen. This is based on a fork of `ae:graphics`, a stripped-down generic library for working with images.
+`dplug:graphics` defines drawing surfaces and a lot of low-level rendering routines. They are considered a legacy way to draw on screen. This is based on a fork of `ae:graphics`, a stripped-down generic library for working with images. This is being replaced slowly by `gamut` and `colors`.
 
-`dplug:canvas` is a 2D rasterizer library that provide quick RGBA drawing with a friendly interface. It is now the preferred way to draw on screen.
+`dplug:canvas` is a 2D rasterizer library that provide quick RGBA drawing with a friendly interface. It is now the preferred way to draw on screen (though `canvasity` could soon be a choice too).
 
 [More info on this in the Wiki.](https://github.com/AuburnSounds/Dplug/wiki)
 
