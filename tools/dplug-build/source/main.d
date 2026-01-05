@@ -90,7 +90,7 @@ void usage()
     cwriteln("────────── <on_blue> FLAGS </> ────────── 😸🚩".white);
     cwriteln();
     flag("-a --arch", "Select target architectures", "x86_64 | arm64 | all", "Windows=&gt;x86_64  macOS=&gt;all  Linux=&gt;x86_64");
-    flag("-b --build", "Select DUB build type", null, "debug");
+    flag("-b --build", "Select DUB build type <lcyan>(https://dub.pm/dub-reference/buildtypes)</lcyan>", null, "debug");
     flag("-c --config", "Select DUB configs. Known prefix needed", "VST2x | VST3x | AUx | AAXx | LV2x | CLAPx\n                            | FLPx", "first one found");
     flag("--compiler", "Select D compiler", null, "ldc2");
     flag("--compiler-x86_64", " Force compiler for x86_64 architecture", null, "same as --compiler");
@@ -135,7 +135,7 @@ void usage()
     cwriteln("  Some information is also gathered from " ~ "dub.json".lcyan ~ " or " ~ "dub.sdl".lcyan ~ ".");
     cwriteln();
     cwriteln("  Be sure to check the Dplug Wiki!✨");
-    cwriteln("  💠  <blink>https://github.com/AuburnSounds/Dplug/wiki</blink>".lcyan);
+    cwriteln("  💠   <blink>https://github.com/AuburnSounds/Dplug/wiki</blink>".lcyan);
     cwriteln();
 }
 
