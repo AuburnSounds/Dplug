@@ -15,9 +15,10 @@ import dplug.core.vec;
 struct AttackRelease(T) if (is(T == float) || is(T == double))
 {
 public:
+nothrow @nogc:
     /// time: the time constant of the smoother.
     /// threshold: absolute difference below which we consider current value and target equal
-    void initialize(float sampleRate, float timeAttackSecs, float timeReleaseSecs, T initialValue) nothrow @nogc
+    void initialize(float sampleRate, float timeAttackSecs, float timeReleaseSecs, T initialValue) 
     {
         assert(isFinite(initialValue));
         _sampleRate = sampleRate;
@@ -27,20 +28,20 @@ public:
     }
 
     /// Changes attack time (given in seconds).
-    void setAttackTime(float timeAttackSecs) nothrow @nogc
+    void setAttackTime(float timeAttackSecs)
     {
         _expFactorAttack = cast(T)(expDecayFactor(timeAttackSecs, _sampleRate));
     }
 
     /// Changes release time (given in seconds).
-    void setReleaseTime(float timeReleaseSecs) nothrow @nogc
+    void setReleaseTime(float timeReleaseSecs)
     {
         _expFactorRelease = cast(T)(expDecayFactor(timeReleaseSecs, _sampleRate));
     }
 
     /// Advance smoothing and return the next smoothed sample with respect
     /// to tau time and samplerate.
-    T nextSample(T target) nothrow @nogc
+    T nextSample(T target)
     {
         T diff = target - _current;
         if (diff != 0)

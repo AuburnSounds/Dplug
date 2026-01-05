@@ -34,6 +34,7 @@ enum : int
          - parameters
          - I/O settings (mono or stereo)
          - presets
+         - logging
          - buffer-split
          - using biquads from dplug:dsp
          - resizeable UI
@@ -52,6 +53,12 @@ nothrow:
 
     this()
     {
+        // Anywhere in Dplug, you can log using `debugLog[f]`.
+        // On Windows, this is available using dbgview.exe in admin mode. 
+        // On macOS and Linux, this is available on the command-line,
+        // if the DAW doesn't open the plugin in a process.
+        // See also: https://github.com/AuburnSounds/Dplug/wiki/Debugging-plug-ins
+        debugLogf("Plugin created\n");
     }
 
     override PluginInfo buildPluginInfo()
