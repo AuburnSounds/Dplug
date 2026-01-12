@@ -18,7 +18,7 @@ Use your best judgment, and feel free to propose changes to this document in a p
 
 ## 0. Boost license
 
-By contributing to Dplug, you implicitely agree that your work will be redistributed under the Boost license.
+By contributing to Dplug, you implicitly agree that your work will be redistributed under the Boost license.
 You still keep your copyright over the files you have modified.
 
 When you modify a file, do not forget to **add a Copyright DDoc entry with the copyright holder name and year.**

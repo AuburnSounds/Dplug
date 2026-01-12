@@ -365,7 +365,7 @@ unittest
     freeSlice(slice);
 }
 
-/// Semantic function to check that a D string implicitely conveys a
+/// Semantic function to check that a D string implicitly conveys a
 /// termination byte after the slice.
 /// (typically those comes from string literals or `stringDup`/`stringIDup`)
 const(char)* assumeZeroTerminated(const(char)[] input) nothrow @nogc

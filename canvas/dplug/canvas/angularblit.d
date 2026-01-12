@@ -346,7 +346,7 @@ int calcCoverage(WindingRule rule)(int winding)
 /*
    helpers for fast atan2
    these should be inlined by ldc
-   split up into 3 seperate parts because its faster to spread them out
+   split up into 3 separate parts because it's faster to spread them out
    in the calling code. Breaks up the instruction dependency somewhat.
 */
 

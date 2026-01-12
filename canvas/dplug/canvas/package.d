@@ -651,7 +651,7 @@ nothrow:
 
 
     /// Angular Gradient.
-    /// Specifiy the orientation in terms of an circle, 
+    /// Specify the orientation in terms of a circle, 
     /// for that we need two points,
     /// (x0,y0) is the center of the circle
     /// (x1,y1) is radius at 0 degrees
@@ -667,12 +667,12 @@ nothrow:
     }
 
     /// Angular Gradient.
-    /// Specifiy the orientation in terms of an ellipse, for that we need 3 points.
-    /// (x0,y0) is the center of the elipse
+    /// Specify the orientation in terms of an ellipse, for that we need 3 points.
+    /// (x0,y0) is the center of the ellipse
     /// (x1,y1) is radius at 0 degrees
     /// (x2,y2) is radius at 90 degrees
-    /// The radii dont need to be at right angles, so it can handle 
-    /// ellipse that has been though any affine transform.
+    /// The radii don't need to be at right angles, so it can handle
+    /// ellipse that has been through any affine transform.
     CanvasGradient createAngularGradient(float x0, float y0,
                                          float x1, float y1,
                                          float x2, float y2)

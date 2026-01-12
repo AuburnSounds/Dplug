@@ -84,7 +84,7 @@ nothrow @nogc:
     /// Returns: `true` is the host will act on it, `false` if not supported in this format.
     bool notifyResized();
 
-    /// Report the identied host name (DAW).
+    /// Report the identified host name (DAW).
     /// MAYDO: not available for LV2.
     DAW getDAW();
 
@@ -143,7 +143,7 @@ struct PluginInfo
     /// A four char vendor "unique" ID
     char[4] vendorUniqueID = "Wity";
 
-    /// The vendor email adress for support. Can be null.
+    /// The vendor email address for support. Can be null.
     string vendorSupportEmail = null;
 
     /// Plugin name.
@@ -241,7 +241,7 @@ nothrow:
     /// Returns `true` if succeeded. Not needed if `requestResize` returned true.
     bool notifyResized();
 
-    /// Report the identied host name (DAW).
+    /// Report the identified host name (DAW).
     DAW getDAW();
 
     /// Gets the plugin format used at runtime. Version identifier may not be enough in the future, in case of 
@@ -258,7 +258,7 @@ nothrow:
 ///   1. the plugin "client" implementation (= product), 
 ///   2. the format client
 ///   3. the UI, directly
-///  Those should be splitted cleanly.
+///  Those should be split cleanly.
 class Client : IClient
 {
 public:
@@ -592,7 +592,7 @@ nothrow:
     {
         // Default: always call `processAudio`. This is safest.
         //
-        // It is recommended to setup this override at one point in developemnt, especially for an effect plugin.
+        // It is recommended to setup this override at one point in development, especially for an effect plugin.
         // This allows VST3 and AU hosts to optimize things.
         //
         // For an effect 2 secs is a good starting point. Which should be safe for most effects plugins except delay or reverb
@@ -604,7 +604,7 @@ nothrow:
     }
 
     /// Override to declare the maximum number of samples to accept
-    /// If greater, the audio buffers will be splitted up.
+    /// If greater, the audio buffers will be split up.
     /// This splitting have several benefits:
     /// - help allocating temporary audio buffers on the stack
     /// - keeps memory usage low and reuse it
@@ -1105,7 +1105,7 @@ protected:
 
     /// Override this methods to load/fill presets.
     /// This function must return a slice allocated with `malloc`,
-    /// that contains presets crteated with `mallocEmplace`.
+    /// that contains presets created with `mallocEmplace`.
     Preset[] buildPresets() nothrow @nogc
     {
         auto presets = makeVec!Preset();

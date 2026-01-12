@@ -29,7 +29,7 @@ import dplug.canvas.misc;
 
   The coverage is stored in differentiated form, each cell in
   the scanline stores the difference between cells rather than
-  the actual coverage. This means we dont have to track coverage
+  the actual coverage. This means we don't have to track coverage
   for long spans where nothing happens.
 
   It also uses a bitmask to track changes in coverage. It's an idea
@@ -42,9 +42,9 @@ import dplug.canvas.misc;
   The mask uses 1 bit for every 4 pixels, because the blitters are
   processing 4 pixels at once with SIMD.
 
-  Cliping is handled by having left and right clip buffers, any edges
-  crossing the left or righ boundry are spit at the boundry. Parts inside
-  are handled normaly, parts outside are added to the clip buffers so
+  Clipping is handled by having left and right clip buffers, any edges
+  crossing the left or right boundary are split at the boundary. Parts inside
+  are handled normally, parts outside are added to the clip buffers so
   that we keep track of what coverage they contribute. This is then
   added to the scandelta at the start of processing each line. These
   buffers use differentiated coverage.
@@ -589,7 +589,7 @@ nothrow:
 
         // clear m_buckets overspill, this is only needed because in very
         // rare cases we could end up with an edge could end up on the
-        // bottom clip boundry after spliting an edge, these should really
+        // bottom clip boundary after splitting an edge, these should really
         // be removed in the clipping code
 
         m_buckets[endy] = null;
@@ -731,7 +731,7 @@ private:
 
     void intLineTo(int x, int y)
     {
-        // mixin for adding edges. For some reason LDC wouldnt inline this when
+        // mixin for adding edges. For some reason LDC wouldn't inline this when
         // it was a separate function, and it was 15% slower that way
 
         string addEdgeM(string x0, string y0, string x1, string y1, string dir)
@@ -812,10 +812,10 @@ private:
                 goto finished;
             }
 
-            // note cliping here can occasionaly result in horizontals, and can
-            // ocaisionaly put a horizontal on bucket for clipbotttom, which is
+            // note clipping here can occasionally result in horizontals, and can
+            // occasionally put a horizontal on bucket for clipbottom, which is
             // outside the drawable area, currently it allows it and zeros that
-            // bucket after rasterization. 
+            // bucket after rasterization.
 
             switch (flags)
             {
@@ -908,10 +908,10 @@ private:
                 goto finished;
             }
          
-            // note cliping here can occasionaly result in horizontals, and can
-            // occasionally put a horizontal on bucket for clipbotttom, which is
+            // note clipping here can occasionally result in horizontals, and can
+            // occasionally put a horizontal on bucket for clipbottom, which is
             // outside the drawable area, currently it allows it and zeros that
-            // bucket after rasterization. 
+            // bucket after rasterization.
 
             switch (flags)
             {

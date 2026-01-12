@@ -53,7 +53,7 @@ Come talk with us on the [Dplug Discord](https://discord.gg/QZtGZUw) to learn mo
 
 Keep up with major changes with the [Dplug Release Notes](https://github.com/AuburnSounds/Dplug/wiki/Release-notes).   
 
-_**Key concept:** Dplug uses SemVer. If you stay on the same Dplug major version tag (eg: `"~>13.0"`), your plug-in wont't break, and more importantly your **user sessions** won't break either._
+_**Key concept:** Dplug uses SemVer. If you stay on the same Dplug major version tag (eg: `"~>13.0"`), your plug-in won't break, and more importantly your **user sessions** won't break either._
 
 
 
@@ -67,7 +67,7 @@ Dplug has a deep commitment to stability. All breaking changes are documented in
 **Dplug's goal is to support existing products and build commercial companies around them**. 
 It is a part-time operation, **from people who release commercial plug-ins for a living.**
 
-Being stable and relatively bug-free is deemed more important to us than implement every possible feature. It's often than enhancements get postponed in favour of product development, so please be patient!
+Being stable and relatively bug-free is deemed more important to us than implement every possible feature. It's often that enhancements get postponed in favour of product development, so please be patient!
 
 
 

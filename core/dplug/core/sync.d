@@ -70,7 +70,7 @@ else
 // MUTEX
 //
 
-/// Returns: A newly created `UnchekedMutex`.
+/// Returns: A newly created `UncheckedMutex`.
 UncheckedMutex makeMutex() nothrow @nogc
 {
     return UncheckedMutex(42);
@@ -116,7 +116,7 @@ nothrow @nogc:
 
     @disable this(this);
 
-    /// Lock mutex, and create it in a thread-safe way if it doens't exist yet.
+    /// Lock mutex, and create it in a thread-safe way if it doesn't exist yet.
     /// This is useful when globals access must be protected by a mutex.
     void lockLazy() @trusted
     {
