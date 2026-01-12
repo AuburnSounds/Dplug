@@ -135,7 +135,7 @@ unittest
 }
 
 
-// Split each boxes in smaller boxes.
+// Split each box into smaller boxes.
 void tileAreas(in box2i[] areas, int maxWidth, int maxHeight, ref Vec!box2i splitted) nothrow @nogc
 {
     foreach(area; areas)

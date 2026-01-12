@@ -257,7 +257,7 @@ nothrow:
     ///   h               = Height of meaningful area in pixels.
     ///   border          = Number of border pixels around the meaningful area. For the right border, this could actually be more depending on other constraints.
     ///   rowAlignment    = Alignment of the _first_ pixel of each row, in bytes (excluding border).
-    ///   xMultiplicity   = Starting with the first meaningful pixel of a line, force the number of adressable
+    ///   xMultiplicity   = Starting with the first meaningful pixel of a line, force the number of addressable
     ///                     pixels to be a multiple of `xMultiplicity`.
     ///                     All these "padding" samples added at the right of each line if needed will be considered 
     ///                     part of the border and replicated if need be.
@@ -324,7 +324,7 @@ nothrow:
     ///   height          = Height of meaningful area in pixels.
     ///   border          = Number of border pixels around the meaningful area. For the right border, this could actually be more depending on other constraints.
     ///   rowAlignment    = Alignment of the _first_ pixel of each row, in bytes (excluding border).
-    ///   xMultiplicity   = Starting with the first meaningful pixel of a line, force the number of adressable
+    ///   xMultiplicity   = Starting with the first meaningful pixel of a line, force the number of addressable
     ///                     pixels to be a multiple of `xMultiplicity`.
     ///                     All these "padding" samples added at the right of each line if needed will be considered 
     ///                     part of the border and replicated if need be.
@@ -583,7 +583,7 @@ nothrow:
 
 private:
 
-    /// Adress of the first meaningful pixel
+    /// Address of the first meaningful pixel
     COLOR* _pixels;
 
     /// Samples difference between rows of pixels.

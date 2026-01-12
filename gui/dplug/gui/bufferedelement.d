@@ -19,7 +19,7 @@ enum L8 opacityFullyTransparent = L8(0);
 /// This is intended to have easier dirtyrect-compliant widgets.
 /// Also caches expensive drawing, but it's not free at all.
 ///
-/// No less than three additional opacity channels must be filled to be able to blend the widgets explicitely.
+/// No less than three additional opacity channels must be filled to be able to blend the widgets explicitly.
 /// The semantic of the opacity channels are:
 ///   opacity left at 0 => pixel untouched
 ///   opacity > 0       => pixel is touched, blending will occur

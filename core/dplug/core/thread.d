@@ -212,8 +212,8 @@ private:
     else 
         static assert(false);
 
-    // Thread context given to OS thread creation function need to have a constant adress
-    // since there are no guarantees the `Thread` struct will be at the same adress.
+    // Thread context given to OS thread creation function need to have a constant address
+    // since there are no guarantees the `Thread` struct will be at the same address.
     static struct CreateContext
     {
     nothrow:

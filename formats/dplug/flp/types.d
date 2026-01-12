@@ -194,7 +194,7 @@ enum int FHD_FloatAutomation   = 54;   // (for the plugin wrapper only) ask the 
 enum int FHD_ShowSettings      =55;    // called when the settings button on the titlebar should be updated switched. On/off in Value (1=active). See FPF_WantSettingsBtn
 enum int FHD_NoteOnOff         =56;    // generators only! note on/off (semitone in Index low word, color in index high word, NOT recorded in bit 30, velocity in Value (<=0 = note off))
 enum int FHD_ShowPicker        =57;    // show picker (mode [0=plugins, 1=project] in Index, categories [gen=0/FX=1/both=-1/Patcher (includes VFX)=-2] in Value)
-enum int FHD_GetIdleOverflow   =58;    // ask the host for the # of extra frames Idle should process, generally 0 if no overflow/frameskip occured
+enum int FHD_GetIdleOverflow   =58;    // ask the host for the # of extra frames Idle should process, generally 0 if no overflow/frameskip occurred
 enum int FHD_ModalIdle         =59;    // used by FL plugins, when idling from a modal window, mainly for the smoothness hack
 enum int FHD_RenderProject     =60;    // prompt the rendering dialog in song mode
 enum int FHD_GetProjectInfo    =61;    // get project title, author, comments, URL, naked filename (Index), (returned as Result as a *PWideChar*)

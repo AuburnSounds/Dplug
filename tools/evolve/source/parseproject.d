@@ -210,7 +210,7 @@ class SourceFile
         // find all lines that contains with "@tuning"
         auto allTuningDecl = regex(r"^.*@tuning.*$","m");
 
-        // count occurence of @tuning
+        // count occurrence of @tuning
         auto captures = matchAll(originalFileContent, allTuningDecl);
         foreach(c; captures)
         {

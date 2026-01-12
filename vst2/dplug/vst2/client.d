@@ -262,7 +262,7 @@ private:
 
     float _sampleRate; // samplerate from opcode thread POV
     int _maxFrames; // max frames from opcode thread POV
-    int _maxFramesInProcess; // max frames supported by the plugin, buffers will be splitted to follow this.
+    int _maxFramesInProcess; // max frames supported by the plugin, buffers will be split to follow this.
     int _maxInputs;
     int _maxOutputs;
     int _maxParams;

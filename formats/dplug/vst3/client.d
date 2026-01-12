@@ -2074,7 +2074,7 @@ nothrow:
         }
         else
         {
-            // Most other host accomodate with a larger size.
+            // Most other hosts accommodate with a larger size.
             // Note: It is important to take the nearest here rather than the max size that fits, but is smaller?
             // it is to allow an upsize when dragging only one size of the window.
             // Else, the window can only be shrink in VST3 hosts (tested in Cubase, FL, Waveform, the test host...) unless the 

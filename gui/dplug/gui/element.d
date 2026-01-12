@@ -748,7 +748,7 @@ nothrow:
         Params:
             identifier A valid HTML-like identifier.
                    Can't contain spaces or null characters.
-                   Must be below a maxium of 63 characters.
+                   Must be below a maximum of 63 characters.
     */
     final void setId(const(char)[] identifier) pure
     {

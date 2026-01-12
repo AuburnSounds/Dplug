@@ -312,7 +312,7 @@ ubyte[] savePresetsToFXB(Preset[] presets)
 {
     auto fxb = makeVec!ubyte();
 
-    fxb.writeRIFFChunkHeader(CCONST('C', 'c', 'n', 'K'), 0); // Zero Length. Note: our FXB output seems incorrent here. TODO Compare to Live .fxb.
+    fxb.writeRIFFChunkHeader(CCONST('C', 'c', 'n', 'K'), 0); // Zero Length. Note: our FXB output seems incorrect here. TODO Compare to Live .fxb.
 
     fxb.writeBE!uint(CCONST('F', 'x', 'B', 'k'));
     fxb.writeBE!uint(1); // TODO: proper fxVersion here

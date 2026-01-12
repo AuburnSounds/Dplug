@@ -72,7 +72,7 @@ nothrow @nogc:
     /// Given an input size, get the nearest valid size.
     void getUINearestValidSize(int* widthLogicalPixels, int* heightLogicalPixels);
 
-    /// Returns: `true` if the UI can accomodate several size in _logical_ space.
+    /// Returns: `true` if the UI can accommodate several sizes in _logical_ space.
     ///          (be it by resizing the user area, or rescaling it).
     /// Technically all sizes are supported with black borders or cropping in logical space,
     /// but they don't have to be encouraged if the plugin declares no support for it.

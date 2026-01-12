@@ -193,7 +193,7 @@ class Variable
 
         auto myDecl = regex(regexpWithName, "m");
 
-        // count occurence of @tuning
+        // count occurrence of @tuning
         string newContent = replaceFirst(fileContent, myDecl, regenWithValue(value));
         std.file.write(sourceFilePath, newContent);
 

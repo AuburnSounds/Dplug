@@ -122,7 +122,7 @@ private:
     WindowType type;
 
     // TODO: this is a bad default! You'll probably want WindowAlignment.right instead.
-    // Make sure it isn't used implicitely anymore.
+    // Make sure it isn't used implicitly anymore.
     // Then change that default
     WindowAlignment alignment = WindowAlignment.symmetric; 
 
