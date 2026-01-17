@@ -1227,25 +1227,62 @@ PluginInfo parsePluginInfo(string json)
     // FUTURE: support larger integers than 0 to 9 in the string
     static PluginVersion parsePluginVersion(string value)
     {
+        string parseError = `"publicVersion" should follow the pattern x.y.z (eg: "1.0.0")`;
+        // mini-parser
         bool isDigit(char ch)
         {
             return ch >= '0' && ch <= '9';
         }
 
-        if ( value.length != 5  ||
-             !isDigit(value[0]) ||
-             value[1] != '.'    ||
-             !isDigit(value[2]) ||
-             value[3] != '.'    ||
-             !isDigit(value[4]))
+        int digitValue(char ch)
         {
-            throw new Exception("\"publicVersion\" should follow the form x.y.z (eg: \"1.0.0\")");
+            return ch - '0';
+        }
+
+        int n = 0;
+        char peek()
+        {
+            if (n >= value.length)
+                return '\0';
+            else
+                return value[n];
+        }
+
+        char getCh()
+        {
+            char ch = peek;
+            n++;
+            return ch;
+        }
+
+        void parseDot()
+        {
+            if (getCh() != '.')
+                throw new Exception(parseError);
+        }
+
+        int parseInt()
+        {
+            int r = 0;
+
+            if (!isDigit(peek()))
+                throw new Exception(parseError);
+
+            while (true)
+            {
+                if (!isDigit(peek()))
+                    return r;
+                r = r * 10 + digitValue(getCh());
+            }
         }
 
         PluginVersion ver;
-        ver.major = value[0] - '0';
-        ver.minor = value[2] - '0';
-        ver.patch = value[4] - '0';
+        ver.major = parseInt();
+        parseDot;
+        ver.minor = parseInt();
+        parseDot;
+        ver.patch = parseInt();
+        if (peek() != '\0') throw new Exception(parseError);
         return ver;
     }
 
