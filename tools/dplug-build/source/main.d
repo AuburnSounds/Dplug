@@ -96,6 +96,7 @@ void usage()
     flag("--compiler-x86_64", " Force compiler for x86_64 architecture", null, "same as --compiler");
     flag("--combined", "Combined build", null, null);
     flag("--final", "Release. Shortcut for --combined -b release-nobounds", null, null);
+    flag("--profile", "Debug Info. Shortcut for --combined -b release-debug", null, null);
     flag("-f --force", "Force rebuild", null, null);
     flag("-q --quiet", "Quieter output", null, null);
     flag("-v --verbose", "Verbose output", null, null);
@@ -179,7 +180,14 @@ int main(string[] args)
         for (int i = 1; i < args.length; )
         {
             string arg = args[i];
-            if (arg == "--final")
+            if (arg == "--profile")
+            {
+                finalFlag = true;
+                args = args[0..i] ~ ["--combined",
+                                     "-b",
+                                     "release-debug"] ~ args[i+1..$];
+            }
+            else if (arg == "--final")
             {
                 finalFlag = true;
                 args = args[0..i] ~ ["--combined",
