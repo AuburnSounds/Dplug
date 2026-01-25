@@ -1,0 +1,9 @@
+{
+    "name": "dbloat",
+    "description": "Parses .pdb file, display largest functions",
+  "targetType": "executable",
+
+  "dependencies": {
+    "console-colors": "~>1.0"
+  }
+} 

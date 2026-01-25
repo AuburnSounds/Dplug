@@ -11,3 +11,5 @@
    * `tools/stress-plugin`: makes multiple load of plugins while processing audio mainly to test GUI opening speed
    * `tools/presetbank`: Synthesize a FXB file out of a number of individual FXP files.
    * `tools/color-correction`: Choose color correction curves for a finished UI
+   * `tools/dbloat`: Find largest function in your D binaries by parsing a .pdb
+   
