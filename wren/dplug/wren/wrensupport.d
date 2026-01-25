@@ -26,6 +26,11 @@ import wren.common;
 import dplug.wren.describe;
 import dplug.wren.wren_ui;
 
+version(LDC)
+    import ldc.attributes: optStrategy;
+else
+    private struct optStrategy { string strategy; }
+
 nothrow @nogc:
 
 ///
@@ -594,6 +599,7 @@ private:
     }
 
     // auto-generate the "widgets" Wren module
+    @optStrategy("minsize")
     const(char)* widgetModuleSource() nothrow
     {
         _widgetModuleSource.clearContents();
