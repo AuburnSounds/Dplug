@@ -34,12 +34,19 @@ void usage()
     cwriteln();
     flag("--help", "Show this help", null, null);
     flag("-n &lt;int&gt;", "      Number of top functions to list", "integer", "10");
+
+    cwriteln("");
+
+    cwriteln("Note: you can enable/disable any category of symbols with -cat or +cat flags".white);
+    cwriteln("");
 }
 
 int main(string[] args) 
 {
     try
     {
+        enableConsoleUTF8();
+
         string inpath;
         bool help = false;
         int nFunctions = 10;
