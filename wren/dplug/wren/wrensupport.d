@@ -87,6 +87,7 @@ final class WrenSupport
     /// can be used to register classes manually.
     ///
     /// Note: the mirror Wren classes don't inherit from each other. Wren doesn't know our D hierarchy.
+    @optStrategy("minsize")
     void registerUIElementClass(ElemClass)() nothrow
     {
         // If you fail here: ony UIElement derivatives can have @ScriptExport
@@ -701,6 +702,7 @@ private:
     // Add a single UIElement derivative class into the set of known classes in Wren
     // Note that it enumerates all @ScriptProperty from its ancestors too, so it works.
     // Wren code doesn't actually know that UIImageKnob is derived from UIKnob.
+    @optStrategy("minsize")
     private void registerDClass(alias aClass)(ScriptExportClass classDesc) nothrow
     {
         foreach(memberName; __traits(allMembers, aClass))
