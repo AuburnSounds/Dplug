@@ -591,7 +591,7 @@ int main(string[] args)
                     buildPlugin(targetOS, compilerPath, pathOverriden, config, build, arch, rootDir, verbose, force, combined, quiet, skipRegistry, parallel, redub, breadth, reggae);
                     double bytes = getSize(plugin.dubOutputFileName()) / (1024.0 * 1024.0);
                     string formatName = stripFormat(config);
-                    cwritefln("    =&gt; %s plug-in built in %s (size = %0.1f mb)".lgreen, formatName, normalizedPath("./" ~ path), bytes);
+                    cwritefln("    =&gt; %s plug-in built in %s (size = %0.3f mb)".lgreen, formatName, normalizedPath("./" ~ path), bytes);
                     cwriteln();
                 }
 
@@ -1089,7 +1089,7 @@ int main(string[] args)
                                             escapeShellArgument(pluginFinalPath));
                         safeCommand(cmd);
                         double bytes = getSize(pluginFinalPath) / (1024.0 * 1024.0);
-                        cwritefln("    =&gt; Universal build OK, binary size = %0.1f mb, available in %s".lgreen, bytes, normalizedPath("./" ~ path));
+                        cwritefln("    =&gt; Universal build OK, binary size = %0.3f mb, available in %s".lgreen, bytes, normalizedPath("./" ~ path));
                         cwriteln();
                     }
 
@@ -1202,7 +1202,7 @@ int main(string[] args)
                                                 escapeShellArgument(exePath));
                             safeCommand(cmd);
                             double bytes = getSize(exePath) / (1024.0 * 1024.0);
-                            cwritefln("    =&gt; Universal build OK, binary size = %0.1f mb, available in %s".lgreen, bytes, normalizedPath("./" ~ path));
+                            cwritefln("    =&gt; Universal build OK, binary size = %0.3f mb, available in %s".lgreen, bytes, normalizedPath("./" ~ path));
                             cwriteln();
                         }
                         else

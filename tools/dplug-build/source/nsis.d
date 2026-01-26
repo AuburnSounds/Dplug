@@ -388,7 +388,7 @@ void generateWindowsInstaller(string outputDir,
     string makeNsiCommand = format("makensis.exe %s%s", nsisVerboseFlag, nsisPath);
     safeCommand(makeNsiCommand);
     double sizeOfExe_mb = getSize(outExePath) / (1024.0*1024.0);
-    cwritefln("    =&gt; Build OK, binary size = %0.1f mb, available in %s\n".lgreen, sizeOfExe_mb, normalizedPath(outExePath));
+    cwritefln("    =&gt; Build OK, binary size = %0.3f mb, available in %s\n".lgreen, sizeOfExe_mb, normalizedPath(outExePath));
 
     if (!plugin.hasKeyFileOrDevIdentityWindows)
     {

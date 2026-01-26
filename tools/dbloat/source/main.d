@@ -34,7 +34,7 @@ void usage()
     cwriteln();
     flag("--help", "Show this help", null, null);
     flag("-n &lt;int&gt;", "      Number of top functions to list", "integer", "10");
-
+    flag("-o &lt;file&gt;", "      Write list of functions in a file", "string", null);
     cwriteln("");
 
     cwriteln("Note: you can enable/disable any category of symbols with -cat or +cat flags".white);
@@ -48,7 +48,9 @@ int main(string[] args)
         enableConsoleUTF8();
 
         string inpath;
+        string outpath;
         bool help = false;
+        
         int nFunctions = 10;
         bool[SYMBOL_NUM_CATEGORIES] visibility;
         foreach(cat; 0..SYMBOL_NUM_CATEGORIES)
@@ -66,6 +68,11 @@ int main(string[] args)
             {
                 ++i;
                 nFunctions = to!int(args[i]);
+            }
+            else if (arg == "-o")
+            {
+                ++i;
+                outpath = args[i];
             }
             else if (arg.startsWith("+") || arg.startsWith("-"))
             {
@@ -130,7 +137,7 @@ int main(string[] args)
 
 
         cwriteln;
-        displaySymbols(inpath, pdbResult.symbols, nFunctions, visibility);
+        displaySymbols(inpath, pdbResult.symbols, nFunctions, visibility, outpath);
         return 0;
     }
     catch(CCLException e)
@@ -143,7 +150,8 @@ int main(string[] args)
 void displaySymbols(string filename,
                     SymbolInfo[] symbols,
                     int maxSym,
-                    bool[SYMBOL_NUM_CATEGORIES] visibility) 
+                    bool[SYMBOL_NUM_CATEGORIES] visibility,
+                    string outpath) 
 {    
     cwritefln(`<strong>*** OVERVIEW ***</>`);
     cwritefln(`  - <yellow>%s</> has <lcyan>%s</> symbols.`, filename, symbols.length);
@@ -158,6 +166,9 @@ void displaySymbols(string filename,
         catBytes[sym.category] += sym.size;
         catSymbols[sym.category] += 1;
     }
+
+    File fileOutput;
+    if (outpath) fileOutput.open(outpath, "w");
 
     foreach(cat; 0..SYMBOL_NUM_CATEGORIES)
     {
@@ -187,6 +198,7 @@ void displaySymbols(string filename,
         string categColor = symbolCategoryColor(sym.category);
         string catName    = symbolCategoryName(sym.category);
         cwritefln(`<lblue>%6s bytes</> <white>%s</> <%s>#%s</>`, sym.size, escapeCCL(name), categColor, catName);
+        if (outpath) fileOutput.writefln("[%6s bytes] %s #%s", sym.size, name, catName);
     }
 }
 
