@@ -5,6 +5,7 @@ import std.conv;
 import std.math;
 import std.algorithm;
 import std.demangle;
+import std.array;
 
 import pdb;
 import consolecolors;
@@ -184,16 +185,16 @@ void displaySymbols(string filename,
     cwriteln();
     cwritefln("<strong>*** TOP %d LARGEST SYMBOLS ***</>", maxSym);
 
+    // Filter by visibility
+    symbols = symbols.filter!(sym => visibility[sym.category]).array;
+
+    // Limit amount of symbols both in file and stdout
     if (symbols.length > maxSym)
         symbols = symbols[0..maxSym];
 
     foreach (sym; symbols) 
     {
-        // Do not show everything
-        if (!visibility[sym.category])
-            continue;
-
-        string name = sym.name;//getDemangled();
+        string name = sym.getDemangled();
 
         string categColor = symbolCategoryColor(sym.category);
         string catName    = symbolCategoryName(sym.category);

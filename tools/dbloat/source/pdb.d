@@ -3,6 +3,7 @@ module pdb;
 import std.string;
 import std.conv;
 import std.algorithm;
+import std.stdio;
 
 
 enum SymbolCategory
@@ -147,7 +148,7 @@ struct SymbolInfo
     string getDemangled()
     {
         import std.demangle;
-        if (isDSymbol)
+        if (name.startsWith("_D"))
             return demangle(name);
         else 
             return name;
