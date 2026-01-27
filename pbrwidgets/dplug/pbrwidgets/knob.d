@@ -82,6 +82,16 @@ nothrow:
     /// change?
     @ScriptProperty float sensitivity = 0.25;
 
+    /// Use by mouse wheel parameter change. This 
+    /// change the normalized value by 1/steps.
+    /// Only used by mouse wheel for now.
+    ///
+    /// If the parameter is an IntegerParameter, this is ignored,
+    /// and the number of values in the parameter is taken instead.
+    ///
+    /// Cannot be zero. Can be negative if you prefer inverted wheel.
+    @ScriptProperty int steps = 30;
+
     this(UIContext context, Parameter param)
     {
         super(context, flagAnimated | flagPBR);
@@ -293,12 +303,47 @@ nothrow:
     /// Override this to round the parameter normalized value to some particular values.
     /// For example for a special drag movement with right-click or control-click.
     /// Default does nothing.
+    ///
+    /// Note that this is typically use to implement a rounding operation to the 
+    /// number of steps, while mouse wheel would add 1/steps without rounding.
+    ///
     /// Params:
     ///      normalizedValue The main parameter normalized value (0 to 1).
     /// Returns: the mapped value in normalized space (0 to 1).
     double roundParamValue(double normalizedValue, MouseState mstate)
     {
         return normalizedValue;
+    }
+
+    version(futureWidgetWheel)
+    {
+        override bool onMouseWheel(int x, int y,
+                                   int wheelDeltaX, int wheelDeltaY,
+                                   MouseState mstate)
+        {
+            // In case of integer parameter, the step used for wheeling always match
+            // the parameter.
+            IntegerParameter paramInt = getParamAsIntegerParam();
+            int actualSteps = paramInt !is null ? paramInt.numValues() : steps;
+
+            float modifier = 1.0f;
+            if (paramInt is null)
+            {
+                if (mstate.shiftPressed || mstate.ctrlPressed)
+                    modifier *= 0.1f;
+            }
+
+            double oldParamValue =  _param.getNormalized();
+            double newParamValue = oldParamValue + modifier * wheelDeltaY / cast(double)actualSteps;
+            if (newParamValue < 0) newParamValue = 0;
+            if (newParamValue > 1) newParamValue = 1;
+
+            _param.beginParamEdit();
+            setValue(oldParamValue, newParamValue);
+            _param.endParamEdit();
+
+            return true;
+        }
     }
 
     override Click onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
@@ -362,18 +407,7 @@ nothrow:
 
         newParamValue = roundParamValue(newParamValue, mstate);
 
-        if (newParamValue != oldParamValue)
-        {
-            if (auto fp = cast(FloatParameter)_param)
-                fp.setFromGUINormalized(newParamValue);
-            else if (auto ip = cast(IntegerParameter)_param)
-                ip.setFromGUINormalized(newParamValue);
-            else
-                assert(false);
-            _normalizedValueWhileDragging = newParamValue;
-            _displacementInHeightDebt = 0;
-        }
-
+        setValue(oldParamValue, newParamValue);
     }
 
     // For lazy updates 
@@ -524,5 +558,32 @@ protected:
         float centerx = (subSquare.min.x + subSquare.max.x - 1) * 0.5f;
         float centery = (subSquare.min.y + subSquare.max.y - 1) * 0.5f;
         return vec2f(centerx, centery);
+    }
+
+private:
+
+    final private void setValue(double oldParamValue, double newParamValue)
+    {
+        if (newParamValue != oldParamValue)
+        {
+            if (auto fp = cast(FloatParameter)_param)
+                fp.setFromGUINormalized(newParamValue);
+            else if (auto ip = cast(IntegerParameter)_param)
+                ip.setFromGUINormalized(newParamValue);
+            else
+                assert(false);
+            _normalizedValueWhileDragging = newParamValue;
+            _displacementInHeightDebt = 0;
+        }
+    }
+
+    final private IntegerParameter getParamAsIntegerParam()
+    {
+        return cast(IntegerParameter)_param;
+    }
+
+    final private FloatParameter getParamAsFloatParam()
+    {
+        return cast(FloatParameter)_param;
     }
 }
