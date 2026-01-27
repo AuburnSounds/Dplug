@@ -90,7 +90,7 @@ nothrow:
     /// and the number of values in the parameter is taken instead.
     ///
     /// Cannot be zero. Can be negative if you prefer inverted wheel.
-    @ScriptProperty int steps = 30;
+    version(futureWidgetWheel) @ScriptProperty int steps = 30;
 
     this(UIContext context, Parameter param)
     {

@@ -73,6 +73,12 @@ nothrow:
         addChild(_modeSwitch = mallocNew!UIImageSwitch(context(), cast(BoolParameter) _client.param(paramMode), switchOnImage, switchOffImage));       
 
         addChild(_resizerHint = mallocNew!UIWindowResizer(context()));
+
+        // mousewheel amounts
+        _inputGainKnob.steps = 24;
+        _outputGainKnob.steps = 24;
+        _mixKnob.steps = 20;
+        _bassSlider.steps = 20;
     }
 
     override void reflow()

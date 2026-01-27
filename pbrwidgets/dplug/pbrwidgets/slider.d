@@ -60,6 +60,16 @@ nothrow:
         float animWidthReduce       = 0.06f; // Make it zero to avoid the goody reduce effect
         float animHeightReduce      = 0.12f; // Make it zero to avoid the goody reduce effect
         float animationTimeConstant = 30.0f;
+
+        /// Use by mouse wheel parameter change. This 
+        /// change the normalized value by 1/steps.
+        /// Only used by mouse wheel for now.
+        ///
+        /// If the parameter is an IntegerParameter, this is ignored,
+        /// and the number of values in the parameter is taken instead.
+        ///
+        /// Cannot be zero. Can be negative if you prefer inverted wheel.
+        version(futureWidgetWheel) int steps = 30;
     }
 
     this(UIContext context, Parameter param)
@@ -322,19 +332,37 @@ nothrow:
         if (newParamValue < 1)
             _mousePosOnLast1Cross = -float.infinity;
 
-        if (newParamValue != oldParamValue)
+        setValue(oldParamValue, newParamValue);
+    }
+
+    version(futureWidgetWheel)
+    {
+        override bool onMouseWheel(int x, int y,
+                                   int wheelDeltaX, int wheelDeltaY,
+                                   MouseState mstate)
         {
-            if (auto p = cast(FloatParameter)_param)
+            // In case of integer parameter, the step used for wheeling always match
+            // the parameter.
+            IntegerParameter paramInt = cast(IntegerParameter)_param;
+            int actualSteps = paramInt !is null ? paramInt.numValues() : steps;
+
+            double modifier = 1.0;
+            if (paramInt is null)
             {
-                p.setFromGUINormalized(newParamValue);
+                if (mstate.shiftPressed || mstate.ctrlPressed)
+                    modifier = 0.1;
             }
-            else if (auto p = cast(IntegerParameter)_param)
-            {
-                p.setFromGUINormalized(newParamValue);
-                _draggingDebt = newParamValue - p.getNormalized();
-            }
-            else
-                assert(false); // only integer and float parameters supported
+
+            double oldParamValue =  _param.getNormalized();
+            double newParamValue = oldParamValue + modifier * wheelDeltaY / cast(double)actualSteps;
+            if (newParamValue < 0) newParamValue = 0;
+            if (newParamValue > 1) newParamValue = 1;
+
+            _param.beginParamEdit();
+            setValue(oldParamValue, newParamValue);
+            _param.endParamEdit();
+
+            return true;
         }
     }
 
@@ -404,5 +432,25 @@ protected:
     {
         _mousePosOnLast0Cross = float.infinity;
         _mousePosOnLast1Cross = -float.infinity;
+    }
+
+private:
+
+    final void setValue(double oldParamValue, double newParamValue)
+    {
+        if (newParamValue != oldParamValue)
+        {
+            if (auto p = cast(FloatParameter)_param)
+            {
+                p.setFromGUINormalized(newParamValue);
+            }
+            else if (auto p = cast(IntegerParameter)_param)
+            {
+                p.setFromGUINormalized(newParamValue);
+                _draggingDebt = newParamValue - p.getNormalized();
+            }
+            else
+                assert(false); // only integer and float parameters supported
+        }
     }
 }

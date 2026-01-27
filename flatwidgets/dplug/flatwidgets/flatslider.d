@@ -29,6 +29,14 @@ nothrow:
     @ScriptProperty Direction direction = Direction.vertical;
     @ScriptProperty float sensitivity = 0.25;
 
+    /// Use by mouse wheel parameter change. This 
+    /// change the normalized value by 1/steps.
+    /// Only used by mouse wheel for now.
+    ///
+    /// If the parameter is an IntegerParameter, this is ignored,
+    /// and the number of values in the parameter is taken instead.
+    version(futureWidgetWheel) @ScriptProperty int steps = 30;
+
     this(UIContext context, 
          FloatParameter param, 
          OwnedImage!RGBA sliderImage, 
@@ -212,6 +220,49 @@ nothrow:
             setDirtyWhole();
         }
     }
+
+    version(futureWidgetWheel)
+    {
+        override bool onMouseWheel(int x, int y,
+                                   int wheelDeltaX, int wheelDeltaY,
+                                   MouseState mstate)
+        {
+            // In case of integer parameter, the step used for wheeling always match
+            // the parameter.
+            IntegerParameter paramInt = cast(IntegerParameter)_param;
+            int actualSteps = paramInt !is null ? paramInt.numValues() : steps;
+
+            double modifier = 1.0;
+            if (paramInt is null)
+            {
+                if (mstate.shiftPressed || mstate.ctrlPressed)
+                    modifier = 0.1;
+            }
+
+            // Note: we don't consider the slider direction here,
+            // since horizontal mouse wheel is super rare.
+
+            double oldParamValue =  _param.getNormalized();
+            double newParamValue = oldParamValue + modifier * wheelDeltaY / cast(double)actualSteps;
+            if (newParamValue < 0) newParamValue = 0;
+            if (newParamValue > 1) newParamValue = 1;
+
+            _param.beginParamEdit();
+            if (newParamValue != oldParamValue)
+            {
+                if (auto p = cast(FloatParameter)_param)
+                {
+                    p.setFromGUINormalized(newParamValue);
+                }
+                else
+                    assert(false); // only integer and float parameters supported
+            }
+            _param.endParamEdit();
+            setDirtyWhole();
+            return true;
+        }
+    }
+
 
     // For lazy updates
     override void onBeginDrag()

@@ -26,6 +26,14 @@ nothrow:
 
     @ScriptProperty float sensitivity = 0.25;
 
+    /// Use by mouse wheel parameter change. This 
+    /// change the normalized value by 1/steps.
+    /// Only used by mouse wheel for now.
+    ///
+    /// If the parameter is an IntegerParameter, this is ignored,
+    /// and the number of values in the parameter is taken instead.
+    version(futureWidgetWheel) @ScriptProperty int steps = 30;
+
 
     this(UIContext context, 
          Parameter param, 
@@ -188,6 +196,49 @@ nothrow:
                     assert(false);
                 _normalizedValueWhileDragging = newParamValue;
             }
+        }
+    }
+
+    version(futureWidgetWheel)
+    {
+        override bool onMouseWheel(int x, int y,
+                                   int wheelDeltaX, int wheelDeltaY,
+                                   MouseState mstate)
+        {
+            if(_disabled)
+                return false;
+
+            // In case of integer parameter, the step used for wheeling always match
+            // the parameter.
+            IntegerParameter paramInt = cast(IntegerParameter)_param;
+            int actualSteps = paramInt !is null ? paramInt.numValues() : steps;
+
+            double modifier = 1.0;
+            if (paramInt is null)
+            {
+                if (mstate.shiftPressed || mstate.ctrlPressed)
+                    modifier = 0.1;
+            }
+
+            double oldParamValue =  _param.getNormalized();
+            double newParamValue = oldParamValue + modifier * wheelDeltaY / cast(double)actualSteps;
+            if (newParamValue < 0) newParamValue = 0;
+            if (newParamValue > 1) newParamValue = 1;
+
+            _param.beginParamEdit();
+            if (newParamValue != oldParamValue)
+            {
+                if (auto fp = cast(FloatParameter)_param)
+                    fp.setFromGUINormalized(newParamValue);
+                else if (auto ip = cast(IntegerParameter)_param)
+                    ip.setFromGUINormalized(newParamValue);
+                else
+                    assert(false);
+                _normalizedValueWhileDragging = newParamValue;
+            }
+            _param.endParamEdit();
+
+            return true;
         }
     }
 

@@ -26,8 +26,8 @@
     },
     
     "versions": [
-        "futureMouseDrag",
-        "futureBinState",
+        "futureVST3FolderWindows",
+        "futureWidgetWheel",
         "Dplug_RightClickMoveWidgets",
         "Dplug_NoMouseCursor"
     ],
