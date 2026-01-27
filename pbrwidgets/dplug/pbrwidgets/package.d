@@ -20,3 +20,4 @@ public import dplug.pbrwidgets.paramhint;
 public import dplug.pbrwidgets.imageknob;
 public import dplug.pbrwidgets.pbrbackgroundgui;
 public import dplug.pbrwidgets.textbox;
+public import dplug.pbrwidgets.sliderlogic;
