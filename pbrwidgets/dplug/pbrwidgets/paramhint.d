@@ -15,7 +15,9 @@ import dplug.gui.element;
 import dplug.gui.bufferedelement;
 import dplug.client.params;
 
-
+/// Old widget that literally spring up from the plugin and displays 
+/// a Parameter value when it is changed from the UI.
+/// Was a bit ridiculous in PBR but existing plugins are using it.
 /// Widget that monitors the value of a parameter and
 /// appears whenever it change to display its value.
 class UIParamHint : UIBufferedElementPBR, IParameterListener
@@ -24,25 +26,28 @@ public:
 nothrow:
 @nogc:
 
-    @ScriptProperty double fadeinDuration = 0.15f;
-    @ScriptProperty double fadeoutDuration = 0.3f;
-    @ScriptProperty double holdDuration = 0.85f;
+    @ScriptProperty
+    {
+        double fadeinDuration = 0.15f;
+        double fadeoutDuration = 0.3f;
+        double holdDuration = 0.85f;
 
-    @ScriptProperty float textSizePx = 9.5f;
-    @ScriptProperty RGBA holeDiffuse = RGBA(90, 90, 90, 0);
+        float textSizePx = 9.5f;
+        RGBA holeDiffuse = RGBA(90, 90, 90, 0);
     
-    @ScriptProperty RGBA textDiffuseLow = RGBA(90, 90, 90, 0);
-    @ScriptProperty RGBA textDiffuseHigh = RGBA(42, 42, 42, 0);
+        RGBA textDiffuseLow = RGBA(90, 90, 90, 0);
+        RGBA textDiffuseHigh = RGBA(42, 42, 42, 0);
 
-    @ScriptProperty RGBA diffuseLow = RGBA(90, 90, 90, 0);
-    @ScriptProperty RGBA diffuseHigh = RGBA(245, 245, 245, 30);
-    @ScriptProperty RGBA material = RGBA(0, 255, 192, 255);
+        RGBA diffuseLow = RGBA(90, 90, 90, 0);
+        RGBA diffuseHigh = RGBA(245, 245, 245, 30);
+        RGBA material = RGBA(0, 255, 192, 255);
 
-    @ScriptProperty RGBA plasticMaterial = RGBA(155, 240, 69, 255);
-    @ScriptProperty float plasticAlpha = 0.05f;
+        RGBA plasticMaterial = RGBA(155, 240, 69, 255);
+        float plasticAlpha = 0.05f;
 
-    @ScriptProperty ushort depthLow = 0;
-    @ScriptProperty ushort depthHigh = 50000;
+        ushort depthLow = 0;
+        ushort depthHigh = 50000;
+    }
 
     this(UIContext context, Parameter param, Font font)
     {
@@ -161,18 +166,20 @@ nothrow:
 
     override void onAnimate(double dt, double time) nothrow @nogc
     {
-        bool isBeingEdited = atomicLoad(_parameterIsEdited);
-        bool wasJustChanged = cas(&_parameterChanged, true, false);
+        bool valueChangedDueToUserEdit = cas(&_showHint, true, false);
 
-        if (isBeingEdited)
-            _timeSinceEdit = 0;
-
-        if (isBeingEdited && wasJustChanged)
+        if (valueChangedDueToUserEdit)
+        {
+            _timeSinceUserEdit = 0;        
             _lastParamString = paramString();
+        }
 
-        float targetAnimation = _timeSinceEdit < holdDuration ? 1 : 0;
+        bool beingEdited = atomicLoad(_editCount) > 0;
+        bool valueHasChangedRecently = (_timeSinceUserEdit < holdDuration);
 
-        bool animationMoved = void;
+        float targetAnimation = (beingEdited || valueHasChangedRecently) ? 1.0f : 0.0f;
+
+        bool animationMoved;
 
         if (_upAnimation < targetAnimation)
         {
@@ -194,31 +201,39 @@ nothrow:
         // redraw if:
         // - parameter changed
         // - animation changed
-        if ((wasJustChanged && isBeingEdited) || animationMoved)
+        if (valueChangedDueToUserEdit || animationMoved)
             setDirtyWhole();
 
-        _timeSinceEdit += dt;
+        _timeSinceUserEdit += dt;
     }
 
     override void onParameterChanged(Parameter sender) nothrow @nogc
     {
-        atomicStore(_parameterChanged, true);
+        // If the parameter change, but this without being "edited",
+        // then this is probably a change from automation, and we 
+        // don't need to show hints.
+        int editCount = atomicLoad(_editCount);
+
+        if (editCount > 0)
+        {
+            atomicStore(_showHint, true);
+        }
     }
 
     override void onBeginParameterEdit(Parameter sender)
     {
-        atomicStore(_parameterIsEdited, true);
-        atomicStore(_parameterChanged, true);
+        atomicOp!"+="(_editCount, 1);
     }
 
     override void onEndParameterEdit(Parameter sender)
     {
-        atomicStore(_parameterIsEdited, false);
+        atomicOp!"+="(_editCount, -1);
     }
 
     override void onBeginParameterHover(Parameter sender)
     {
-        // MAYDO: also show the parameter if hovered (and not dragged)
+        // I think it was tried to show the parameter if 
+        // just hovered, and that wasn't convincing
     }
 
     override void onEndParameterHover(Parameter sender)
@@ -228,12 +243,12 @@ nothrow:
 private:
     Parameter _param;
 
-    shared(bool) _parameterIsEdited = false; // access to this is through atomic ops
-    shared(bool) _parameterChanged = false;  // access to this is through atomic ops
+    shared(int) _editCount = 0;
+    shared(bool) _showHint = false;
 
     float _upAnimation = 0;
 
-    double _timeSinceEdit = double.infinity;
+    double _timeSinceUserEdit = double.infinity;
     
     const(char)[] _lastParamString;
 
