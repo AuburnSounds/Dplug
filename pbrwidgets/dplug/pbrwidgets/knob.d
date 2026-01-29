@@ -90,7 +90,7 @@ nothrow:
     /// and the number of values in the parameter is taken instead.
     ///
     /// Cannot be zero. Can be negative if you prefer inverted wheel.
-    version(futureWidgetWheel) @ScriptProperty int steps = 30;
+    version(futureWidgetWheel) @ScriptProperty float steps = 30;
 
     this(UIContext context, Parameter param)
     {
@@ -324,7 +324,7 @@ nothrow:
             // In case of integer parameter, the step used for wheeling always match
             // the parameter.
             IntegerParameter paramInt = getParamAsIntegerParam();
-            int actualSteps = paramInt !is null ? paramInt.numValues() : steps;
+            double actualSteps = paramInt !is null ? paramInt.numValues() : steps;
 
             float modifier = 1.0f;
             if (paramInt is null)
@@ -334,7 +334,7 @@ nothrow:
             }
 
             double oldParamValue =  _param.getNormalized();
-            double newParamValue = oldParamValue + modifier * wheelDeltaY / cast(double)actualSteps;
+            double newParamValue = oldParamValue + modifier * wheelDeltaY / actualSteps;
             if (newParamValue < 0) newParamValue = 0;
             if (newParamValue > 1) newParamValue = 1;
 

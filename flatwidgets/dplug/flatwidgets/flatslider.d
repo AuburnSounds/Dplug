@@ -35,7 +35,7 @@ nothrow:
     ///
     /// If the parameter is an IntegerParameter, this is ignored,
     /// and the number of values in the parameter is taken instead.
-    version(futureWidgetWheel) @ScriptProperty int steps = 30;
+    version(futureWidgetWheel) @ScriptProperty float steps = 30;
 
     this(UIContext context, 
          FloatParameter param, 
@@ -230,7 +230,7 @@ nothrow:
             // In case of integer parameter, the step used for wheeling always match
             // the parameter.
             IntegerParameter paramInt = cast(IntegerParameter)_param;
-            int actualSteps = paramInt !is null ? paramInt.numValues() : steps;
+            double actualSteps = paramInt !is null ? paramInt.numValues() : steps;
 
             double modifier = 1.0;
             if (paramInt is null)
@@ -243,7 +243,7 @@ nothrow:
             // since horizontal mouse wheel is super rare.
 
             double oldParamValue =  _param.getNormalized();
-            double newParamValue = oldParamValue + modifier * wheelDeltaY / cast(double)actualSteps;
+            double newParamValue = oldParamValue + modifier * wheelDeltaY / actualSteps;
             if (newParamValue < 0) newParamValue = 0;
             if (newParamValue > 1) newParamValue = 1;
 
