@@ -22,6 +22,8 @@ enum HandleStyle
     shapeBlock
 }
 
+// FUTURE: implement debt and IntegerParameter in sliderlogic.d
+// so that this slider can depend on UISliderLogic
 class UISlider : UIBufferedElementPBR, IParameterListener
 {
 public:
