@@ -42,7 +42,6 @@ import dplug.gui.element;
 */
 // FUTURE: allow IntegerParameter
 // FUTURE: enable an horizontal mode
-// FUTURE: allows mouse wheel and "steps" given to .mouseWheel
 struct UISliderLogic
 {
 public:
@@ -157,15 +156,37 @@ nothrow:
 
         if (newParamValue < 1)
             _mousePosOnLast1Cross = -float.infinity;
+    }
 
-        if (newParamValue != oldParamValue)
+    version(futureWidgetWheel)
+    {
+        bool mouseWheel(int x, int y,
+                        int wheelDeltaX, int wheelDeltaY,
+                        MouseState mstate,
+                        float steps)
         {
-            if (auto p = cast(FloatParameter)_param)
+            // In case of integer parameter, the step used for wheeling always match
+            // the parameter.
+            IntegerParameter paramInt = cast(IntegerParameter)_param;
+            double actualSteps = paramInt !is null ? paramInt.numValues() : steps;
+
+            double modifier = 1.0;
+            if (paramInt is null)
             {
-                p.setFromGUINormalized(newParamValue);
+                if (mstate.shiftPressed || mstate.ctrlPressed)
+                    modifier = 0.1;
             }
-            else
-                assert(false); // only float parameters supported
+
+            double oldParamValue =  _param.getNormalized();
+            double newParamValue = oldParamValue + modifier * wheelDeltaY / actualSteps;
+            if (newParamValue < 0) newParamValue = 0;
+            if (newParamValue > 1) newParamValue = 1;
+
+            _param.beginParamEdit();
+            setValue(oldParamValue, newParamValue);
+            _param.endParamEdit();
+
+            return true;
         }
     }
 
@@ -190,5 +211,18 @@ private:
     {
         _mousePosOnLast0Cross = float.infinity;
         _mousePosOnLast1Cross = -float.infinity;
+    }
+
+    void setValue(double oldParamValue, double newParamValue)
+    {
+        if (newParamValue != oldParamValue)
+        {
+            if (auto p = cast(FloatParameter)_param)
+            {
+                p.setFromGUINormalized(newParamValue);
+            }
+            else
+                assert(false); // only float parameters supported
+        }
     }
 }
