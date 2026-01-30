@@ -24,28 +24,31 @@ nothrow:
         vertical,
         horizontal
     }
-    @ScriptProperty RGBA diffuseOff = RGBA(230, 80, 43, 0);
-    @ScriptProperty RGBA diffuseOn = RGBA(230, 80, 43, 200);
-    @ScriptProperty RGBA material = RGBA(192, 10, 128, 255);
-    @ScriptProperty float animationTimeConstant = 10.0f;
-    @ScriptProperty ushort depthLow = 0;
-    @ScriptProperty ushort depthHigh = 30000;
-    @ScriptProperty ushort holeDepth = 0;
-    @ScriptProperty Orientation orientation = Orientation.vertical;
-    @ScriptProperty bool drawDepth = true;
-    @ScriptProperty bool drawDiffuse = true;
-    @ScriptProperty bool drawMaterial = true;
-    @ScriptProperty bool drawHole = true;     // if drawDepth && drawHole, draw Z hole
-    @ScriptProperty bool drawEmissive = true; // if drawEmissive && !drawDiffuse, draw just the emissive channel
-    
 
-    /// Left and right border, in fraction of the widget's width.
-    /// Cannot be > 0.5f
-    @ScriptProperty float borderHorz = 0.1f;
+    @ScriptProperty 
+    {
+        RGBA diffuseOff = RGBA(230, 80, 43, 0);
+        RGBA diffuseOn = RGBA(230, 80, 43, 200);
+        RGBA material = RGBA(192, 10, 128, 255);
+        float animationTimeConstant = 10.0f;
+        ushort depthLow = 0;
+        ushort depthHigh = 30000;
+        ushort holeDepth = 0;
+        Orientation orientation = Orientation.vertical;
+        bool drawDepth = true;
+        bool drawDiffuse = true;
+        bool drawMaterial = true;
+        bool drawHole = true;     // if drawDepth && drawHole, draw Z hole
+        bool drawEmissive = true; // if drawEmissive && !drawDiffuse, draw just the emissive channel
 
-    /// Top and bottom border, in fraction of the widget's width.*
-    /// Cannot be > 0.5f
-    @ScriptProperty float borderVert = 0.1f;
+        /// Left and right border, in fraction of the widget's width.
+        /// Cannot be > 0.5f
+        float borderHorz = 0.1f;
+
+        /// Top and bottom border, in fraction of the widget's width.*
+        /// Cannot be > 0.5f
+        float borderVert = 0.1f;
+    }
 
     /// Note: Can take a BoolParameter or IntegerParameter, in which 
     /// case enabled means 1 and disabled means 0. 
@@ -188,22 +191,41 @@ nothrow:
             // Any click => invert
             // Note: double-click doesn't reset to default, would be annoying
             _param.beginParamEdit();
-            if (auto bp = cast(BoolParameter)_param)
-            {
-                bp.setFromGUI(!bp.value());
-            }
-            else if (auto ip = cast(IntegerParameter)_param)
-            {
-                // any => 0
-                // 0   => 1
-                bool value = ip.value() != 0;
-                ip.setFromGUI(value ? 0 : 1);
-            }
-            else
-                assert(false);
+            invertParamValue();
+
         }
         _canBeDragged = false;
         return Click.startDrag;
+    }
+
+    void invertParamValue()
+    {
+        if (auto bp = cast(BoolParameter)_param)
+        {
+            bp.setFromGUI(!bp.value());
+        }
+        else if (auto ip = cast(IntegerParameter)_param)
+        {
+            // any => 0
+            // 0   => 1
+            bool value = ip.value() != 0;
+            ip.setFromGUI(value ? 0 : 1);
+        }
+        else
+            assert(false);
+    }
+
+    version(futureWidgetWheel)
+    {
+        override bool onMouseWheel(int x, int y,
+                                   int wheelDeltaX, int wheelDeltaY,
+                                   MouseState mstate)
+        {
+            _param.beginParamEdit();
+            invertParamValue();
+            _param.endParamEdit();
+            return true;
+        }
     }
 
     override void onMouseEnter()
