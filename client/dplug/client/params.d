@@ -845,7 +845,7 @@ public:
         return this;
     }
 
-    /// Sets the value of the parameter from UI, using a normalized value.
+    /// Sets the value of the parameter from UI, using an unnormalized value.
     /// Note: If `value` is not inside [min .. max], then it is clamped.
     ///       This is not an error.
     /// See_also: `setFromGUINormalized`

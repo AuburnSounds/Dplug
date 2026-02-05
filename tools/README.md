@@ -12,4 +12,5 @@
    * `tools/presetbank`: Synthesize a FXB file out of a number of individual FXP files.
    * `tools/color-correction`: Choose color correction curves for a finished UI
    * `tools/dbloat`: Find largest function in your D binaries by parsing a .pdb
+   * `tools/all-plugins`: Help manage a large quantity of plugins by running the same commands.
    
