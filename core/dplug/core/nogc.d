@@ -15,10 +15,7 @@ import core.stdc.stdarg;
 import core.stdc.string: strdup, memcpy, strlen;
 import core.stdc.stdlib: malloc, free, getenv;
 
-import numem.lifetime;
-import numem.core.lifetime: destruct;
-import numem.core.traits;
-import numem.core.hooks;
+
 import dplug.core.vec: Vec;
 
 import std.traits;
@@ -114,74 +111,157 @@ void destroyNoGC(T)(ref T obj) nothrow @nogc
 }
 
 
+// Half-arsed attempts, fails with dyncast
+// FUTURE: enable this
+enum DPLUG_CORE_USES_NUMEM = true;
 
-//
-// Constructing and destroying without the GC.
-//
 
-/// Allocates and construct a struct or class object.
-/// Returns: Newly allocated object.
-auto mallocNew(T, Args...)(Args args) @nogc if (is(T == class))
+static if (DPLUG_CORE_USES_NUMEM)
 {
-    return nogc_trynew!T(args);
-}
+    import numem.lifetime;
+    import numem.core.lifetime: destruct;
+    import numem.core.traits;
+    import numem.core.hooks;
+    //
+    // Constructing and destroying without the GC.
+    //
 
-auto mallocNew(T, Args...)(Args args) @nogc if (is(T == struct))
-{
-    return nogc_trynew!T(args);
-}
+    /// Allocates and construct a struct or class object.
+    /// Returns: Newly allocated object.
+    auto mallocNew(T, Args...)(Args args) @nogc if (is(T == class))
+    {
+        return nogc_trynew!T(args);
+    }
 
-/// Destroys and frees a class object created with $(D mallocEmplace).
-void destroyFree(T)(T p) @nogc if (is(T == class))
-{
-    //static assert(!isCPP!T);
-    nogc_trydelete(p);
-}
+    auto mallocNew(T, Args...)(Args args) @nogc if (is(T == struct))
+    {
+        return nogc_trynew!T(args);
+    }
 
-/// Destroys and frees an interface object created with $(D mallocEmplace).
-void destroyFree(T)(T p) @nogc if (is(T == interface))
-{
-    //static assert(!isCPP!T);
-    nogc_trydelete(p);
-}
+    /// Destroys and frees a class object created with $(D mallocEmplace).
+    void destroyFree(T)(T p) @nogc if (is(T == class))
+    {
+        //static assert(!isCPP!T);
+        nogc_trydelete(p);
+    }
 
-/// Destroys and frees a non-class object created with $(D mallocEmplace).
-void destroyFree(T)(T* p) @nogc if (!is(T == class))
-{
-    //static assert(!isCPP!T);
-    nogc_trydelete(p);
-}
+    /// Destroys and frees an interface object created with $(D mallocEmplace).
+    void destroyFree(T)(T p) @nogc if (is(T == interface))
+    {
+        //static assert(!isCPP!T);
+        nogc_trydelete(p);
+    }
 
-/// Allocate/deallocate an extern(C++) class with a D construction. Useful because extern(C++) is abused to mean:
-/// "no hidden fields and virtuals". Hence absolutely vital for some interop.
-auto mallocNewPascal(T, Args...)(Args args) @nogc if (is(T == class))
-{
-    static assert(isCPP!T);
-    if (Ref!T newobject = cast(Ref!T)nu_malloc(AllocSize!T)) {
-        try {
-            nogc_construct(newobject, args);
-            return newobject;
-        } catch(Exception ex) {
-            nu_free(cast(void*)newobject);
-            // ex leaked and ignored
-            return null;
+    /// Destroys and frees a non-class object created with $(D mallocEmplace).
+    void destroyFree(T)(T* p) @nogc if (!is(T == class))
+    {
+        //static assert(!isCPP!T);
+        nogc_trydelete(p);
+    }
+
+    /// Allocate/deallocate an extern(C++) class with a D construction. Useful because extern(C++) is abused to mean:
+    /// "no hidden fields and virtuals". Hence absolutely vital for some interop.
+    auto mallocNewPascal(T, Args...)(Args args) @nogc if (is(T == class))
+    {
+        static assert(isCPP!T);
+        if (Ref!T newobject = cast(Ref!T)nu_malloc(AllocSize!T)) {
+            try {
+                nogc_construct(newobject, args);
+                return newobject;
+            } catch(Exception ex) {
+                nu_free(cast(void*)newobject);
+                // ex leaked and ignored
+                return null;
+            }
+        }
+        return null;
+    }
+    ///ditto
+    void destroyFreePascal(T)(T p) @nogc if (is(T == class))
+    {
+        static assert(isCPP!T);
+        try 
+        {
+            destruct!(T, false)(p);
+        } 
+        catch (Exception ex) 
+        {
+            // leaked and ignored
         }
     }
-    return null;
 }
-///ditto
-void destroyFreePascal(T)(T p) @nogc if (is(T == class))
+else
 {
-    static assert(isCPP!T);
-    try 
+    //
+    // Constructing and destroying without the GC.
+    //
+
+    import core.memory: GC;
+    import core.exception: onOutOfMemoryErrorNoGC;
+    import std.conv: emplace;
+
+    /// Allocates and construct a struct or class object.
+    /// Returns: Newly allocated object.
+    auto mallocNew(T, Args...)(Args args)
     {
-        destruct!(T, false)(p);
-    } 
-    catch (Exception ex) 
-    {
-        // leaked and ignored
+        static if (is(T == class))
+            immutable size_t allocSize = __traits(classInstanceSize, T);
+        else
+            immutable size_t allocSize = T.sizeof;
+
+        void* rawMemory = malloc(allocSize);
+        if (!rawMemory)
+            onOutOfMemoryErrorNoGC();
+
+        static if (is(T == class))
+        {
+            T obj = emplace!T(rawMemory[0 .. allocSize], args);
+        }
+        else
+        {
+            T* obj = cast(T*)rawMemory;
+            emplace!T(obj, args);
+        }
+
+        return obj;
     }
+
+    alias mallocNewPascal = mallocNew;
+    alias destroyFreePascal = destroyFree;
+
+    /// Destroys and frees a class object created with $(D mallocEmplace).
+    void destroyFree(T)(T p) if (is(T == class))
+    {
+        if (p !is null)
+        {
+            destroyNoGC(p);
+            free(cast(void*)p);
+        }
+    }
+
+    /// Destroys and frees an interface object created with $(D mallocEmplace).
+    void destroyFree(T)(T p) if (is(T == interface))
+    {
+        if (p !is null)
+        {
+            void* here = cast(void*)(cast(Object)p);
+            destroyNoGC(p);
+            free(cast(void*)here);
+        }
+    }
+
+    /// Destroys and frees a non-class object created with $(D mallocEmplace).
+    void destroyFree(T)(T* p) if (!is(T == class))
+    {
+        if (p !is null)
+        {
+            destroyNoGC(p);
+            free(cast(void*)p);
+        }
+    }
+
 }
+
 
 unittest
 {
