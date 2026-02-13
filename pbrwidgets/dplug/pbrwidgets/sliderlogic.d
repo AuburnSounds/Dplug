@@ -156,6 +156,8 @@ nothrow:
 
         if (newParamValue < 1)
             _mousePosOnLast1Cross = -float.infinity;
+
+        setValue(oldParamValue, newParamValue);
     }
 
     version(futureWidgetWheel)
