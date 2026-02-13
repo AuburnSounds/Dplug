@@ -111,9 +111,8 @@ void destroyNoGC(T)(ref T obj) nothrow @nogc
 }
 
 
-// Half-arsed attempts, fails with dyncast
-// FUTURE: enable this
-enum DPLUG_CORE_USES_NUMEM = true;
+// FUTURE: enable this, this was disabled to workaround #931
+enum DPLUG_CORE_USES_NUMEM = false;
 
 
 static if (DPLUG_CORE_USES_NUMEM)
