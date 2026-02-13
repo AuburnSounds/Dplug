@@ -772,6 +772,14 @@ private:
     {
         if (_timer)
         {
+            // MAYDO: is this respected?
+            // """
+            // Special Considerations
+            // You must send this message from the thread on which the timer 
+            // was installed. If you send this message from another thread, 
+            // the input source associated with the timer may not be removed 
+            // from its run loop, which could prevent the thread from exiting properly.
+            // MAYDO: we are not waiting for an eventual end of onAnimate, which is strange
             _timer.invalidate();
             _timer = NSTimer(null);
         }
