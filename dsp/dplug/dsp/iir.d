@@ -1314,6 +1314,9 @@ nothrow:
         return y * _cond2;
     }
 
+    // TODO PERF: add nextBuffer function
+    // TODO PERF: _cond2 is more or less b4, add a gain member and remove _cond2, be careful
+
 private:
     IvantsovType _type;
     bool _recomputeCoeffs = true;
