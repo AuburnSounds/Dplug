@@ -1,10 +1,12 @@
 /**
-    Basic IIR 1-pole and 2-pole filters through biquads.
+    Basic IIR 1-pole and 2-pole filters through biquads or
+    similar structures.
 
-    Copyright: Guillaume Piolat (c) 2015-2025.
+    Copyright: Guillaume Piolat (c) 2015-2026.
+    Copyright: Yuriy Ivantsov (c) 2025-2026.
     License:   http://www.boost.org/LICENSE_1_0.txt, BSL-1.0
 
-    This introduces 3 concepts:
+    This introduces 4 concepts:
 
        - `BiquadCoeff` holds filter coefficients for a
           "biquad", up to two poles and two zeroes,
@@ -16,12 +18,16 @@
          who smooth coefficient and allow to modulate
          filtering over time without clicks.
 
+       - `IvantsovIIR`, an easy to use struct with fast and
+         decramped 1st-order and 2nd-order filters.
+
     Reference:
         https://en.wikipedia.org/wiki/Digital_biquad_filter
+        https://github.com/yIvantsov/ivantsov-filters
 */
 module dplug.dsp.iir;
 
-import std.math: SQRT1_2, PI, pow, sin, cos, sqrt;
+import std.math: SQRT2, SQRT1_2, PI, pow, sin, cos, sqrt;
 import std.complex: Complex,
                     complexAbs = abs,
                     complexExp = exp,
@@ -1175,6 +1181,331 @@ private:
     double _smoothDF;
     bool _initialized;
     float _sr;
+}
+
+
+
+
+
+
+
+
+
+
+/*
+
+██ ██    ██  █████  ███    ██ ████████ ███████  ██████  ██    ██ 
+██ ██    ██ ██   ██ ████   ██    ██    ██      ██    ██ ██    ██ 
+██ ██    ██ ███████ ██ ██  ██    ██    ███████ ██    ██ ██    ██ 
+██  ██  ██  ██   ██ ██  ██ ██    ██         ██ ██    ██  ██  ██  
+██   ████   ██   ██ ██   ████    ██    ███████  ██████    ████   
+
+*/
+/*
+    Ivantsov State-Space Filters
+
+    First and second-order linear filters using state-space 
+    representation. Provides various filter types with 
+    optional frequency warping.
+
+    Translated from C++ implementation. License = MIT.
+*/
+
+/// Type of filter.
+enum IvantsovType
+{
+    // 1st order
+    highPass1stOrder,
+    lowPass1stOrder,
+    allPass1stOrder,
+    highShelf1stOrder,
+    lowShelf1stOrder,
+
+    // 2nd order
+    highPass2ndOrder,
+    bandPass2ndOrder,
+    lowPass2ndOrder,
+    allPass2ndOrder,
+    notch2ndOrder,
+    highShelf2ndOrder,
+    lowShelf2ndOrder,
+    midShelf2ndOrder
+}
+
+/// Apply an 1-pole ivantsov design to audio.
+/// This can contain all types.
+struct IvantsovIIR
+{
+pure:
+nothrow:
+@nogc:
+
+    /// Initialize structure.
+    ref IvantsovIIR initialize(float sampleRate)
+    {
+        _sr = sampleRate;
+        _recomputeCoeffs = true;
+        _recomputeSigma = true;
+        clearState();
+        return this;
+    }
+
+    /// Clear filter state, keep same sampling-rate.
+    void clearState()
+    {
+        _z0 = 0;
+        _z1 = 0;
+    }
+
+    /// Set type of filter.
+    /// MUST be called before use.
+    ref IvantsovIIR setType(IvantsovType newType)
+    {
+        if (_type != newType)
+        {
+            _type = newType;
+            _recomputeCoeffs = true;
+        }
+        return this;
+    }
+
+    /// Set gain (only applies to shelf filters)
+    /// MUST be called before use, in case of shelf.
+    ref IvantsovIIR setGain(double gain_linear)
+    {
+        _b4 = gain_linear;
+        _recomputeCoeffs = true;
+        return this;
+    }
+
+    /// Set cutoff.
+    /// MUST be called before use.
+    ref IvantsovIIR setCutoff(double fc_Hz)
+    {
+        if (_fc == fc_Hz)
+            return this; // avoid costly recomputes
+
+        _fc = fc_Hz;
+        _recomputeCoeffs = true;
+        _recomputeSigma = true;
+        return this;
+    }
+
+    /// Set damping factor
+    /// MUST be called before use, in case of 2nd order.    
+    ref IvantsovIIR setDamping(double x)
+    {
+        if (_zeta == x)
+            return this;
+        _zeta = x;
+        _recomputeCoeffs = true;
+        return this;
+    }
+
+    /// Process a single sample.
+    double nextSample(double x)
+    {
+        recomputeCoeffsIfNeeded();
+        double theta = (x - _z0 - _z1 * _b1) * _b0;
+        double y = theta * _b3 + _z1 * _b2;
+        y = y + _z0 * _cond1;
+        _z0 = _z0 + theta;
+        _z1 = -_z1 - theta * _b1;
+        return y * _cond2;
+    }
+
+private:
+    IvantsovType _type;
+    bool _recomputeCoeffs = true;
+    bool _recomputeSigma  = true;
+
+    enum double invPi = 1.0 / PI;
+    enum double sqrt2InvPi = SQRT2 / PI;
+
+    // State management.
+    double _sr;
+    double _sigma = 0; // for warping
+    double _w     = 0;
+    double _fc;
+    double _zeta;
+
+    // Filter current state.
+    double _z0, _z1;
+
+    // Filter coefficients.
+    double _b0; // Used by order 1 and 2
+    double _b1; // Used by order 2 only
+    double _b2; // Used by order 2 only
+    double _b3; // Used by order 1 and 2
+    double _b4; // Used by order 1 and 2, only by shelves
+
+    // To unify all the filter types, need more "coeffs" 
+    // as the realizations different depending on type.
+    double _cond1;  
+    double _cond2;
+
+    void recomputeCoeffsIfNeeded()
+    {
+        if (!_recomputeCoeffs) 
+            return;
+        _recomputeCoeffs = false;
+
+        if (_recomputeSigma)
+        {
+            if (_type <= IvantsovType.lowShelf1stOrder)
+            {
+                // 1st order
+                _w = _sr / (2.0 * PI * _fc);
+                if (_w > invPi)
+                    _sigma = 0.408249999896 * (0.0584335750974 - _w * _w) / (0.0459329400275 - _w * _w);
+                else
+                    _sigma = invPi;
+            }
+            else
+            {
+                // 2nd order
+                _w = _sr / (SQRT2 * PI * _fc);
+                double threshold = SQRT2 / PI;
+                if (_w > threshold)
+                    _sigma = 0.577352686692 * (0.116867150195 - _w * _w) / (0.091865880055 - _w * _w);
+                else
+                    _sigma = sqrt2InvPi;
+                
+            }
+            _recomputeSigma = false;
+        }
+
+
+        _cond1 = 1;
+        _cond2 = 1;
+
+        _b1 = 0;
+        _b2 = 0;
+
+        immutable double wSq = _w * _w;
+        immutable double sigmaSq = _sigma * _sigma;
+
+        double v, k;
+        if (_type > IvantsovType.lowShelf1stOrder) // Is 2nd order
+        {
+            if (_type == IvantsovType.lowShelf2ndOrder)
+                computeVK(wSq * fast_sqrt(_b4), _zeta * _zeta, sigmaSq, v, k); // PERF: sounds unused
+            else if (_type == IvantsovType.highShelf2ndOrder)
+                computeVK(wSq / fast_sqrt(_b4), _zeta * _zeta, sigmaSq, v, k); // PERF: sounds unused
+            else if (_type == IvantsovType.midShelf2ndOrder)
+                computeVK(wSq, _zeta * _zeta / _b4, sigmaSq, v, k); // PERF: sounds unused
+            else
+                computeVK(wSq, _zeta * _zeta, sigmaSq, v, k);
+
+            _b0 = 1.0 / (v + fast_sqrt(v + k) + 0.5);
+            _b1 = fast_sqrt(v + v);
+        }
+
+        final switch (_type) with (IvantsovType)
+        {
+            case highPass1stOrder:
+                _b0 = 1.0 / (0.5 + warp(_w * _w));
+                _b3 = _w;
+                _cond1 = 0;
+                break;
+
+            case lowPass1stOrder:
+                _b0 = 1.0 / (0.5 + warp(_w * _w));
+                _b3 = 0.5 + _sigma;
+                break;
+                    
+            case allPass1stOrder:
+                _b0 = 1.0 / (0.5 + warp(_w * _w));
+                _b3 = 0.5 - warp(_w * _w);
+                break;
+
+            case lowShelf1stOrder:
+                assert(_b4 != 0); // gain cannot be -inf 
+                _b0 = 1.0 / (0.5 + warp(_w * _w * _b4));
+                _b3 = 0.5 + warp(_w * _w / _b4);
+                _cond2 = _b4;
+                break;
+
+            case highShelf1stOrder:
+                assert(_b4 != 0); // gain cannot be -inf 
+                _b0 = 1.0 / (0.5 + warp(_w * _w / _b4));
+                _b3 = 0.5 + warp(_w * _w * _b4);
+                break;
+
+                // 2nd order
+            case highPass2ndOrder:                
+                _b2 = 2.0 * wSq / _b1;
+                _b3 = wSq;
+                _cond1 = 0;
+                break;
+
+            case bandPass2ndOrder:
+                _b2 = 4.0 * _w * _zeta * _sigma / _b1;
+                _b3 = 2.0 * _w * _zeta * (_sigma + SQRT1_2);
+                _cond1 = 0;
+                break;
+
+            case lowPass2ndOrder:
+                _b2 = 2.0 * sigmaSq / _b1;
+                _b3 = sigmaSq + SQRT2 * _sigma + 0.5;
+                break;
+
+            case allPass2ndOrder:
+                _b2 = _b1;
+                _b3 = v - fast_sqrt(v + k) + 0.5;
+                break;
+
+            case notch2ndOrder:
+                _b2 = 2.0 * (wSq - sigmaSq) / _b1;
+                _b3 = wSq - sigmaSq + 0.5;
+                break;
+
+            case highShelf2ndOrder:
+            {
+                double vB, kB;
+                computeVK(wSq * fast_sqrt(_b4), _zeta * _zeta, sigmaSq, vB, kB);
+                _b2 = 2.0 * vB / _b1;
+                _b3 = vB + fast_sqrt(vB + kB) + 0.5;
+                break;
+            }
+
+            case lowShelf2ndOrder:
+            {
+                double vB, kB;
+                computeVK(wSq / sqrt(_b4), _zeta * _zeta, sigmaSq, vB, kB);
+                _cond2 = _b4;
+                _b2 = 2.0 * vB / _b1;
+                _b3 = vB + fast_sqrt(vB + kB) + 0.5;
+                break;
+            }
+
+            case midShelf2ndOrder:
+            {
+                double vB, kB;
+                computeVK(wSq, _zeta * _zeta * _b4, sigmaSq, vB, kB);
+                _b2 = 2.0 * vB / _b1;
+                _b3 = vB + fast_sqrt(vB + kB) + 0.5;
+                break;
+            }
+        }
+    }
+
+    // Warp function, 1st order
+    double warp(double x)
+    {
+        return fast_sqrt(x + _sigma * _sigma);
+    }
+
+    // Helper function that computes (v, k) pair
+    // v = sqrt(x^2 + 2*t*sigma^2 + sigma^4) where t = x*(2y-1)
+    // k = t + sigma^2
+    static void computeVK(double x, double y, double sigmaSq_, out double v, out double k)
+    {
+        double t = x * (y + y - 1.0);
+        k = t + sigmaSq_;
+        // Potential precision note: for very small x, this could lose precision
+        v = fast_sqrt(x * x + 2.0 * t * sigmaSq_ + sigmaSq_ * sigmaSq_);
+    }
 }
 
 
