@@ -2,9 +2,11 @@
     Basic IIR 1-pole and 2-pole filters through biquads or
     similar structures.
 
-    Copyright: Guillaume Piolat (c) 2015-2026.
-    Copyright: Yuriy Ivantsov (c) 2025-2026.
+    Copyright: Guillaume Piolat (c) 2015-2026. (Boost)
+    Copyright: Yuriy Ivantsov (c) 2025-2026. (MIT)
+
     License:   http://www.boost.org/LICENSE_1_0.txt, BSL-1.0
+               https://opensource.org/license/mit, MIT
 
     This introduces 4 concepts:
 
@@ -16,10 +18,14 @@
 
        - `InterpolatedBiquad` is an alternative processor
          who smooth coefficient and allow to modulate
-         filtering over time without clicks.
+         filtering over time without clicks. This makes it
+         a cheap solution for modulated filter.
 
        - `IvantsovIIR`, an easy to use struct with fast and
          decramped 1st-order and 2nd-order filters.
+         They can be modulated infinitely fast, although 
+         with coefficient recomputation.
+         If you don't know what to use, maybe try those.
 
     Reference:
         https://en.wikipedia.org/wiki/Digital_biquad_filter
@@ -35,6 +41,7 @@ import std.complex: Complex,
                     complexFromPolar = fromPolar;
 import dplug.core.math;
 import inteli.emmintrin;
+import core.stdc.math: isnan;
 
 nothrow @nogc:
 
@@ -1211,7 +1218,10 @@ private:
     Translated from C++ implementation. License = MIT.
 */
 
-/// Type of filter.
+/**
+    Type of Ivantsov filter. Only 1-pole and 2-poles are
+    provided.
+*/
 enum IvantsovType
 {
     // 1st order
@@ -1232,16 +1242,27 @@ enum IvantsovType
     midShelf2ndOrder
 }
 
-/// Apply an 1-pole ivantsov design to audio.
-/// This can contain all types.
+/**
+    Main processor for applying an Ivantsov filter design to
+    audio. One channel.
+    Can process `float` or `double` data.
+
+
+    FUTURE: provide DC-initialization.
+*/
 struct IvantsovIIR
 {
 pure:
 nothrow:
 @nogc:
+@safe:
 
-    /// Initialize structure.
-    ref IvantsovIIR initialize(float sampleRate)
+
+    /** 
+        Initialize structure.
+        Call this at every sample-rate change / init.
+    */
+    ref IvantsovIIR initialize(float sampleRate) return
     {
         _sr = sampleRate;
         _recomputeCoeffs = true;
@@ -1250,16 +1271,12 @@ nothrow:
         return this;
     }
 
-    /// Clear filter state, keep same sampling-rate.
-    void clearState()
-    {
-        _z0 = 0;
-        _z1 = 0;
-    }
 
-    /// Set type of filter.
-    /// MUST be called before use.
-    ref IvantsovIIR setType(IvantsovType newType)
+    /** 
+        Set type of filter.
+        MUST be called before use.
+    */
+    ref IvantsovIIR type(IvantsovType newType) return
     {
         if (_type != newType)
         {
@@ -1269,18 +1286,24 @@ nothrow:
         return this;
     }
 
-    /// Set gain (only applies to shelf filters)
-    /// MUST be called before use, in case of shelf.
-    ref IvantsovIIR setGain(double gain_linear)
+
+    /** 
+        Set gain (only applies to shelf filters)
+        MUST be called before use, in case of shelf.
+    */
+    ref IvantsovIIR gain(double gain_linear) return
     {
         _b4 = gain_linear;
         _recomputeCoeffs = true;
         return this;
     }
 
-    /// Set cutoff.
-    /// MUST be called before use.
-    ref IvantsovIIR setCutoff(double fc_Hz)
+
+    /** 
+        Set cutoff.
+        MUST be called before use.
+    */
+    ref IvantsovIIR cutoff(double fc_Hz) return
     {
         if (_fc == fc_Hz)
             return this; // avoid costly recomputes
@@ -1291,9 +1314,12 @@ nothrow:
         return this;
     }
 
-    /// Set damping factor
-    /// MUST be called before use, in case of 2nd order.    
-    ref IvantsovIIR setDamping(double x)
+
+    /** 
+        Set damping factor
+        MUST be called before use, in case of 2nd order.
+    */
+    ref IvantsovIIR damping(double x) return
     {
         if (_zeta == x)
             return this;
@@ -1302,7 +1328,16 @@ nothrow:
         return this;
     }
 
-    /// Process a single sample.
+
+    /**
+        Process a single sample.
+
+        This recomputes filter coeffs lazily, if needed.
+
+        Per-sample processing allows cleanest modulation, 
+        but keep in mind modifying the filter parametes 
+        every sample is very expensive.
+    */
     double nextSample(double x)
     {
         recomputeCoeffsIfNeeded();
@@ -1313,16 +1348,99 @@ nothrow:
         _z1 = -_z1 - theta * _b1;
         return y * _cond2;
     }
+    ///ditto
+    float nextSample(float x)
+    {
+        recomputeCoeffsIfNeeded();
+        double theta = (x - _z0 - _z1 * _b1) * _b0;
+        double y = theta * _b3 + _z1 * _b2;
+        y = y + _z0 * _cond1;
+        _z0 = _z0 + theta;
+        _z1 = -_z1 - theta * _b1;
+        return y * _cond2;
+    }
 
-    // TODO PERF: add nextBuffer function
-    // TODO PERF: _cond2 is more or less b4, add a gain member and remove _cond2, be careful
+
+    /**
+        Process a buffer.
+
+        This recomputes filter coeffs lazily, if needed.
+        If you'd like to modulate filter parameters, call 
+        this in small increments.
+
+        Params:
+            input  = Input samples.
+            output = Output samples.
+            frames = Number of samples.
+
+        Note: `input` and `double` can be the same location.
+    */
+    void nextBuffer(const(double)* input, double* output, int frames) @system
+    {
+        recomputeCoeffsIfNeeded();
+        for (int n = 0; n < frames; ++n)
+        {
+            double x = input[n];
+            double theta = (x - _z0 - _z1 * _b1) * _b0;
+            double y = theta * _b3 + _z1 * _b2;
+            y = y + _z0 * _cond1;
+            _z0 = _z0 + theta;
+            _z1 = -_z1 - theta * _b1;
+            output[n] = y * _cond2;
+        }
+    }
+    ///ditto
+    void nextBuffer(const(float)* input, float* output, int frames) @system
+    {
+        recomputeCoeffsIfNeeded();
+        for (int n = 0; n < frames; ++n)
+        {
+            double x = input[n];
+            double theta = (x - _z0 - _z1 * _b1) * _b0;
+            double y = theta * _b3 + _z1 * _b2;
+            y = y + _z0 * _cond1;
+            _z0 = _z0 + theta;
+            _z1 = -_z1 - theta * _b1;
+            output[n] = y * _cond2;
+        }
+    }
+    ///ditto
+    void nextBuffer(const(double)[] input, double[] output) @trusted
+    {
+        assert(input.length == output.length);
+        assert(input.length <= int.max);
+        int frames = cast(int) input.length;
+        nextBuffer(input.ptr, output.ptr, frames);
+    }
+    ///ditto
+    void nextBuffer(const(float)[] input, float[] output) @trusted
+    {
+        assert(input.length == output.length);
+        assert(input.length <= int.max);
+        int frames = cast(int) input.length;
+        nextBuffer(input.ptr, output.ptr, frames);
+    }
+
+    /** 
+        Clear filter state, keep same sampling-rate.
+        Normally you don't need to call these.
+    */
+    void clearState()
+    {
+        _z0 = 0;
+        _z1 = 0;
+    }
 
 private:
+
+    // TODO PERF: _cond2 is more or less b4, add a gain 
+    // member and remove _cond2, be careful
+
     IvantsovType _type;
     bool _recomputeCoeffs = true;
     bool _recomputeSigma  = true;
 
-    enum double invPi = 1.0 / PI;
+    enum double invPi      = 1.0 / PI;
     enum double sqrt2InvPi = SQRT2 / PI;
 
     // State management.
@@ -1360,7 +1478,10 @@ private:
                 // 1st order
                 _w = _sr / (2.0 * PI * _fc);
                 if (_w > invPi)
-                    _sigma = 0.408249999896 * (0.0584335750974 - _w * _w) / (0.0459329400275 - _w * _w);
+                {
+                    double w2 = _w * _w;
+                    _sigma = 0.408249999896 * (0.0584335750974 - w2) / (0.0459329400275 - w2);
+                }
                 else
                     _sigma = invPi;
             }
@@ -1370,7 +1491,10 @@ private:
                 _w = _sr / (SQRT2 * PI * _fc);
                 double threshold = SQRT2 / PI;
                 if (_w > threshold)
-                    _sigma = 0.577352686692 * (0.116867150195 - _w * _w) / (0.091865880055 - _w * _w);
+                {
+                    double w2 = _w * _w;
+                    _sigma = 0.577352686692 * (0.116867150195 - w2) / (0.091865880055 - w2);
+                }
                 else
                     _sigma = sqrt2InvPi;
                 
@@ -1508,6 +1632,26 @@ private:
         k = t + sigmaSq_;
         // Potential precision note: for very small x, this could lose precision
         v = fast_sqrt(x * x + 2.0 * t * sigmaSq_ + sigmaSq_ * sigmaSq_);
+    }
+}
+unittest
+{
+    IvantsovIIR lp;
+
+    lp.initialize(44100)
+      .type(IvantsovType.lowPass1stOrder)
+      .cutoff(1000)
+      .damping(0.707)
+      .gain(0);
+
+    static immutable double[16] input = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    double[16] output;
+
+    import core.stdc.stdio;
+    lp.nextBuffer(input.ptr, output.ptr, 16);
+    for (int n = 0; n < 16; ++n)
+    {
+        assert(!isnan(output[n]));
     }
 }
 
