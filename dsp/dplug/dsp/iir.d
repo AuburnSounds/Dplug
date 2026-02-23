@@ -1346,7 +1346,7 @@ nothrow:
     ref IvantsovIIR damping(double Q) return
     {
         // Map Q to "zeta" in Ivantsov designs.
-        x = 2.0 / Q;
+        double x = 2.0 / Q;
         if (_zeta == x)
             return this;
         _zeta = x;
