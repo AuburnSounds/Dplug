@@ -33,7 +33,7 @@
 */
 module dplug.dsp.iir;
 
-import std.math: SQRT2, SQRT1_2, PI, pow, sin, cos, sqrt;
+import std.math: SQRT2, SQRT1_2, PI, pow, sin, cos, sqrt, abs;
 import std.complex: Complex,
                     complexAbs = abs,
                     complexExp = exp,
@@ -1248,7 +1248,8 @@ enum IvantsovType
     Can process `float` or `double` data.
 
 
-    FUTURE: provide DC-initialization.
+    FUTURE: provide DC-initialization and freq-response
+            function.
 */
 struct IvantsovIIR
 {
@@ -1288,12 +1289,14 @@ nothrow:
 
 
     /** 
-        Set gain (only applies to shelf filters)
-        MUST be called before use, in case of shelf.
+        Set gain (only applies to shelf filters).
+        Expressed in linear amplitude, not dB.
+
+        Default = 0.
     */
     ref IvantsovIIR gain(double gain_linear) return
     {
-        _b4 = gain_linear;
+        _gain = gain_linear;
         _recomputeCoeffs = true;
         return this;
     }
@@ -1316,11 +1319,34 @@ nothrow:
 
 
     /** 
-        Set damping factor
+        Set Q factor, default = M_SQRT1_2.
+        Only meaningful for 2-poles.
+
+        Matched on TDR Nova "Q". It is the same Q as for
+        RBJ designs.
+
+        Default = 0.5
+
+        Some ideas for Q:
+          
+          - 0.5:       For smooth critically-damped LP and HP.
+                       Smooth shelves can even go lower.
+          
+          - M_SQRT1_2: Butterworth type, the default for RBJ biquads.
+
+          - 1.0:       Default Q for a popular peak-type mastering EQ.
+
         MUST be called before use, in case of 2nd order.
+
+        WARNING: 
+          - Damping 1.0 correspond to the beautiful Q = 0.5
+            for RBJ biquads (also: "Critical" in DMG Equilibrium).
+            So the scale of "Q" is not the same as in typical EQs.
     */
-    ref IvantsovIIR damping(double x) return
+    ref IvantsovIIR damping(double Q) return
     {
+        // Map Q to "zeta" in Ivantsov designs.
+        x = 2.0 / Q;
         if (_zeta == x)
             return this;
         _zeta = x;
@@ -1436,7 +1462,7 @@ private:
     // TODO PERF: _cond2 is more or less b4, add a gain 
     // member and remove _cond2, be careful
 
-    IvantsovType _type;
+    IvantsovType _type    = cast(IvantsovType) -1;
     bool _recomputeCoeffs = true;
     bool _recomputeSigma  = true;
 
@@ -1445,10 +1471,11 @@ private:
 
     // State management.
     double _sr;
-    double _sigma = 0; // for warping
+    double _sigma = 0;   // for warping
     double _w     = 0;
-    double _fc;
-    double _zeta;
+    double _fc    = 750; // Cutoff, defaults to 750 Hz
+    double _zeta  = 4.0; // a resonance settting, default to Q = 0.5
+    double _gain  = 1.0; // linear gain, for shelves
 
     // Filter current state.
     double _z0, _z1;
@@ -1458,7 +1485,7 @@ private:
     double _b1; // Used by order 2 only
     double _b2; // Used by order 2 only
     double _b3; // Used by order 1 and 2
-    double _b4; // Used by order 1 and 2, only by shelves
+    double _b4; // Used by order 1 and 2
 
     // To unify all the filter types, need more "coeffs" 
     // as the realizations different depending on type.
@@ -1473,6 +1500,12 @@ private:
 
         if (_recomputeSigma)
         {
+            // if you fail here you forgot to call .initialize
+            assert(!isnan(_sr));
+
+            // if you fail here you forgot to call .type
+            assert(_type != -1);
+
             if (_type <= IvantsovType.lowShelf1stOrder)
             {
                 // 1st order
@@ -1508,6 +1541,7 @@ private:
 
         _b1 = 0;
         _b2 = 0;
+        _b4 = _gain;
 
         immutable double wSq = _w * _w;
         immutable double sigmaSq = _sigma * _sigma;
@@ -1516,11 +1550,11 @@ private:
         if (_type > IvantsovType.lowShelf1stOrder) // Is 2nd order
         {
             if (_type == IvantsovType.lowShelf2ndOrder)
-                computeVK(wSq * fast_sqrt(_b4), _zeta * _zeta, sigmaSq, v, k); // PERF: sounds unused
+                computeVK(wSq * fast_sqrt(_gain), _zeta * _zeta, sigmaSq, v, k); // PERF: sounds unused
             else if (_type == IvantsovType.highShelf2ndOrder)
-                computeVK(wSq / fast_sqrt(_b4), _zeta * _zeta, sigmaSq, v, k); // PERF: sounds unused
+                computeVK(wSq / fast_sqrt(_gain), _zeta * _zeta, sigmaSq, v, k); // PERF: sounds unused
             else if (_type == IvantsovType.midShelf2ndOrder)
-                computeVK(wSq, _zeta * _zeta / _b4, sigmaSq, v, k); // PERF: sounds unused
+                computeVK(wSq, _zeta * _zeta / _gain, sigmaSq, v, k); // PERF: sounds unused
             else
                 computeVK(wSq, _zeta * _zeta, sigmaSq, v, k);
 
@@ -1547,20 +1581,20 @@ private:
                 break;
 
             case lowShelf1stOrder:
-                assert(_b4 != 0); // gain cannot be -inf 
-                _b0 = 1.0 / (0.5 + warp(_w * _w * _b4));
-                _b3 = 0.5 + warp(_w * _w / _b4);
-                _cond2 = _b4;
+                assert(_gain != 0); // gain cannot be -inf dB
+                _b0 = 1.0 / (0.5 + warp(_w * _w * _gain));
+                _b3 = 0.5 + warp(_w * _w / _gain);
+                _cond2 = _gain;
                 break;
 
             case highShelf1stOrder:
-                assert(_b4 != 0); // gain cannot be -inf 
-                _b0 = 1.0 / (0.5 + warp(_w * _w / _b4));
-                _b3 = 0.5 + warp(_w * _w * _b4);
+                assert(_gain != 0); // gain cannot be -inf 
+                _b0 = 1.0 / (0.5 + warp(_w * _w / _gain));
+                _b3 = 0.5 + warp(_w * _w * _gain);
                 break;
 
                 // 2nd order
-            case highPass2ndOrder:                
+            case highPass2ndOrder:
                 _b2 = 2.0 * wSq / _b1;
                 _b3 = wSq;
                 _cond1 = 0;
@@ -1590,7 +1624,7 @@ private:
             case highShelf2ndOrder:
             {
                 double vB, kB;
-                computeVK(wSq * fast_sqrt(_b4), _zeta * _zeta, sigmaSq, vB, kB);
+                computeVK(wSq * fast_sqrt(_gain), _zeta * _zeta, sigmaSq, vB, kB);
                 _b2 = 2.0 * vB / _b1;
                 _b3 = vB + fast_sqrt(vB + kB) + 0.5;
                 break;
@@ -1599,8 +1633,8 @@ private:
             case lowShelf2ndOrder:
             {
                 double vB, kB;
-                computeVK(wSq / sqrt(_b4), _zeta * _zeta, sigmaSq, vB, kB);
-                _cond2 = _b4;
+                computeVK(wSq / sqrt(_gain), _zeta * _zeta, sigmaSq, vB, kB);
+                _cond2 = _gain;
                 _b2 = 2.0 * vB / _b1;
                 _b3 = vB + fast_sqrt(vB + kB) + 0.5;
                 break;
@@ -1609,7 +1643,7 @@ private:
             case midShelf2ndOrder:
             {
                 double vB, kB;
-                computeVK(wSq, _zeta * _zeta * _b4, sigmaSq, vB, kB);
+                computeVK(wSq, _zeta * _zeta * _gain, sigmaSq, vB, kB);
                 _b2 = 2.0 * vB / _b1;
                 _b3 = vB + fast_sqrt(vB + kB) + 0.5;
                 break;
@@ -1641,8 +1675,8 @@ unittest
     lp.initialize(44100)
       .type(IvantsovType.lowPass1stOrder)
       .cutoff(1000)
-      .damping(0.707)
-      .gain(0);
+      .damping(0.71)
+      .gain(1);
 
     static immutable double[16] input = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     double[16] output;
@@ -1654,7 +1688,27 @@ unittest
         assert(!isnan(output[n]));
     }
 }
+unittest // test ability to be a bypass, and defaults
+{
+    IvantsovIIR lp;
 
+    lp.initialize(96000).type(IvantsovType.highShelf2ndOrder);
+
+    // Cutoff will default to 750Hz
+    // Q to 0.5
+    // Gain to no-change.
+    // => this should be a bypass with a very high degree
+    // of precision.
+
+    static immutable double[16] input = [1, 0, 0, -6, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0];
+    double[16] output;
+
+    lp.nextBuffer(input.ptr, output.ptr, 16);
+    for (int n = 0; n < 16; ++n)
+    {
+        assert(abs(output[n] - input[n]) < 1e-12);
+    }
+}
 
 
 
