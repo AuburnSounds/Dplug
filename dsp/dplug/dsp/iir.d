@@ -1216,6 +1216,15 @@ private:
     optional frequency warping.
 
     Translated from C++ implementation. License = MIT.
+
+    Copyright (c) 2025 Ivantsov.
+    Copyright (c) 2025 Guillaume Piolat.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 /**
@@ -1325,16 +1334,17 @@ nothrow:
         Matched on TDR Nova "Q". It is the same Q as for
         RBJ designs.
 
-        Default = 0.5
+        Default = 0.5.
 
         Some ideas for Q:
           
           - 0.5:       For smooth critically-damped LP and HP.
                        Smooth shelves can even go lower.
+                       This is the default.
           
           - M_SQRT1_2: Butterworth type, the default for RBJ biquads.
 
-          - 1.0:       Default Q for a popular peak-type mastering EQ.
+          - 1.0:       Good Q for a popular peak-type mastering EQ.
 
         MUST be called before use, in case of 2nd order.
 
@@ -1346,7 +1356,7 @@ nothrow:
     ref IvantsovIIR damping(double Q) return
     {
         // Map Q to "zeta" in Ivantsov designs.
-        double x = 2.0 / Q;
+        double x = 0.5 / Q;
         if (_zeta == x)
             return this;
         _zeta = x;
@@ -1474,7 +1484,7 @@ private:
     double _sigma = 0;   // for warping
     double _w     = 0;
     double _fc    = 750; // Cutoff, defaults to 750 Hz
-    double _zeta  = 4.0; // a resonance settting, default to Q = 0.5
+    double _zeta  = 1.0; // a resonance settting, default to Q = 0.5
     double _gain  = 1.0; // linear gain, for shelves
 
     // Filter current state.
