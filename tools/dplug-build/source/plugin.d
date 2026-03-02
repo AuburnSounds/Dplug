@@ -21,7 +21,7 @@ import rsrc;
 import arch;
 import dplug.client.daw;
 
-import sdlang;
+import sdlite;
 
 enum Compiler
 {
@@ -723,24 +723,25 @@ Plugin readPluginDescription(string rootDir, bool quiet, bool verbose)
     enum useDubDescribe = true;
 
     JSONValue dubFile;
-    Tag sdlFile;
+
+    SDLNode[] sdlFile;
 
     // Open an eventual plugin.json directly to find keys that DUB doesn't bypass
     if (JSONexists)
         dubFile = parseJSON(cast(string)(std.file.read(dubJsonPath)));
 
     if (SDLexists)
-        sdlFile = parseFile(dubSDLPath);
+        sdlFile = parseSDL(dubSDLPath);
 
     
     try
     {
         if (JSONexists) result.name = dubFile["name"].str;
-        if (SDLexists) result.name = sdlFile.getTagValue!string("name");
+        if (SDLexists) result.name = sdlFile.getTag("name").getFirstValue().asString();
     }
     catch(Exception e)
     {
-        throw new Exception("Missing \"name\" in dub.json (eg: \"myplugin\")");
+        throw new Exception("Missing \"name\" in dub.json/dub.sdl (eg: \"myplugin\")");
     }
 
     // Try to find if the project has the version identifier "futureVST3FolderWindows"
@@ -762,7 +763,7 @@ Plugin readPluginDescription(string rootDir, bool quiet, bool verbose)
             // And look, this parsing code compares defavorable to std.json
             foreach(e; sdlFile.getTag("versions").values)
             {
-                if (e.get!string() == "futureVST3FolderWindows")
+                if (e.asString() == "futureVST3FolderWindows")
                     result.hasFutureVST3FolderWindows = true;
             }
         }
@@ -807,9 +808,10 @@ Plugin readPluginDescription(string rootDir, bool quiet, bool verbose)
         }
         if (SDLexists)
         {
-            foreach(Tag ctag; sdlFile.maybe.tags["configuration"])
+            SDLNode[] allConfigurationTags = sdlFile.getTags("configuration");
+            foreach(SDLNode ctag; allConfigurationTags)
             {
-                string cname = ctag.expectValue!string();
+                string cname = ctag.getFirstValue().asString();
                 checkConfigName(cname);
                 result.configurations ~= cname;
             }
@@ -826,7 +828,7 @@ Plugin readPluginDescription(string rootDir, bool quiet, bool verbose)
     try
     {
         if (JSONexists) result.dubTargetPath = fromDubPathToToRootDirPath(dubFile["targetPath"].str);
-        if (SDLexists) result.dubTargetPath = fromDubPathToToRootDirPath(sdlFile.getTagValue!string("targetPath"));
+        if (SDLexists) result.dubTargetPath = fromDubPathToToRootDirPath(sdlFile.getTag("targetPath").getFirstValue().asString());
     }
     catch(Exception e)
     {
@@ -1530,3 +1532,4 @@ string[] jsonStringArray(const(char)[] arrayName, JSONValue value)
     else
         throw new Exception("Key %s should be a string array");
 }
+

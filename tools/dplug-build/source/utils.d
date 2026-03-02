@@ -12,7 +12,7 @@ import std.algorithm.searching;
 import std.process;
 
 import consolecolors;
-
+import sdlite;
 import commonmarkd;
 
 string normalizedPath(string path)
@@ -267,4 +267,57 @@ unittest
     assertThrown(expandVars!expandVar("${X"));
 
     assert(expandVars!expandVar("$${DUB_EXE:-dub}") == "${DUB_EXE:-dub}");
+}
+
+
+// SDLang helpers
+
+SDLNode[] parseSDL(string fileName)
+{
+    import std.file;
+    return parseSDL(fileName, readText(fileName));
+}
+
+SDLNode[] parseSDL(string fileName, string sdlData)
+{
+    SDLNode[] result;
+    parseSDLDocument!((n){result~= n;})(sdlData, fileName);
+    return result;
+}
+
+SDLNode getTag(ref SDLNode[] nodes, string qualifiedName)
+{
+    foreach(ref node; nodes)
+        if (node.qualifiedName() == qualifiedName)
+            return node; // copy here
+    throw new Exception(format("Missing %s in dub.sdl", qualifiedName));
+}
+
+SDLNode[] getTags(ref SDLNode[] nodes, string qualifiedName)
+{
+    SDLNode[] r;
+    foreach(ref node; nodes)
+        if (node.qualifiedName() == qualifiedName)
+            r ~= node; // copy here
+    return r;
+}
+
+SDLAttribute getAttribute(ref SDLNode node, string qualifiedName)
+{
+    foreach(ref attr; node.attributes)
+        if (attr.qualifiedName() == qualifiedName)
+            return attr; // copy here
+    throw new Exception(format("Missing attribute %s in dub.sdl", qualifiedName));
+}
+
+SDLValue getFirstValue(SDLNode node)
+{
+    if (node.values.length == 0)
+        throw new Exception("Missing value in SDLang tag");
+    return node.values[0];
+}
+
+string asString(SDLValue v)
+{
+    return v.value!string();
 }
