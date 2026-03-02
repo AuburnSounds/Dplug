@@ -4,13 +4,17 @@ dub.selections.json
 *.sublime-project
 *.sublime-workspace
 *.a
+__dummy_docs
+docs.json
 __test__library__
 __test__vanilla__
 *-test-library
 *.lib
+*.obj
 *.exe
 *.visualdproj
 *.dll
+*.pdb
 *.sln
 *.suo
 *.so
@@ -26,3 +30,4 @@ builds
 repro*.sh
 *.sh
 .vscode
+.ldc2_cache/
