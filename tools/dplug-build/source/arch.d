@@ -5,6 +5,7 @@ import std.string;
 // Architecture (one single dplug-build invocation may specify several of them)
 enum Arch
 {
+    x86,
     x86_64,
     arm32,           // ARM 32-bit for Raspberry Pi
     arm64,           // Apple Silicon or Windows arm64
@@ -17,6 +18,7 @@ bool isSingleArchEnum(Arch arch) pure
 {
     final switch(arch) with (Arch)
     {
+        case x86:    return true;
         case x86_64: return true;
         case arm32:  return true;
         case arm64:  return true;
@@ -29,6 +31,7 @@ string convertArchToPrettyString(Arch arch) pure
 {
     final switch(arch) with (Arch)
     {
+        case x86:    return "x86";
         case x86_64: return "x86_64";
         case arm32:  return "arm32";
         case arm64:  return "arm64";
@@ -41,6 +44,7 @@ string convertArchToVST3WindowsDirectoryName(Arch arch) pure
 {
     final switch(arch) with (Arch)
     {
+        case x86:    return "x86-win";
         case x86_64: return "x86_64-win";
         case arm32:  return "arm-win";
         case arm64:  return "arm64-win";
@@ -53,6 +57,11 @@ string convertArchToDUBFlag(Arch arch, OS targetOS, bool isDMD, bool isDUB)
 {
     final switch(arch) with (Arch)
     {
+        case x86: 
+        {
+            return "x86 ";
+        }
+
         case x86_64: 
         {
             // when using DUB + DMD, doesn't support target triple
@@ -124,7 +133,9 @@ OS buildOS()
 // Build architecture, the arch dplug-build is built for.
 Arch buildArch()
 {
-    version(X86_64)
+    version(X86)
+        return Arch.x86;
+    else version(X86_64)
         return Arch.x86_64;
     else version(ARM)
         return Arch.arm32;

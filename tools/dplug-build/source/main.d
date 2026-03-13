@@ -286,6 +286,8 @@ int main(string[] args)
                 // all is also the default.
                 if (args[i] == "x86_64")
                     archs = [ Arch.x86_64 ];
+                else if (args[i] == "x86")
+                    archs = [ Arch.x86 ];
                 else if (args[i] == "arm32")
                     archs = [ Arch.arm32 ];
                 else if (args[i] == "arm64")
@@ -440,6 +442,7 @@ int main(string[] args)
             {
                 final switch(arch) with (Arch)
                 {
+                    case x86: return "32b-";
                     case x86_64: return "64b-";
                     case arm32: return "arm32-";
                     case arm64: return "arm64-";
@@ -513,8 +516,10 @@ int main(string[] args)
 
             foreach (size_t archCount, arch; architectures)
             {
-                // Only build x86_64 and arm64 on Windows
-                if (targetOS == OS.windows && arch != Arch.x86_64 && arch != Arch.arm64)
+                // Only build x86, x86_64 and arm64 on Windows
+                if (targetOS == OS.windows && arch != Arch.x86 
+                                           && arch != Arch.x86_64 
+                                           && arch != Arch.arm64)
                 {
                     cwritefln("info: Skipping architecture %s for Windows\n", arch);
                     continue;
