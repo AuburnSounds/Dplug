@@ -1103,10 +1103,17 @@ private:
     double _shape;
 }
 
-/// Float parameter following a x^N type mapping (eg: something that doesn't fit in the other categories)
+/// Float parameter following a x^N type mapping 
+/// (eg: something that doesn't fit in the other categories)
+/// 
+/// To go normalized: min to max => 0 to 1 => exponentiation
+/// Note: when `shape` is 1.0, this is simply a `LinearFloatParameter`.
 class PowFloatParameter : FloatParameter
 {
-    this(int index, string name, string label, double min, double max, double defaultValue, double shape) nothrow @nogc
+nothrow:
+@nogc:
+
+    this(int index, string name, string label, double min, double max, double defaultValue, double shape)
     {
         super(index, name, label, min, max, defaultValue);
         _shape = shape;
@@ -1121,10 +1128,12 @@ class PowFloatParameter : FloatParameter
             v = 1.0;
         v = v ^^ (1 / _shape);
 
-        // Note: It's not entirely impossible to imagine a particular way that 1 would be exceeded, since pow
-        // is implemented with an exp approximation and a log approximation.
-        // TODO: produce ill case in isolation to see
-        assert(v >= 0 && v <= 1); // will still assert on NaN
+        // Note: It's not entirely impossible to imagine a particular 
+        // way that 1 would be exceeded, since `pow` is implemented 
+        // with an exp approximation and a log approximation.
+        if (v > 1)
+            v = 1;
+
         return v;
     }
 
@@ -1132,6 +1141,76 @@ class PowFloatParameter : FloatParameter
     {
         double v = _min + (normalizedValue ^^ _shape) * (_max - _min);
          if (v < _min)
+            v = _min;
+        if (v > _max)
+            v = _max;
+        return v;
+    }
+
+private:
+    double _shape;
+}
+
+
+/// Float parameter following a x^N type mapping like `PowFloatParameter`,
+/// but this exponentiation happens as if from -1 to 1 instead of from 0 to 1.
+///
+/// This allows to model parameters who get a large maximum value, 
+/// while still favouring reasonable values around the center.
+/// 
+/// To go normalized: min to max => -1 to 1 => exponentiation => 0 to 1
+/// Note: when `shape` is 1.0, this is simply a `LinearFloatParameter`.
+class BipolarFloatParameter : FloatParameter
+{
+nothrow:
+@nogc:
+
+    this(int index, string name, string label, double min, double max, double defaultValue, double shape)
+    {
+        super(index, name, label, min, max, defaultValue);
+        _shape = shape;
+    }
+
+    override double toNormalized(double value)
+    {
+        // map to [-1, 1]
+        double v = -1.0 + 2.0 * (value - _min) / (_max - _min);
+        if (v < -1.0) v = -1.0;
+        if (v > 1.0) v = 1.0;
+
+        // signed pow
+        double sign = v >= 0.0 ? +1 : -1;
+        if (v < 0) v = -v;
+        assert(v >= 0);
+        v = sign * (v ^^ (1 / _shape));
+
+        // map to [0, 1]
+        v = 0.5 * (v + 1);
+        if (v < -1.0) v = -1.0;
+        if (v > 1.0) v = 1.0;
+
+        return v;
+    }
+
+    override double fromNormalized(double normalizedValue)
+    {
+        // map to [-1, 1]
+        normalizedValue = -1 + 2 * normalizedValue;
+
+        // sign pow
+        double sign = normalizedValue >= 0 ? +1 : -1;
+        if (normalizedValue < 0) normalizedValue = -normalizedValue;
+        assert(normalizedValue >= 0);
+        double v = (normalizedValue ^^ _shape) * sign;
+
+        // map to [0, 1]
+        v = 0.5 * (v + 1);
+        if (v < -1.0) v = -1.0;
+        if (v > 1.0) v = 1.0;
+
+        // map to [min, max]
+        v = _min + v * (_max - _min);
+        if (v < _min)
             v = _min;
         if (v > _max)
             v = _max;
