@@ -39,28 +39,42 @@ import dplug.gui.element;
                 `sliderLogic.mouseClick()` in your `onMouseClick()`
                 `sliderLogic.mouseDrag()`  in your `onMouseDrag()`
                 `sliderLogic.stopDrag()`   in your `onStopDrag()`
+                `sliderLogic.mouseWheel()` in your `onMouseWheel()`
 */
 // FUTURE: allow IntegerParameter
-// FUTURE: enable an horizontal mode
 struct UISliderLogic
 {
 public:
 nothrow:
 @nogc:
 
-    enum vertical = true; 
-
     /**
         Initialize the slider logic.
-        Note: If you want to _disable_ your slider logic, just don't call
-        other functions.
+
+        Params:
+            elem  = Back-link to the `UIElement` using this logic.
+            param = The parameter this slider logic acts on.
+            vertical = true for vertical, false for horizontal.
+
+        Note: If you want to _disable_ your slider logic, 
+        just don't call other functions.
      */
-    void initialize(UIElement elem, Parameter param)
+    void initialize(UIElement elem, 
+                    Parameter param, 
+                    bool vertical = true)
     {
         _param = param;
         _elem = elem;
+        _vertical = vertical;
         clearCrosspoints();
     }
+
+    /**
+       Set/get vertical.
+    */
+    bool vertical() { return _vertical; }
+    ///ditto
+    bool vertical(bool b) { return _vertical = b; }
 
     /**
         Call this in `onMouseEnter`. Mark the parameter as hovered.
