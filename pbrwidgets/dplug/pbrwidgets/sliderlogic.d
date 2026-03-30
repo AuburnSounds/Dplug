@@ -223,6 +223,8 @@ private:
     int _lastMouseX = MOUSE_TOO_FAR;
     int _lastMouseY = MOUSE_TOO_FAR;
 
+    bool _vertical;
+
     void clearCrosspoints()
     {
         _mousePosOnLast0Cross = float.infinity;
