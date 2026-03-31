@@ -492,7 +492,8 @@ nothrow:
     {
         bool legacy = _knobImage.isLegacy();
 
-        // This is just to enable scripting of `oversampleTe5xture`.
+        // This is just to enable scripting of `oversampleTexture`.
+        // This is not a bug: if size doesn't change, does nothing.
         if (!legacy)
         {
             version(KnobImage_resizedInternal)
