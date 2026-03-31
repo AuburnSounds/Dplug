@@ -56,8 +56,12 @@ nothrow:
             param = The parameter this slider logic acts on.
             vertical = true for vertical, false for horizontal.
 
-        Note: If you want to _disable_ your slider logic, 
-        just don't call other functions.
+        Note: If you want to _disable_ your slider logic (as in 
+            disabled widget), a good way is just not call those 
+            functions.
+
+        Warning: Do not forget to also register a `param` listener
+            if you want to display changes based on that.
      */
     void initialize(UIElement elem, 
                     Parameter param, 
