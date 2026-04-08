@@ -20,7 +20,11 @@ import dplug.client.params;
 
 import gamut;
 
-// FUTURE: ABDME_8 shall disappear.
+// FUTURE: ABDME_8 format will quickly disappear. DO NOT USE IT.
+//         ALWAYS USE BADAMA_16 format.
+
+// FUTURE: `KnobImage` renamed to `PBRImage`, gets its own file.
+
 nothrow:
 @nogc:
 
@@ -34,7 +38,7 @@ enum KnobImageType
     /// Legacy KnobImage format.
     ABDME_8,
 
-    /// New `KnobImage` format.
+    /// New preferred `KnobImage` format.
     BADAMA_16
 }
 
@@ -114,7 +118,7 @@ nothrow @nogc:
    
     The recommended format for a new `UIImageKnob`.
 
-                     h           h            h
+                     w           w            w
              +------------+------------+------------+
              |            |            |            |
              |  basecolor |   depth    |  material  |
@@ -125,6 +129,8 @@ nothrow @nogc:
    
     Recommended format: QOIX, for example a 512x128 16-bit QOIX image.
     Again, formatted and resized in `reflow` before use.
+    
+    In this format, `w` can be different from `h`.
 */
 KnobImage loadKnobImage(in void[] data)
 {
@@ -148,6 +154,7 @@ KnobImage loadKnobImage(in void[] data)
     res.type = res.image.is8Bit() ? KnobImageType.ABDME_8
                                   : KnobImageType.BADAMA_16;
 
+    int W = res.image.width;
     int H = res.image.height;
 
     if (res.type == KnobImageType.ABDME_8)
@@ -156,6 +163,7 @@ KnobImage loadKnobImage(in void[] data)
         
         // If you fail here, your image was recogized as ABDME_8 but
         // doesn't follow right format. Expected dimension is 5H x H.
+        // ABDME_8 is less flexible about that.
         assert(res.image.width == res.image.height * 5);
 
         for (int y = 0; y < H; ++y)
@@ -180,14 +188,14 @@ KnobImage loadKnobImage(in void[] data)
     {
         assert(res.image.type == PixelType.rgba16);
 
-        // Expected dimension is 3H x H
-        assert(res.image.width == res.image.height * 3);
+        // It is expected that width is divisible by 3.
+        assert( (res.image.width % 3) == 0 );
 
         // The whole image is alpha-premultiplied.
         for (int y = 0; y < H; ++y)
         {
             ushort[] scan = cast(ushort[]) res.image.scanline(y);
-            for (int x = 0; x < 3*H; ++x)
+            for (int x = 0; x < W; ++x)
             {
                 uint R = scan[4*x+0];
                 uint G = scan[4*x+1];
@@ -221,6 +229,10 @@ void destroyKnobImage(KnobImage image)
 /** 
     An `UIKnob` for which the knob part is a rotated PBR image,
     contained in `KnobImage`.
+
+    Note: Do not build new PBR widgets based on `UIImageKnob`
+          code. Ask Auburn Sounds instead: there are cleaner 
+          widgets to base upon.
 */
 class UIImageKnob : UIKnob
 {
@@ -270,6 +282,9 @@ nothrow:
             This costs more CPU and memory, for better visual results.
             Warning: this isn't always better! Try on a large screen 
                      to check.
+
+            It is **way** better to have enough pixels in the first 
+            place.
 
             Only used in `BADAMA_16` format.
         */
@@ -468,21 +483,21 @@ nothrow:
                 int numTiles = 3;
                 int DW = _textureWidth;
                 int DH = _textureHeight;
-                int SH = _knobImage.image.width / numTiles;
+                int SW = _knobImage.image.width / numTiles;
+                int SH = _knobImage.image.height;
 
                 _resizedImage.size(numMipLevels, DW*numTiles, DH);
 
                 ImageRef!RGBA16 input = _knobImage.image.getImageRef!RGBA16();
                 ImageRef!RGBA16 resized = _resizedImage.levels[0].toRef;
 
-                // Resize each of the 3 subrect independently, to avoid strange pixel offset polluting
-
-                // Resize the premultiplied images to _resizedImage.
-                resizer.resizeImageDiffuseWithAlphaPremul(input.cropImageRef(rectangle(0, 0, SH, SH)), 
+                // Resize each of the 3 subrect _independently_ into _resizedImage, 
+                // to avoid strange pixel offset polluting other channels.
+                resizer.resizeImageDiffuseWithAlphaPremul(input.cropImageRef(rectangle(0, 0, SW, SH)), 
                                                           resized.cropImageRef(rectangle(0, 0, DW, DH)));
-                resizer.resizeImageDepthWithAlphaPremul(input.cropImageRef(rectangle(SH, 0, SH, SH)), 
+                resizer.resizeImageDepthWithAlphaPremul(input.cropImageRef(rectangle(SW, 0, SW, SH)), 
                                                         resized.cropImageRef(rectangle(DW, 0, DW, DH)));
-                resizer.resizeImageMaterialWithAlphaPremul(input.cropImageRef(rectangle(SH*2, 0, SH, SH)), 
+                resizer.resizeImageMaterialWithAlphaPremul(input.cropImageRef(rectangle(SW*2, 0, SW, SH)), 
                                                            resized.cropImageRef(rectangle(DW*2, 0, DW, DH)));
             }
         }
@@ -493,7 +508,7 @@ nothrow:
         bool legacy = _knobImage.isLegacy();
 
         // This is just to enable scripting of `oversampleTexture`.
-        // This is not a bug: if size doesn't change, does nothing.
+        // This is not a bug, if same result size it does nothing.
         if (!legacy)
         {
             version(KnobImage_resizedInternal)
@@ -707,6 +722,7 @@ nothrow:
                     {
                         // New draw mode for BADAMA_16, interpolates KnobImage directly linearly.
                         // This is the future.
+                        // It is also not ready and disabled.
 
                         // Size of input texture.
                         int DH = _knobImage.image.height;
@@ -809,7 +825,11 @@ nothrow:
     version(KnobImage_resizedInternal)
     {
         Mipmap!RGBA16 _resizedImage;
-        int _textureWidth = -1;  // texture size is: 3*_textureWidth, _textureHeight with _textureWidth == _textureHeight being equal.
+
+        // texture size is: 3*_textureWidth, _textureHeight with 
+        // _textureWidth and _textureHeight being possibly different.
+        // (though for knobs specifically, probably equal).
+        int _textureWidth = -1;  
         int _textureHeight = -1;
     }
     // </Only used in BADAMA_16 format>
