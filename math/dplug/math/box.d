@@ -100,6 +100,20 @@ struct Box(T, int N)
                     max.x = min.x + value;
                     return value;
                 }
+
+                /// Returns: Leftmost coordinate of this rectangle (if sorted).
+                /// Equivalent to `rect.min.x`.
+                @nogc T left() pure nothrow @property
+                {
+                    return min.x;
+                }
+
+                /// Returns: Rightmost coordinate of this rectangle (if sorted).
+                /// Equivalent to `rect.max.x`.
+                @nogc T right() pure nothrow @property
+                {
+                    return max.x;
+                }
             }
 
             static if (N >= 2)
@@ -116,6 +130,20 @@ struct Box(T, int N)
                 {
                     max.y = min.y + value;
                     return value;
+                }
+
+                /// Returns: Topmost Y coordinate of this rectangle (if sorted).
+                /// Equivalent to `rect.min.y`.
+                @nogc T top() pure nothrow @property
+                {
+                    return min.y;
+                }
+
+                /// Returns: Bottommost Y coordinate of this rectangle (if sorted).
+                /// Equivalent to `rect.max.y`.
+                @nogc T bottom() pure nothrow @property
+                {
+                    return max.y;
                 }
             }
 
@@ -563,6 +591,10 @@ unittest
     assert(a.width == 2);
     assert(a.height == 2);
     assert(a.volume == 4);
+    assert(a.left == 1);
+    assert(a.right == 3);
+    assert(a.top == 2);
+    assert(a.bottom == 4);
     box2i b = box2i(vec2i(1, 2), vec2i(3, 4));
     assert(a == b);
 
