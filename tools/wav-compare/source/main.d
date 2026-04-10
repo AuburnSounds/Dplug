@@ -82,6 +82,7 @@ int main(string[] args)
 {
     try
     {
+        enableConsoleUTF8();
         bool help = false;
         string[] files = null;
         bool quiet = false;
@@ -238,7 +239,10 @@ int main(string[] args)
         }
         else
         {
-            writefln(format("%.2f dB", rms_dB));
+            string color = "yellow";
+            if (rms_dB == -real.infinity)
+                color = "lgreen";
+            cwritefln( format("→ <strong>Audio difference (RMS) =</> <%s>%.2f dB</>", color, rms_dB) );
         }
 
         if (spectrogramPath)

@@ -54,6 +54,7 @@ void usage()
     flag("-t --times", "Number of samples for speed measures.", null, "30");
     flag("-h --help",  "Shows this help.", null, null);
     flag("-v --verbose",  "Tools are called with verbose output.", null, null);
+    flag("   --no-colors", "Disable colors.", null, null);
 
     cwriteln();
     cwriteln("NOTES".white);
@@ -92,6 +93,8 @@ int main(string[] args)
 {
     try
     {
+        enableConsoleUTF8();
+
         bool help = false;
         bool verbose = false;
         bool timesProvided = false;
@@ -105,6 +108,8 @@ int main(string[] args)
             {
                 help = true;
             }
+            else if (arg == "--no-colors")
+                disableConsoleColors();
             else if (arg == "-v" || arg == "--verbose")
             {
                 verbose = true;
@@ -152,27 +157,35 @@ int main(string[] args)
 class Plugin
 {
     string pluginPath;
-    string shortName;
+    
     SysTime pluginTimestamp;
     double[int] parameterValues;
     string bufferPattern; // null for default
     ProcessMeasurements lastMeasurements;
 
-    Arch arch;  
+    // A name for display, but that isn't unique.
+    string shortName() => _shortName;
 
-
-    string cacheID; // string used for unique ID in encoded wav files
-
-    void toString(scope void delegate(const(char)[]) sink)
+    // Displaying shortName + additionalName is usually unique enough
+    // but could lacks arch
+    string additionalName()
     {
-        sink(shortName);
-
-        sink("(");
-        sink(archName(arch));
-        sink(")");
-
+        string s = "";
         foreach (int paramIndex, double paramvalue; parameterValues)
-            formattedWrite(sink, " %s=%s", paramIndex, paramvalue);
+        {
+            s ~= format(" %s=%s", paramIndex, paramvalue);
+        }
+        return s;
+    }
+
+    string fullName() // acts as key, must uniquely identify a Plugin in a bench.xml description
+    {
+        return _shortName ~ " " ~ getArchName() ~ " " ~ additionalName();
+    }
+
+    string getArchName()
+    {
+        return archName(_arch);
     }
 
     this(const(char)[] pluginPath, int cacheIDInt)
@@ -180,10 +193,15 @@ class Plugin
         this.pluginPath = pluginPath.idup;
         enforce(exists(pluginPath), format("Can't find plugin file '%s'", pluginPath));
         pluginTimestamp = pluginPath.timeLastModified;
-        this.shortName = pluginPath.baseName.stripExtension.idup;
-        this.arch = detectArch(pluginPath);
-        this.cacheID = "#" ~ to!string(cacheIDInt);
+        _shortName = pluginPath.baseName.stripExtension.idup;
+        _arch = detectArch(pluginPath);
+        _cacheID = "#" ~ to!string(cacheIDInt);
     }
+
+private:
+    string _shortName;
+    Arch _arch;
+    string _cacheID; // string used for unique ID in encoded wav files
 }
 
 class TaskConfiguration
@@ -213,11 +231,13 @@ class Source
 abstract class Processor
 {
     void afterProcess(Universe universe, TaskConfiguration conf, Source source);
-    void reduceResults();
+    void reduceResults(Universe universe);
 }
 
 class QualityCompareProcessor : Processor
 {
+    // FUTURE: collect worst audio difference
+
     override void afterProcess(Universe universe, TaskConfiguration conf, Source source)
     {
         string baselineFile = pathForEncode(universe.baseline, conf, source, "wav");
@@ -227,15 +247,35 @@ class QualityCompareProcessor : Processor
             string cmd = format(`wav-compare --quiet "%s" "%s"`, baselineFile, challengerFile);
             safeCommand(cmd);
         }
+        cwriteln;
     }
 
-    override void reduceResults()
+    override void reduceResults(Universe universe)
     {}
+}
+
+string fancyPercents(double percents)
+{
+    string number = format("%.1f%%", percents);
+    if (percents >= 0) number = "+" ~ number;
+    while (number.length < 7) number = " " ~ number;
+
+    // yellow when under 1%
+    if (percents < 1 && percents > -1)
+    {
+        return format("<yellow>%s</>", number);
+    }
+    else if (percents < 0) // red if negative
+    {
+        return format("<lred>%s</>", number);
+    }
+    else // green if positive
+        return format("<lgreen>%s</>", number);
 }
 
 class SpeedMeasureProcessor : Processor
 {
-    double[][string] speedUps;
+    double[][Plugin] speedUps;
 
     override void afterProcess(Universe universe, TaskConfiguration conf, Source source)
     {
@@ -244,24 +284,46 @@ class SpeedMeasureProcessor : Processor
             double baselineSec = universe.baseline.lastMeasurements.minSeconds;
             double challengerSeconds = challenger.lastMeasurements.minSeconds;
             double percents = (baselineSec / challengerSeconds - 1) * 100;
-            speedUps[challenger.shortName] ~= percents;
-            cwritef("  %s vs %s = %.4fs vs %.4fs =&gt; ".grey, challenger.shortName, universe.baseline, 
-                                                              challengerSeconds, baselineSec);
-            cwritefln("%+.2s%%".yellow, percents);
+            string addition = challenger.additionalName();
+            speedUps[challenger] ~= percents;
+            cwritef("<lmagenta>%10s</> <grey>%.4fs</>  vs  <blue>%s</> <grey>%.4fs</>  →  ", 
+                challenger.shortName(), 
+                challengerSeconds, 
+                universe.baseline.shortName(), 
+                baselineSec);
+            
+            cwritef("%s", fancyPercents(percents));
+
+            if (addition)
+            {
+                assert(addition.length > 1);
+                cwritef("    (params: %s)".grey, addition[1..$]);
+            }
+
+            cwriteln;
         }
     }
 
-    override void reduceResults()
+    override void reduceResults(Universe universe)
     {        
-        foreach(string challenger; speedUps.byKey)
+        foreach(Plugin challenger; universe.challengers)
         {
             double percents = 0;
             foreach(s; speedUps[challenger])
                 percents += s;
             double globalSpeedUp = percents / speedUps[challenger].length;
-            string msg = "=&gt; Global speed-up for %s = " ~ "%+.2s%%";
-            msg = (globalSpeedUp > 2) ? msg.lgreen : ((globalSpeedUp < -2) ? msg.lred : msg.yellow);
-            cwritefln(msg, challenger, globalSpeedUp);
+            cwrite("→ <strong>Global speed-up</> for ");
+            cwritef("<lmagenta>%10s</>", challenger.shortName());
+            cwritef(" = ");
+            cwritef("%s", fancyPercents(globalSpeedUp));
+
+            string addition = challenger.additionalName();
+            if (addition)
+            {
+                assert(addition.length > 1);
+                cwritef("              (params: %s)".grey, addition[1..$]);
+            }
+            cwriteln;
         }        
     }
 }
@@ -428,7 +490,7 @@ class Universe
         cwriteln;
 
         foreach(processor; processors)
-            processor.reduceResults();
+            processor.reduceResults(this);
     }
 
     void executeSingleTask(Source source, TaskConfiguration conf)
@@ -458,7 +520,7 @@ class Universe
     {
         int times = speedMeasureCount;
         mkdirRecurse(dirName(outputFile));
-        string exeProcess = processExecutablePathForThisArch(plugin.arch);
+        string exeProcess = processExecutablePathForThisArch(plugin._arch);
         string parameterValues;
         const(char)[] bufferPattern = (plugin.bufferPattern is null) ? "" : (" -buffer " ~ plugin.bufferPattern);
         string verboseStr = verbose ? " -vverbose" : "";
@@ -473,11 +535,9 @@ class Universe
     }
 }
 
-
-
 string pathForEncode(Plugin plugin, TaskConfiguration conf, Source source, string ext)
 {
-    return buildPath(source.outputDirectory, format("%s-%s-%s.%s", source.shortName, conf.presetIndex, plugin.cacheID, ext));
+    return buildPath(source.outputDirectory, format("%s-%s-%s.%s", source.shortName, conf.presetIndex, plugin._cacheID, ext));
 }
 
 struct ProcessMeasurements
