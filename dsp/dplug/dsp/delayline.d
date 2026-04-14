@@ -41,7 +41,7 @@ import inteli.emmintrin;
 ///         // desiredDelay = 0 would be the sample we just fed
 ///         // the delayline with.
 ///         // desiredDelay = maxPossibleDelay for the oldest
-///         delayed[n] = delayline.fullSample(desiredDelay); 
+///         delayed[n] = delayline.sampleFull(desiredDelay); 
 ///     }
 /// }
 ///
