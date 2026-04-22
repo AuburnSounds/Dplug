@@ -294,9 +294,8 @@ class SpeedMeasureProcessor : Processor
             
             cwritef("%s", fancyPercents(percents));
 
-            if (addition)
+            if (addition.length > 0)
             {
-                assert(addition.length > 1);
                 cwritef("    (params: %s)".grey, addition[1..$]);
             }
 
@@ -318,9 +317,8 @@ class SpeedMeasureProcessor : Processor
             cwritef("%s", fancyPercents(globalSpeedUp));
 
             string addition = challenger.additionalName();
-            if (addition)
+            if (addition.length > 0)
             {
-                assert(addition.length > 1);
                 cwritef("              (params: %s)".grey, addition[1..$]);
             }
             cwriteln;
