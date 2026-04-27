@@ -15,7 +15,7 @@ import dplug.wren.wrensupport;
 import dplug.wren.describe;
 
 
-private static immutable string uiModuleSource = import("ui.wren");
+private static immutable string uiModuleSource = import("ui-min.wren");
 
 nothrow @nogc:
 
