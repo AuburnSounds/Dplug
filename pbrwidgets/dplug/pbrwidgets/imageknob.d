@@ -451,10 +451,9 @@ nothrow:
         }
         else
         {
-            version(KnobImage_resizedInternal)
-            {
-                lazyResizeBADAMA16(resizer);
-            }
+            // Not resized here, but done lazily
+            // This gain memory for knobs that are 
+            // initially invisible.
         }
     }
 
