@@ -1882,6 +1882,11 @@ private:
         {
             _visibilityStatus = newStatus;
 
+            // PERF: if a widget has never been visible yet,
+            // and it's still invisible on first draw: be sure not to 
+            // set the position dirty. I'm not sure if that could
+            // happen.
+
             // Dirty the widget position
             setDirtyWhole();
 
