@@ -654,14 +654,35 @@ nothrow:
                                         fDiffuse = _resizedImage.cubicSample(0, sourcePos.x, sourcePos.y);
                                     if (fDiffuse.a > 0)
                                     {
-                                        // Convert from 16-bit to 8-bit
-                                        ubyte R = cast(ubyte)(0.5f + fDiffuse.r / 257.0f);
-                                        ubyte G = cast(ubyte)(0.5f + fDiffuse.g / 257.0f);
-                                        ubyte B = cast(ubyte)(0.5f + fDiffuse.b / 257.0f);
-                                        ubyte A = cast(ubyte)(0.5f + fDiffuse.a / 257.0f);
-                                        int E = (emissiveOffset * A) / 255; // Need to premultiply Emissive by Alpha
-                                        RGBA diffuse = RGBA(R, G, B, cast(ubyte)E);
-                                        outDiffuse[x] = blendColorPremul( diffuse, outDiffuse[x], A);
+                                        // TODO PERF
+                                        float fAlpha = fDiffuse.a * 0.00001525902f; // 1 / 65535
+                                        RGBA diffuseHere = outDiffuse[x];
+
+                                        // Do blending in 16-bit :)
+                                        // This avoids the overshoots that can happen when blending in 8-bit.
+                                        float bgRed      = (diffuseHere.r << 8) | diffuseHere.r;
+                                        float bgGreen    = (diffuseHere.g << 8) | diffuseHere.g;
+                                        float bgBlue     = (diffuseHere.b << 8) | diffuseHere.b;
+                                        float bgEmissive = (diffuseHere.a << 8) | diffuseHere.a;
+                                        float fgEmissive = (257 * emissiveOffset * fAlpha);
+
+                                        // As specified, only green is considered as depth value, though you will likely
+                                        // want to raw your depth in grey.
+                                        float interpR = fDiffuse.r + bgRed      * (1.0f - fAlpha);
+                                        float interpG = fDiffuse.g + bgGreen    * (1.0f - fAlpha);
+                                        float interpB = fDiffuse.b + bgBlue     * (1.0f - fAlpha);
+                                        float interpE = fgEmissive + bgEmissive * (1.0f - fAlpha);
+
+                                        // Same issue as for depth, some values would lead to byte overflow
+                                        if (interpR > 65535.0f) interpR = 65535.0f;
+                                        if (interpG > 65535.0f) interpG = 65535.0f;
+                                        if (interpB > 65535.0f) interpB = 65535.0f;
+                                        if (interpE > 65535.0f) interpE = 65535.0f;
+                                        ubyte R = cast(ubyte)(0.5f + interpR / 257.0f);
+                                        ubyte G = cast(ubyte)(0.5f + interpG / 257.0f);
+                                        ubyte B = cast(ubyte)(0.5f + interpB / 257.0f);
+                                        ubyte E = cast(ubyte)(0.5f + interpE / 257.0f);
+                                        outDiffuse[x] = RGBA(R, G, B, E);
                                     }
                                 }
 
@@ -675,6 +696,8 @@ nothrow:
 
                                     if (fMaterial.a > 0)
                                     {
+                                        // TODO: this is buggy, should do like for diffuse
+
                                         // Convert from 16-bit to 8-bit
                                         ubyte R = cast(ubyte)(0.5f + fMaterial.r / 257.0f);
                                         ubyte G = cast(ubyte)(0.5f + fMaterial.g / 257.0f);
