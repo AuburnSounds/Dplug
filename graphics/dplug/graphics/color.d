@@ -495,6 +495,9 @@ RGBA blendColor(RGBA fg, RGBA bg, ubyte alpha) pure nothrow @nogc
 /// Blend two colors, where `fg` is a premultiplied color by its own alpha.
 /// We consider fg to be already scaled by (alpha/255)
 /// Return: (255-alpha)
+/// Note: if your premultiplied color were converted from 16-bit premultiplied
+///       colors and basically truncated, expect issues! See imageknob.d for 
+///       what could happen.
 RGBA blendColorPremul(RGBA fg, RGBA bg, ubyte alpha) pure nothrow @nogc
 {
     ubyte invAlpha = cast(ubyte)(~cast(int)alpha);
