@@ -324,7 +324,11 @@ nothrow:
     void nextBuffer(T* outAudio, int frames)
     {
         outAudio[0..frames] = 0;
+        nextBufferAccum(outAudio, frames);
+    }
 
+    void nextBufferAccum(T* outAudio, int frames)
+    {
         // Add each pending segment
         foreach(ref desc; _desc)
         {
