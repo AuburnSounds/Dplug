@@ -59,7 +59,9 @@ nothrow @nogc:
 
 
     /**
-        Process samples and return the convolved output.
+        Load the impulse reponse.
+        Changing the impulse response doesn't necessitate to call
+        `.initialize`, however it will click.
 
         MUST be called before processing samples.
         MUST be called whenever `.initialize` was called.
@@ -147,6 +149,7 @@ nothrow @nogc:
         }
         _blockConv.reallocBuffer(0);
         _tempBuf.reallocBuffer(0);
+        _tempBuf2.reallocBuffer(0);
     }
 
 private:
@@ -238,7 +241,7 @@ private:
         // Clear previous plan, if any
         _plan.clearContents();
 
-        sizeOfDelayline = NaiveConvolver.delayLineNeeded(N, _maxFrames);
+        sizeOfDelayline = NaiveConvolver.delayLineNeeded(MIN_BLOCK_SIZE, _maxFrames);
         maxUsedBlockSize = 0;
         directConvArea = MIN_BLOCK_SIZE;
         if (directConvArea >= N)
