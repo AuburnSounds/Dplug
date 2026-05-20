@@ -27,17 +27,20 @@ debug(convolver) import core.stdc.stdio;
     FUTURE: targetLatencySamples should be supported.
             Has implication on the max number of segments in recon.
 
-    Benchmarks 
-        (with a 2.5 sec impulse response at 44.1 kHz, 
-         SnapDragon X Plus, May 2026)
+    Benchmarks (SnapDragon X Plus, May 2026), 44.1 kHz
 
-        * 32-bit float
-            - Precision = ~ -108 dB RMS
-            - Speed     = ~135x stereo-convolutions real-time
+        * 2.5 seconds IR:
+          - 32-bit float  = 116x real-time stereo convolutions
+          - 64-bit double = 64x  real-time stereo convolutions 
 
-        * 64-bit double 
-            - Precision = ~ -150 dB RMS
-            - Speed     = ~92x stereo-convolutions real-time
+        * 20 seconds IR:
+          - 32-bit float  = 96x  real-time stereo convolutions
+          - 64-bit double = 57x  real-time stereo convolutions
+
+        * Precision:
+          - 32-bit float  =  ~ -108 dB RMS
+          - 64-bit float  =  ~ -150 dB RMS
+
 
     PERF: find a way to have 64-point FFT in Rfft, so that min block size can be 32
           would win a few %
