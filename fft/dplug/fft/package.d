@@ -8,3 +8,4 @@ module dplug.fft;
 
 public import dplug.fft.pfft;
 public import dplug.fft.fft;
+public import dplug.fft.convolver;
