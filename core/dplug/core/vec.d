@@ -450,7 +450,7 @@ nothrow:
             return _size;
         }
         ///ditto
-        alias ssize = length;
+        alias ssize = slength;
 
         /// Returns: `true` if length is zero.
         bool isEmpty() pure const @safe
