@@ -281,30 +281,6 @@ unittest
     assert(c == 8);
 }
 
-/** 
-    Allocates a new instance of $(D T) on the specified heap.
-
-    Params:
-        heap = The heap to allocate the instance on.
-        args = The arguments to pass to the type's constructor.
-*/
-Ref!T nogc_new(T, Args...)(NuHeap heap, auto ref Args args) @trusted {
-    static if (isCPP!T) {
-        static assert(0, "Can't custom-heap allocate C++ Objects.");
-    } else {
-        if (Ref!T newobject = cast(Ref!T)heap.alloc(AllocSize!T)) {
-            try {
-                nogc_construct(newobject, args);
-            } catch(Exception ex) {
-                nu_free(cast(void*)newobject);
-                throw ex;
-            }
-        }
-        return null;
-    }
-}
-
-
 unittest
 {
     static class A
@@ -566,11 +542,17 @@ void stringNCopy(char* dest, size_t maxChars, const(char)[] source) nothrow @nog
 {
     if (maxChars == 0)
         return;
-
-    size_t max = maxChars < source.length ? maxChars - 1 : source.length;
+    size_t max = maxChars <= source.length ? maxChars - 1 : source.length;
     for (int i = 0; i < max; ++i)
         dest[i] = source[i];
     dest[max] = '\0';
+}
+unittest
+{
+    char[4] source = "ABCD";
+    char[4] buf;
+    stringNCopy(buf.ptr, 4, source);
+    assert(buf[0] == 'A' && buf[1] == 'B' && buf[2] == 'C' && buf[3] == '\0');
 }
 
 
