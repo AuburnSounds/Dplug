@@ -94,16 +94,9 @@ private:
 
                 else if (isopaque && (cover > 0xFF00))
                 {
-                    __m128i tqc = _mm_set1_epi32(color);
 
-                    uint* ptr = &dest[bpos*4];
-                    uint* end = &dest[nsb*4];
 
-                    while (ptr < end)
-                    {
-                        _mm_storeu_si128(cast(__m128i*)ptr, tqc);
-                        ptr+=4;                        
-                    }
+                    dest[bpos * 4 .. nsb * 4] = color;
 
                     bpos = nsb;
                 }
