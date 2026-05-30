@@ -25,7 +25,7 @@ struct Box(T, int N)
     {
         alias bound_t = Vector!(T, N);
 
-        bound_t min; // not enforced, the box can have negative volume
+        bound_t min; // not enforced, the box could have negative extent
         bound_t max;
 
         /// Construct a box which extends between 2 points.
@@ -591,7 +591,6 @@ unittest
     box2i a = box2i(1, 2, 3, 4);
     assert(a.width == 2);
     assert(a.height == 2);
-    assert(a.volume == 4);
     assert(a.left == 1);
     assert(a.right == 3);
     assert(a.top == 2);

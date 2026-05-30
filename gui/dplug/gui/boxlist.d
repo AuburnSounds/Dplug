@@ -60,7 +60,7 @@ void removeOverlappingAreas(ref Vec!box2i boxes, ref Vec!box2i filtered) nothrow
         assert(A.isSorted());
 
         // empty boxes aren't kept
-        if (A.volume() <= 0)
+        if (A.width * A.height <= 0)
             continue;
 
         bool foundIntersection = false;
