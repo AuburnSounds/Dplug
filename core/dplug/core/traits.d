@@ -16,11 +16,11 @@ enum bool isDelegate(alias T) = is(typeof(T) == delegate) || is(T == delegate);
 template RemoveConst(T)
 {    
     static if (is(T U == immutable U)) 
-        alias Unqual = U;
+        alias RemoveConst = U;
     else static if (is(T U == const U)) 
-        alias Unqual = U;
+        alias RemoveConst = U;
     else 
-        alias Unqual = T;
+        alias RemoveConst = T;
 }
 
 // faster isIntegral, does not Unqual
