@@ -325,9 +325,9 @@ nothrow:
 
         /// Squared Euclidean distance between this vector and another one
         /// Returns: squared Euclidean distance.
-        @nogc T squaredDistanceTo(Vector v) pure const nothrow
+        @nogc T squaredDistanceTo(Vector other) pure const nothrow
         {
-            return (v - this).squaredMagnitude();
+            return (other - this).squaredMagnitude();
         }
 
         static if (isFloatingPoint!T)

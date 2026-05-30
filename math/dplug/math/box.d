@@ -165,19 +165,18 @@ struct Box(T, int N)
             }
 
             /// Returns: Signed volume of the box.
-            @nogc T volume() pure const nothrow
+            deprecated("Will be removed in Dplug v17") @nogc T volume() pure const nothrow
             {
-                T res = 1;
-                bound_t size = size();
+                T r = 1;
+                bound_t s = size();
                 for(int i = 0; i < N; ++i)
-                    res *= size[i];
-                return res;
+                    r *= s[i];
+                return r;
             }
 
             /// Returns: true if empty.
             @nogc bool empty() pure const nothrow
             {
-                bound_t size = size();
                 mixin(generateLoopCode!("if (min[@] == max[@]) return true;", N)());
                 return false;
             }
@@ -345,29 +344,31 @@ struct Box(T, int N)
             return Box(min + offset, max + offset);
         }
 
-        /// Scale the box by factor `scale`, and round the result to integer if needed.
-        @nogc Box scaleByFactor(float scale) const nothrow
-        {
-            Box res;
-            static if (isFloatingPoint!T)
-            {
-                res.min.x = min.x * scale;
-                res.min.y = min.y * scale;
-                res.max.x = max.x * scale;
-                res.max.y = max.y * scale;
-            }
-            else
-            {
-                res.min.x = cast(T)( round(min.x * scale) );
-                res.min.y = cast(T)( round(min.y * scale) );
-                res.max.x = cast(T)( round(max.x * scale) );
-                res.max.y = cast(T)( round(max.y * scale) );
-            }
-            return res;
-        }
-
         static if (N == 2) // useful for UI that have horizontal and vertical scale
         {
+            /// Scale the box by factor `scale`, and round the result to integer if needed.
+            @nogc Box scaleByFactor(float scale) const nothrow
+            {
+                Box res;
+                static if (isFloatingPoint!T)
+                {
+                    res.min.x = min.x * scale;
+                    res.min.y = min.y * scale;
+                    res.max.x = max.x * scale;
+                    res.max.y = max.y * scale;
+                }
+                else
+                {
+                    res.min.x = cast(T)( round(min.x * scale) );
+                    res.min.y = cast(T)( round(min.y * scale) );
+                    res.max.x = cast(T)( round(max.x * scale) );
+                    res.max.y = cast(T)( round(max.y * scale) );
+                }
+                return res;
+            }
+            ///
+            alias scale = scaleByFactor;
+
             /// Scale the box by factor `scaleX` horizontally and `scaleY` vetically. 
             /// Round the result to integer if needed.
             @nogc Box scaleByFactor(float scaleX, float scaleY) const nothrow
