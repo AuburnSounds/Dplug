@@ -8,8 +8,6 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.flatwidgets.windowresizer;
 
-// THIS IS A WORK IN PROGRESS, DOESN'T WORK YET.
-
 import dplug.gui.element;
 import dplug.canvas;
 
