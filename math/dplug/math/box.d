@@ -15,6 +15,7 @@ import std.math,
        std.traits;
 
 import dplug.math.vector;
+import godotmath;
 
 /// N-dimensional half-open interval [a, b[.
 struct Box(T, int N)
@@ -25,7 +26,7 @@ struct Box(T, int N)
     {
         alias bound_t = Vector!(T, N);
 
-        bound_t min; // not enforced, the box could have negative extent
+        bound_t min; // not enforced, the box may have negative volume
         bound_t max;
 
         /// Construct a box which extends between 2 points.
@@ -51,6 +52,15 @@ struct Box(T, int N)
             {
                 min = bound_t(min_x, min_y);
                 max = bound_t(max_x, max_y);
+            }
+
+            static if (is(T == float) || is(T == double) || is(T == int))
+            {
+                @nogc this(Rect2Impl!T r) pure nothrow 
+                {
+                    min = bound_t(r.position.x, r.position.y);
+                    max = bound_t(r.position.x + r.size.x, r.position.y + r.size.y);
+                }
             }
         }
 
@@ -538,6 +548,32 @@ struct Box(T, int N)
                 return Box(x, y, x + width, y + height);
             }
         }
+
+        // More compatibility with godot-math
+
+        static if ( (N == 2) && is(T == int))
+        {
+            Rect2i toRect2i() pure nothrow @nogc
+            {
+                return Rect2i(min.x, min.y, width(), height());
+            }
+        }
+
+        static if ( (N == 2) && is(T == float))
+        {
+            Rect2 toRect2() pure nothrow @nogc
+            {
+                return Rect2(min.x, min.y, width(), height());
+            }
+        }
+
+        static if ( (N == 2) && is(T == double))
+        {
+            Rect2d toRect2d() pure nothrow @nogc
+            {
+                return Rect2d(min.x, min.y, width(), height());
+            }
+        }
     }
 
     private
@@ -635,6 +671,10 @@ unittest
 
     assert(rectangle(10, 10, 20, 20).scaleByFactor(1.5f) == rectangle(15, 15, 30, 30));
     assert(rectangle(10, 10, 20, 20).scaleByFactor(1.5f, 2.0f) == rectangle(15, 20, 30, 40));
+
+    assert( rectangle(1, 2, 3, 4).toRect2i == box2i(Rect2i(1, 2, 3, 4)).toRect2i);
+    assert(rectanglef(1, 2, 3, 4).toRect2  == box2f(Rect2 (1, 2, 3, 4)).toRect2 );
+    assert(rectangled(1, 2, 3, 4).toRect2d == box2d(Rect2d(1, 2, 3, 4)).toRect2d);
 }
 
 /// True if `T` is a kind of Box

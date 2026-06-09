@@ -223,7 +223,8 @@
             "sourcePaths": [ "math/dplug/math" ],
             "importPaths": [ "math" ],
             "dependencies": {
-                "intel-intrinsics": "~>1.0"
+                "intel-intrinsics": "~>1.0",
+                "godot-math": "<2.0.0"
             }
         },
         {
