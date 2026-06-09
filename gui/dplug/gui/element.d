@@ -628,6 +628,12 @@ nothrow:
         assert(_position.contains(translatedRect));
         addDirtyRect(translatedRect, layer);
     }
+    ///ditto
+    void setDirty(Rect2i  rect, 
+                  UILayer layer = UILayer.guessFromFlags)
+    {
+        setDirty(box2i(rect), layer);
+    }
 
 
 
