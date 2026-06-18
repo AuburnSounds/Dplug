@@ -108,7 +108,7 @@ nothrow:
         return _tree.length;
     }
 
-    /// Returns: `ttue` is the map has no element.
+    /// Returns: `true` if the map has no element.
     bool empty() const
     {
         return _tree.empty;
