@@ -313,7 +313,7 @@ struct Matrix(T, int R, int C)
         @nogc Matrix opUnary(string op)() pure const nothrow if (op == "+" || op == "-" || op == "~" || op == "!")
         {
             Matrix res = void;
-            for (int i = 0; i < N; ++i)
+            for (int i = 0; i < R * C; ++i)
                 mixin("res.v[i] = " ~ op ~ "v[i];");
             return res;
         }
