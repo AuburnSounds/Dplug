@@ -292,10 +292,15 @@ nothrow:
 
     ~this()
     {
+        freeImageData();
+    }
+
+    void freeImageData()
+    {
         if (_buffer !is null)
         {
-             // FUTURE: use intel-intrinsics _mm_malloc/_mm_free
-            alignedFree(_buffer, 1); // Note: this allocation methods must be synced with the one in JPEG and PNL loading.
+            // FUTURE: use intel-intrinsics _mm_malloc/_mm_free
+            alignedFree(_buffer, 1); // Note: this allocation methods must be synced with the one in JPEG and PNG loading!
             _buffer = null;
         }
     }
