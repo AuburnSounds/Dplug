@@ -459,6 +459,12 @@ nothrow:
 
     version(KnobImage_resizedInternal)
     {
+        override void onStopDraw()
+        {
+            _textureWidth = -1;
+            _textureHeight = -1;
+            _resizedImage.freeImageData();
+        }
 
         void lazyResizeBADAMA16(ImageResizer* resizer)
         {

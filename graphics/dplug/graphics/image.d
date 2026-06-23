@@ -295,13 +295,22 @@ nothrow:
         freeImageData();
     }
 
+    /// Clear owned memory.
+    /// The image is then like a freshly instantiated `Image`, 
+    /// awaiting a `.size()` call.
     void freeImageData()
     {
         if (_buffer !is null)
         {
             // FUTURE: use intel-intrinsics _mm_malloc/_mm_free
             alignedFree(_buffer, 1); // Note: this allocation methods must be synced with the one in JPEG and PNG loading!
+            w = 0;
+            h = 0;
+            _pixels = null;
+            _bytePitch = 0;
             _buffer = null;
+            _border = 0;
+            _borderRight = 0;
         }
     }
 
@@ -701,6 +710,25 @@ unittest
             assert(read.l == good);
         }
     }
+}
+
+// Test life after freeImageData()
+unittest
+{
+    OwnedImage!L8 img = mallocNew!(OwnedImage!L8);
+    assert(img.w == 0);
+    assert(img.h == 0);
+    assert(img._buffer == null);
+    img.size(10, 10);
+    img.freeImageData();
+    img.size(200, 210);
+    img.freeImageData();
+    img.size(101, 100);
+    img.freeImageData();
+    assert(img.w == 0);
+    assert(img.h == 0);
+    assert(img._buffer == null);
+    img.destroyFree();
 }
 
 // Test toRef

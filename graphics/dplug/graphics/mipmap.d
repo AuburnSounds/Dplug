@@ -131,6 +131,18 @@ nothrow:
             level.destroyFree();
     }
 
+    /// Clear owned memory.
+    /// The image is then like a freshly instantiated `Mipmap`, 
+    /// awaiting a `.size()` call. To the exception of level objects
+    /// keeping their instantiations (small). 
+    void freeImageData()
+    {
+        for (int level = 0; level < levels.length; ++level)
+        {
+            levels[level].freeImageData();
+        }
+    }
+
     /// Interpolates a color between mipmap levels.  Floating-point level, spatial linear interpolation.
     /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
     /// Clamped to borders.
@@ -641,6 +653,9 @@ unittest
 
     Mipmap!L16 b = new Mipmap!L16();
     b.size(16, 17, 333);
+    b.freeImageData();
+    b.size(16, 170, 333);
+    b.freeImageData();
     b.destroy();
 }
 
