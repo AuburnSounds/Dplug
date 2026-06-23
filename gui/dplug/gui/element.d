@@ -343,6 +343,7 @@ class UIElement
     // 16. Drawing callbacks.
     //      - onDrawRaw
     //      - onDrawPBR
+    //      - onStopDraw
     //
     // 17. Animation callback
     //      - onAnimate
@@ -1356,6 +1357,24 @@ protected:
         }
     }
 
+    /**
+        Called whenever the widget was on screen but is hidden
+        in this new draw sequence.
+
+        This can be used to save memory and free up:
+        - cached textures
+        - canvases
+
+        This is NOT called on UI destruction, so it only makes sense for
+        a UI where large RAM components are hidden/shown regularly.
+
+        Warning: this should NOT be called to free resources that were
+            allocated in `.reflow()`.
+    */
+    void onStopDraw()
+    {
+    }
+
     //
     // 17. Animation callback.
     //
@@ -1440,6 +1459,9 @@ public:
 
         // Call repaint function
         onDrawRaw(rawCrop, _localRectsBuf[]);
+
+        // Mark the widget as being "on screen"
+        _wasDrawn = true;
     }
 
     /*
@@ -1492,8 +1514,10 @@ public:
         assert(cDiffuse.w != 0 && cDiffuse.h != 0);
 
         // Call repaint function
-        onDrawPBR(cDiffuse, cDepth, cMaterial,
-            _localRectsBuf[]);
+        onDrawPBR(cDiffuse, cDepth, cMaterial, _localRectsBuf[]);
+
+        // Mark the widget as being "on screen"
+        _wasDrawn = true;
     }
 
     // to be called at top-level when the mouse clicked
@@ -1836,6 +1860,20 @@ public:
         }
     }
 
+    final void callStopDraw()
+    {
+        // Call onStopDraw for widgets:
+        // - that were drawn
+        // - and are invisible here
+        if (!_visibilityStatus && _wasDrawn)
+        {
+            _wasDrawn = false;
+            onStopDraw();
+        }
+        foreach(child; _children[])
+            child.callStopDraw();
+    }
+
     // Parent element.
     // Following this chain gets to the root element.
     UIElement _parent = null;
@@ -1878,6 +1916,11 @@ private:
     // rectangles dirty.
     // It is always up to date across the whole UI tree.
     bool _visibilityStatus = true;
+
+    // `true` when the widget has been drawn.
+    // It is used to call the `onStopDraw()` callback when
+    // a widget has stopped being on screen (visibility).
+    bool _wasDrawn = false;
 
     void recomputeVisibilityStatus(bool parentStatus)
     {
