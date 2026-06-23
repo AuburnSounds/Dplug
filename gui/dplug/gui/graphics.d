@@ -112,7 +112,6 @@ nothrow:
 
         _elemsToDrawRaw = makeVec!UIElement;
         _elemsToDrawPBR = makeVec!UIElement;
-        _elemsToStopDraw = makeVec!UIElement;
         _sortScratchBuf = makeVec!UIElement;
 
         _diffuseMap = mallocNew!(Mipmap!RGBA)();
@@ -712,9 +711,6 @@ protected:
 
     /// The list of UIElement to potentially call `onDrawPBR` on.
     Vec!UIElement _elemsToDrawPBR;
-
-    /// The list of UIElement to potentially call `onStopDraw` on.
-    Vec!UIElement _elemsToStopDraw;
 
     /// The scratch buffer used to sort the two above list.
     Vec!UIElement _sortScratchBuf;
