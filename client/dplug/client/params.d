@@ -1186,7 +1186,7 @@ nothrow:
 
         // map to [0, 1]
         v = 0.5 * (v + 1);
-        if (v < -1.0) v = -1.0;
+        if (v < 0.0) v = 0.0;
         if (v > 1.0) v = 1.0;
 
         return v;
@@ -1205,7 +1205,7 @@ nothrow:
 
         // map to [0, 1]
         v = 0.5 * (v + 1);
-        if (v < -1.0) v = -1.0;
+        if (v < 0.0) v = 0.0;
         if (v > 1.0) v = 1.0;
 
         // map to [min, max]
