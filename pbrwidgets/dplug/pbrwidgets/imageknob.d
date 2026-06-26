@@ -653,13 +653,41 @@ nothrow:
 
                                 if (drawToDiffuse)
                                 {
-                                    vec4f fDiffuse;
+                                    vec4f vfDiffuse;
                                     if (diffuseInterpolation == KnobInterpolationType.linear)
-                                        fDiffuse = _resizedImage.linearSample(0, sourcePos.x, sourcePos.y);
+                                        vfDiffuse = _resizedImage.linearSample(0, sourcePos.x, sourcePos.y);
                                     else
-                                        fDiffuse = _resizedImage.cubicSample(0, sourcePos.x, sourcePos.y);
-                                    if (fDiffuse.a > 0)
+                                        vfDiffuse = _resizedImage.cubicSample(0, sourcePos.x, sourcePos.y);
+                                    if (vfDiffuse.a > 0)
                                     {
+
+                                        {
+                                            __m128i zero = _mm_setzero_si128();
+
+                                            __m128 fDiffuse = _mm_loadu_ps(cast(const(float)*)&vfDiffuse);
+                                            float fAlpha = fDiffuse[3] * 0.00001525902f;
+                                            float fgEmissive = (257 * emissive * fAlpha);
+                                            fDiffuse[3] = fgEmissive;
+
+                                            __m128i diffuseHere = _mm_loadu_si32(&outDiffuse[x]);
+                                            diffuseHere = _mm_cvtepu8_epi32(diffuseHere);
+                                            diffuseHere = diffuseHere | _mm_slli_epi32(diffuseHere, 8); // aka bg
+                                            __m128 fDiffuseHere = _mm_cvtepi32_ps(diffuseHere);
+
+
+                                            __m128 interp = fDiffuse + fDiffuseHere * _mm_set1_ps(1.0 - fAlpha);
+
+                                            // 0.00389105058 = 1 / 257
+                                            __m128 fResult = _mm_set1_ps(0.5f) + interp  * _mm_set1_ps(0.00389105058f);
+
+                                            __m128i result = _mm_cvttps_epi32(fResult);
+                                            result = _mm_packs_epi32(result, zero);
+                                            result = _mm_packus_epi16(result, zero);
+                                            _mm_storeu_si32(&outDiffuse[x], result);
+                                        }
+
+                                        /* former scalar code
+
                                         // TODO PERF
                                         float fAlpha = fDiffuse.a * 0.00001525902f; // 1 / 65535
                                         RGBA diffuseHere = outDiffuse[x];
@@ -689,6 +717,7 @@ nothrow:
                                         ubyte B = cast(ubyte)(0.5f + interpB / 257.0f);
                                         ubyte E = cast(ubyte)(0.5f + interpE / 257.0f);
                                         outDiffuse[x] = RGBA(R, G, B, E);
+                                        */
                                     }
                                 }
 
