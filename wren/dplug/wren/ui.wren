@@ -158,6 +158,7 @@ class Rectangle {
         var maxy = ( (_orig.y + _size.height) * scale).round
         return Rectangle.new(minx, miny, maxx - minx, maxy - miny)
     }
+    scale(s) { scaleByFactor(s) }
 }
 
 class RGBA {

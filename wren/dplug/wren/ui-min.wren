@@ -89,6 +89,7 @@ var d=((_orig.x+_size.width)*a).round
 var e=((_orig.y+_size.height)*a).round
 return Rectangle.new(b,c,d-b,e-c)
 }
+scale(a){scaleByFactor(a)}
 }
 class RGBA{
 construct new(c,d,e,f){
