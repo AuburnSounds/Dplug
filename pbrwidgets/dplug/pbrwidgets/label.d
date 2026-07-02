@@ -19,8 +19,17 @@ public:
 nothrow:
 @nogc:
 
-    /// Sets to true if this is clickable
-    @ScriptProperty bool clickable = false;
+    @ScriptProperty 
+    {
+        /// Sets to true if this is clickable
+        bool clickable = false;
+
+        /// Emissive offset when over
+        int emissiveOver = 40;
+
+        /// Emissive offset when clicked
+        int emissiveDrag = 80;
+    }
     string targetURL = "http://example.com";
 
     this(UIContext context, Font font, string text = "")
@@ -140,12 +149,12 @@ nothrow:
 
         if (clickable && isMouseOver)
         {
-            emissive += 40;
+            emissive += emissiveOver;
             underline = true;
         }
         else if (clickable && isDragged)
         {
-            emissive += 80;
+            emissive += emissiveDrag;
             underline = true;
         }
         if (emissive > 255)
