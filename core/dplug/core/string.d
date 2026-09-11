@@ -116,12 +116,11 @@ nothrow @nogc:
         _chars.pushBack(x);
     }
 
-    /// Append a characters to the string.
+    /// Append characters to the string.
     void opOpAssign(string op)(const(char)[] str) if (op == "~")
     {
-        size_t len = str.length;
-        for (size_t n = 0; n < len; ++n)
-            _chars.pushBack(str[n]);
+        // Note: const_cast used
+        _chars.pushBack(cast(char[]) str[0..$]);
     }
 
     /// Append a characters to the string.
