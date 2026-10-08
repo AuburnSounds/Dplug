@@ -199,6 +199,7 @@ nothrow:
         // - (optional) then a latency port if there is one audio output
         // - then an events port for timings and MIDI input
         // - (optional) then an output event port for MIDI output
+        // - (always) then a freewheeling control port (lv2:freeWheeling), 1.0 = offline
 
 
         int numParams = cast(int)(_client.params.length);
