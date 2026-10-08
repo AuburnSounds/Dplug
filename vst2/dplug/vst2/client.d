@@ -3,6 +3,7 @@ Cockos WDL License
 
 Copyright (C) 2005-2015 Cockos Incorporated
 Copyright (C) 2015-2022 Guillaume Piolat
+Copyright (C) 2026 magicjase11
 
 Portions copyright other contributors, see each source file for more information
 
@@ -19,6 +20,7 @@ VST plug-in client implementation.
 
 Copyright: Cockos Incorporated 2005-2015.
 Copyright: Guillaume Piolat 2015-2022.
+Copyright: magicjase11 2026.
 +/
 module dplug.vst2.client;
 
@@ -887,6 +889,16 @@ private:
         }
     }
 
+    // Poll the host once per block to know if we are rendering offline.
+    // Also fills `TimeInfo.offline` accordingly.
+    private TimeInfo getCurrentTimeInfo() nothrow @nogc
+    {
+        TimeInfo info = _host.getVSTTimeInfo(_samplesAlreadyProcessed);
+        info.offline = _host.isProcessLevelOffline();
+        _client.setOfflineRendering(info.offline);
+        return info;
+    }
+
     void process(float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
         processMessages();
@@ -913,7 +925,7 @@ private:
         _client.processAudioFromHost(_inputPointers[0..usedInputs],
                                      _outputPointers[0..usedOutputs],
                                      sampleFrames,
-                                     _host.getVSTTimeInfo(_samplesAlreadyProcessed));
+                                     getCurrentTimeInfo());
         _samplesAlreadyProcessed += sampleFrames;
 
         // accumulate on available host output channels
@@ -966,7 +978,7 @@ private:
         _client.processAudioFromHost(_inputPointers[0..usedInputs],
                                      _outputPointers[0..usedOutputs],
                                      sampleFrames,
-                                     _host.getVSTTimeInfo(_samplesAlreadyProcessed));
+                                     getCurrentTimeInfo());
         _samplesAlreadyProcessed += sampleFrames;
 
         // Fills remaining host channels (if any) with zeroes
@@ -1020,7 +1032,7 @@ private:
         _client.processAudioFromHost(_inputPointers[0..usedInputs],
                                      _outputPointers[0..usedOutputs],
                                      sampleFrames,
-                                     _host.getVSTTimeInfo(_samplesAlreadyProcessed));
+                                     getCurrentTimeInfo());
         _samplesAlreadyProcessed += sampleFrames;
 
         // Converts back to double on available host output channels
@@ -1323,6 +1335,16 @@ nothrow:
             info.timeInSamples = fallbackTimeInSamples;
         }
         return info;
+    }
+
+    /// Returns true if the host is currently processing in an offline context
+    /// (bounce/export/freeze), as reported by the host process level.
+    /// Note: hosts that don't implement `audioMasterGetCurrentProcessLevel`
+    ///       return `kVstProcessLevelUnknown` (0), which we treat as realtime.
+    bool isProcessLevelOffline() nothrow @nogc
+    {
+        // kVstProcessLevelOffline == 4, from VstProcessLevels in aeffectx.h
+        return callback(audioMasterGetCurrentProcessLevel, 0, 0, null, 0.0f) == 4;
     }
 
     /// Capabilities
