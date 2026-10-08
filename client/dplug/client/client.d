@@ -3,6 +3,7 @@ Cockos WDL License
 
 Copyright (C) 2005 - 2015 Cockos Incorporated
 Copyright (C) 2015 - 2017 Auburn Sounds
+Copyright (C) 2026 magicjase11
 
 Portions copyright other contributors, see each source file for more information
 
@@ -213,6 +214,12 @@ struct TimeInfo
 
     /// Whether the host sequencer is currently playing
     bool hostIsPlaying;
+
+    /// True when the host is currently rendering faster or slower than real time,
+    /// as when doing an offline bounce, export or freeze. The plugin can use
+    /// more expensive algorithms then.
+    /// Conservative `false` when the current host doesn't report it.
+    bool offline = false;
 }
 
 /// Describe a combination of input channels count and output channels count
@@ -618,6 +625,19 @@ nothrow:
         return 0; // default returns 0 which means "do not split buffers"
     }
 
+    /// True when the host is rendering faster or slower than real time,
+    /// as when doing an offline bounce, export or freeze.
+    /// The plugin can then use more expensive algorithms.
+    ///
+    /// Note: the value can change between `processAudio` calls.
+    /// Safe to call from the audio thread.
+    /// Conservative `false` when the current host doesn't report it.
+    /// The same information is also available as `TimeInfo.offline` in `processAudio`.
+    final bool isOfflineRendering() nothrow @nogc
+    {
+        return atomicLoad!(MemoryOrder.raw)(_offlineRendering);
+    }
+
     /// Process `frames` audio frames.
     ///
     /// Read audio input from `inputs` channels, and write it to `outputs` channels.
@@ -982,6 +1002,16 @@ nothrow:
         reset(sampleRate, maxFrames, numInputs, numOutputs);
     }
 
+    /// For plugin format clients only.
+    /// Tell the `Client` if the host is currently rendering offline
+    /// (faster or slower than real time).
+    /// TODO: we deliberately don't call `reset()` when this changes,
+    ///       the plugin decides itself if it must re-prepare.
+    final void setOfflineRendering(bool offline) nothrow @nogc
+    {
+        atomicStore(_offlineRendering, offline);
+    }
+
     /// For use by plugin format clients. This gives the buffer split size to use.
     /// (0 == no split).
     /// This is useful in the cast the format client wants to split buffers by itself.
@@ -1171,6 +1201,10 @@ private:
         /// hosts don't restore default state when instantiating.
         Vec!ubyte _defaultStateData;
     }
+
+    // True when the host renders faster or slower than real time.
+    // Set by the plugin format client, read by `isOfflineRendering`.
+    shared(bool) _offlineRendering = false;
 
     final void createGraphicsLazily()
     {
@@ -1393,4 +1427,43 @@ private string sanitizeBundleString(string s) pure
             r ~= "-";
     }
     return r;
+}
+
+unittest
+{
+    import dplug.core.nogc: mallocNew, destroyFree, mallocSlice;
+
+    static class TestClient : Client
+    {
+        override PluginInfo buildPluginInfo() { return PluginInfo.init; }
+        override LegalIO[] buildLegalIO()
+        {
+            LegalIO[] legalIOs = mallocSlice!LegalIO(1);
+            legalIOs[0].numInputChannels = 0;
+            legalIOs[0].numOutputChannels = 2;
+            return legalIOs;
+        }
+        override void processAudio(const(float*)[] inputs, float*[] outputs,
+                                   int frames, TimeInfo timeInfo) nothrow @nogc {}
+        override void reset(double sampleRate, int maxFrames,
+                            int numInputs, int numOutputs) nothrow @nogc {}
+    }
+
+    auto client = mallocNew!TestClient();
+    scope(exit) client.destroyFree();
+
+    // Conservative default: host doesn't report offline state.
+    assert(!client.isOfflineRendering());
+
+    // Format client writes, audio thread reads.
+    client.setOfflineRendering(true);
+    assert(client.isOfflineRendering());
+
+    // Back to realtime.
+    client.setOfflineRendering(false);
+    assert(!client.isOfflineRendering());
+
+    // TimeInfo default.
+    TimeInfo ti;
+    assert(!ti.offline);
 }
