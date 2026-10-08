@@ -3,6 +3,7 @@ Cockos WDL License
 
 Copyright (C) 2005 - 2015 Cockos Incorporated
 Copyright (C) 2016 Auburn Sounds
+Copyright (C) 2026 magicjase11
 
 Portions copyright other contributors, see each source file for more information
 
@@ -1070,6 +1071,15 @@ private:
                 return noErr;
             }
 
+            case kAudioUnitProperty_OfflineRender: // 37
+            {
+                *pDataSize = UInt32.sizeof;
+                *pWriteable = false;
+                if (pData)
+                    *(cast(UInt32*) pData) = _client.isOfflineRendering() ? 1 : 0;
+                return noErr;
+            }
+
             case kAudioUnitProperty_ParameterList: // 3
             {
                 int numParams = cast(int)( _client.params().length );
@@ -1824,8 +1834,14 @@ private:
                 }
             }
 
-            case kAudioUnitProperty_OfflineRender:
-                return noErr; // 37
+            case kAudioUnitProperty_OfflineRender: // 37
+            {
+                // The host tells us if the plugin is processed offline (bounce/export/freeze).
+                // TODO: we deliberately don't call reset() on change,
+                //       the plugin decides itself if it must re-prepare.
+                _client.setOfflineRendering(*(cast(UInt32*)pData) != 0);
+                return noErr;
+            }
 
             case kAudioUnitProperty_AUHostIdentifier:            // 46,
             {
@@ -2399,6 +2415,7 @@ private:
             if (tempo > 0.0)
                 result.tempo = tempo;
         }
+        result.offline = _client.isOfflineRendering();
         return result;
     }
 
