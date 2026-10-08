@@ -3,6 +3,7 @@
 *
 * Copyright: Ethan Reker 2018-2019.
 *            Guillaume Piolat 2019-2022.
+*            magicjase11 2026.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 /*
@@ -643,6 +644,25 @@ void buildParamPortConfiguration(Parameter[] params,
         paramString ~= "        rsz:minimumSize 2048 ;\n";
         paramString ~= "    ]";
     }
+    if (hasMIDIOutput)
+        ++portIndex;
+
+    // Freewheeling control port: hosts write 1 when rendering offline
+    // (faster or slower than real time).
+    paramString ~= " ,\n    [\n";
+    paramString ~= "        a lv2:InputPort , lv2:ControlPort ;\n";
+    snprintf(indexBuf.ptr, 16, "%d", portIndex);
+    paramString ~= "        lv2:index ";
+    paramString.appendZeroTerminatedString(indexBuf.ptr);
+    paramString ~= ";\n";
+    paramString ~= "        lv2:symbol \"lv2_freewheel\" ;\n";
+    paramString ~= "        lv2:name \"Freewheel\" ;\n";
+    paramString ~= "        lv2:default 0.0 ;\n";
+    paramString ~= "        lv2:minimum 0.0 ;\n";
+    paramString ~= "        lv2:maximum 1.0 ;\n";
+    paramString ~= "        lv2:portProperty lv2:toggled, lv2:connectionOptional, pprops:notOnGUI ;\n";
+    paramString ~= "        lv2:designation lv2:freeWheeling ;\n";
+    paramString ~= "    ]";
     ++portIndex;
 
     paramString ~= " .\n";

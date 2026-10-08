@@ -3,6 +3,7 @@
 *
 * Copyright: Ethan Reker 2018.
 *            Guillaume Piolat 2019.
+*            magicjase11 2026.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 /*
@@ -80,6 +81,7 @@ nothrow:
         _latencyOutput = null;
         _eventsInput = null;
         _eventsOutput = null;
+        _freeWheeling = null;
         _latencySamples = 0;
         version(legacyBinState)
         {}
@@ -233,9 +235,22 @@ nothrow:
             return;
         }
         --port;
+
+        // (optional) MIDI output port
+        if (_client.sendsMIDI)
+        {
+            if(port == 0)
+            {
+                _eventsOutput = cast(LV2_Atom_Sequence*)data;
+                return;
+            }
+            --port;
+        }
+
+        // Freewheeling control port, hosts write 1.0 when rendering offline.
         if(port == 0)
         {
-            _eventsOutput = cast(LV2_Atom_Sequence*)data;
+            _freeWheeling = cast(float*)data;
             return;
         }
         assert(false, "Error unknown port index");
@@ -396,6 +411,12 @@ nothrow:
 
         if (_client.sendsMIDI)
             _client.clearAccumulatedOutputMidiMessages();
+
+        // Read the freewheeling port: hosts set it to 1 when rendering offline
+        // (faster or slower than real time).
+        bool offline = (_freeWheeling !is null && _freeWheeling[0] > 0.0f);
+        _currentTimeInfo.offline = offline;
+        _client.setOfflineRendering(offline);
 
         // Process audio
         _client.processAudioFromHost(_inputPointersProcessing, _outputPointersProcessing, n_samples, _currentTimeInfo);
@@ -691,6 +712,10 @@ private:
 
     LV2_Atom_Sequence* _eventsInput; // may be null
     LV2_Atom_Sequence* _eventsOutput;
+
+    // Freewheeling control port (lv2:freeWheeling), hosts write 1 when
+    // rendering offline. May be null if unconnected.
+    float* _freeWheeling;
 
     float _sampleRate;
 
