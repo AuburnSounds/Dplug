@@ -2,6 +2,7 @@
 FL Plugin client.
 
 Copyright: Guillaume Piolat 2023.
+Copyright: magicjase11 2026.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.flp.client;
@@ -164,6 +165,9 @@ nothrow @nogc:
                 case FPD_ProcessMode:                /* 1 */
                     // "this ID can be ignored"
                     // Gives a quality hint.
+                    // TODO: the FL SDK doesn't expose an offline-render state here,
+                    // so this format always reports realtime. FL Studio exports are
+                    // detected through its other plugin formats instead.
 
                     // Tell how many internal presets there are.
                     // Quite arbitrarily, this is where we choose to change preset number.
