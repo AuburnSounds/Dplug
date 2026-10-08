@@ -4,6 +4,7 @@ MIT License
 
 Copyright (c) 2025, Steinberg Media Technologies GmbH, All rights reserved.
 Copyright (c) 2025, Guillaume Piolat
+Copyright (c) 2026, magicjase11
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -402,6 +403,12 @@ nothrow:
         // Pass these new values to the audio thread
         atomicStore(_sampleRateAudioThreadPOV, cast(float)(setup.sampleRate));
         atomicStore(_maxSamplesPerBlockHostPOV, setup.maxSamplesPerBlock);
+
+        // Does the host process offline (faster or slower than real time)?
+        // Per VST3 spec, switching between realtime and offline requires
+        // the host to call setupProcessing again.
+        _client.setOfflineRendering(setup.processMode == kOffline);
+
         if (setup.symbolicSampleSize != kSample32)
             return kResultFalse;
         return kResultOk;
@@ -424,6 +431,12 @@ nothrow:
         scopedCallback.enter();
 
         assert(data.symbolicSampleSize == kSample32); // no conversion to 64-bit supported
+
+        // Some hosts change processMode without a new setupProcessing,
+        // so check on each block as well.
+        bool offlineProcessing = (data.processMode == kOffline);
+        _client.setOfflineRendering(offlineProcessing);
+        _timeInfo.offline = offlineProcessing;
 
         // Call initialize if needed
         float newSampleRate = atomicLoad!(MemoryOrder.raw)(_sampleRateAudioThreadPOV);
@@ -1752,6 +1765,76 @@ private:
             return true;
         }
     }
+}
+
+unittest
+{
+    import dplug.core.nogc: mallocNew, mallocSlice;
+
+    static class TestClient : Client
+    {
+        bool sawOffline = false;
+        bool sawRealtime = false;
+
+        override PluginInfo buildPluginInfo() { return PluginInfo.init; }
+        override LegalIO[] buildLegalIO()
+        {
+            LegalIO[] legalIOs = mallocSlice!LegalIO(1);
+            legalIOs[0].numInputChannels = 2;
+            legalIOs[0].numOutputChannels = 2;
+            return legalIOs;
+        }
+        override void processAudio(const(float*)[] inputs, float*[] outputs,
+                                   int frames, TimeInfo timeInfo) nothrow @nogc
+        {
+            if (timeInfo.offline) sawOffline = true;
+            else sawRealtime = true;
+        }
+        override void reset(double sampleRate, int maxFrames,
+                            int numInputs, int numOutputs) nothrow @nogc {}
+    }
+
+    auto client = mallocNew!TestClient();
+    auto vst3client = mallocNew!VST3Client(client);
+    // Note: releasing the VST3Client destroys the inner TestClient.
+
+    ProcessSetup setup;
+    setup.sampleRate = 44100.0;
+    setup.maxSamplesPerBlock = 512;
+    setup.symbolicSampleSize = kSample32;
+
+    // Realtime setup
+    setup.processMode = kRealtime;
+    assert(vst3client.setupProcessing(setup) == kResultOk);
+    assert(!client.isOfflineRendering());
+
+    // Offline setup (host bounces/renders offline)
+    setup.processMode = kOffline;
+    assert(vst3client.setupProcessing(setup) == kResultOk);
+    assert(client.isOfflineRendering());
+
+    // A process block with a differing processMode flips the state,
+    // for hosts that don't call setupProcessing again.
+    ProcessData data;
+    data.symbolicSampleSize = kSample32;
+    data.numSamples = 4;
+
+    data.processMode = kRealtime;
+    assert(vst3client.process(data) == kResultOk);
+    assert(!client.isOfflineRendering());
+    assert(client.sawRealtime);
+
+    // kPrefetch is not offline
+    data.processMode = kPrefetch;
+    assert(vst3client.process(data) == kResultOk);
+    assert(!client.isOfflineRendering());
+
+    data.processMode = kOffline;
+    assert(vst3client.process(data) == kResultOk);
+    assert(client.isOfflineRendering());
+    assert(client.sawOffline);
+
+    vst3client.release(); // refcount starts at 1; destroys the wrapper and the TestClient
 }
 
 private:
