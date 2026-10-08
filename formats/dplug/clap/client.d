@@ -3,6 +3,7 @@ MIT License
 
 Copyright (c) 2021 Alexandre BIQUE
 Copyright (c) 2024 Guillaume PIOLAT
+Copyright (c) 2026, magicjase11
 
 Permission is hereby granted,  free of charge, to any person obtaining
 a copy of  this  software  and  associated  documentation  files  (the
@@ -323,6 +324,14 @@ private:
         clientReset();
     }
 
+    /// clap.render extension: the host tells us if processing happens
+    /// with realtime pressure or not. Called by the host [main-thread],
+    /// typically before activate, or between a deactivate/activate pair.
+    void setRenderMode(clap_plugin_render_mode mode) nothrow @nogc
+    {
+        _client.setOfflineRendering(mode == CLAP_RENDER_OFFLINE);
+    }
+
     static struct ParamTrack
     {
     nothrow @nogc:
@@ -351,6 +360,9 @@ private:
         // here as last resort.
 
         _tracks.clearContents();
+
+        // Fill the offline state, as set by the host with the clap.render extension.
+        _timeInfo.offline = _client.isOfflineRendering();
 
         // 0. First, process incoming events.
         if (pp)
@@ -555,6 +567,14 @@ private:
         {
             __gshared clap_plugin_latency_t api;
             api.get               = &plugin_latency_get;
+            return &api;
+        }
+
+        if (streq(s, CLAP_EXT_RENDER))
+        {
+            __gshared clap_plugin_render_t api;
+            api.has_hard_realtime_requirement = &plugin_render_has_hard_realtime_requirement;
+            api.set                      = &plugin_render_set;
             return &api;
         }
 
@@ -1799,6 +1819,21 @@ extern(C) static
         client.reset();
     }
 
+    // clap.render callbacks
+
+    bool plugin_render_has_hard_realtime_requirement(const(clap_plugin_t)* plugin)
+    {
+        // Dplug plugins don't have a hard realtime requirement.
+        return false;
+    }
+
+    bool plugin_render_set(const(clap_plugin_t)* plugin, clap_plugin_render_mode mode)
+    {
+        mixin(ClientCallback);
+        client.setRenderMode(mode);
+        return true;
+    }
+
     clap_process_status plugin_process(const(clap_plugin_t)* plugin, 
                                        const(clap_process_t)*    pp)
     {
@@ -2442,4 +2477,64 @@ extern(C) static
     {
         return null;
     }
+}
+
+// Dummy host extension query for the unittest below: returns no extension.
+extern(C) nothrow @nogc const(void)* unittestHostGetExtension(
+    const(clap_host_t)* host, const(char)* extension_id)
+{
+    return null;
+}
+
+unittest
+{
+    import dplug.core.nogc: mallocNew, destroyFree, mallocSlice;
+
+    static class TestClient : Client
+    {
+        override PluginInfo buildPluginInfo() { return PluginInfo.init; }
+        override LegalIO[] buildLegalIO()
+        {
+            LegalIO[] legalIOs = mallocSlice!LegalIO(1);
+            legalIOs[0].numInputChannels = 2;
+            legalIOs[0].numOutputChannels = 2;
+            return legalIOs;
+        }
+        override void processAudio(const(float*)[] inputs, float*[] outputs,
+                                   int frames, TimeInfo timeInfo) nothrow @nogc {}
+        override void reset(double sampleRate, int maxFrames,
+                            int numInputs, int numOutputs) nothrow @nogc {}
+    }
+
+    auto client = mallocNew!TestClient();
+
+    // Minimal host: CLAPHost queries host extensions on construction,
+    // so a dummy host with a null-returning get_extension is used.
+    clap_host_t dummyHost = clap_host_t.init;
+    dummyHost.get_extension = &unittestHostGetExtension;
+
+    auto clapClient = mallocNew!CLAPClient(client, &dummyHost);
+    // Note: destroying CLAPClient destroys the inner TestClient.
+
+    const(clap_plugin_t)* plugin = clapClient.get_clap_plugin();
+
+    // Conservative default before any render mode is set.
+    assert(!client.isOfflineRendering());
+
+    // The clap.render extension is exposed.
+    auto render = cast(const(clap_plugin_render_t)*)plugin.get_extension(plugin, CLAP_EXT_RENDER.ptr);
+    assert(render !is null);
+
+    // Dplug plugins never have a hard realtime requirement.
+    assert(render.has_hard_realtime_requirement(plugin) == false);
+
+    // Host switches to offline rendering.
+    assert(render.set(plugin, CLAP_RENDER_OFFLINE));
+    assert(client.isOfflineRendering());
+
+    // Host switches back to realtime.
+    assert(render.set(plugin, CLAP_RENDER_REALTIME));
+    assert(!client.isOfflineRendering());
+
+    destroyFree(clapClient); // destroys the wrapper and the TestClient
 }

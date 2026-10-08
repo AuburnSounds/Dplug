@@ -3,6 +3,7 @@ MIT License
 
 Copyright (c) 2021 Alexandre BIQUE
 Copyright (c) 2024 Guillaume PIOLAT
+Copyright (c) 2026, magicjase11
 
 Permission is hereby granted,  free of charge, to any person obtaining
 a copy of  this  software  and  associated  documentation  files  (the
@@ -1611,6 +1612,34 @@ extern(C) nothrow @nogc:
     // If a parameter value changes, then it is implicit that the state is dirty.
     // [main-thread]
     void function(const(clap_host_t)* host) mark_dirty;
+}
+
+// render.h
+
+enum string CLAP_EXT_RENDER = "clap.render";
+
+alias clap_plugin_render_mode = int;
+enum : clap_plugin_render_mode
+{
+    // Default setting, for "realtime" processing
+    CLAP_RENDER_REALTIME = 0,
+
+    // For processing without realtime pressure.
+    // The plugin may use more expensive algorithms for higher sound quality.
+    CLAP_RENDER_OFFLINE = 1,
+}
+
+struct clap_plugin_render_t
+{
+extern(C) nothrow @nogc:
+    // Returns true if the plugin has a hard requirement to process in real-time.
+    // This is especially useful for plugin acting as a proxy to an hardware device.
+    // [main-thread]
+    bool function(const(clap_plugin_t)* plugin) has_hard_realtime_requirement;
+
+    // Returns true if the rendering mode could be applied.
+    // [main-thread]
+    bool function(const(clap_plugin_t)* plugin, clap_plugin_render_mode mode) set;
 }
 
 
