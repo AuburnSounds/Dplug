@@ -4,7 +4,7 @@ MIT License
 
 Copyright (c) 2025, Steinberg Media Technologies GmbH, All rights reserved.
 Copyright (c) 2025, Guillaume Piolat
-Copyright (c) 2026, magicjase11
+Copyright (c) 2026, magicjase11 (https://github.com/magicjase11)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

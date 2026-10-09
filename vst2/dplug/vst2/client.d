@@ -3,7 +3,7 @@ Cockos WDL License
 
 Copyright (C) 2005-2015 Cockos Incorporated
 Copyright (C) 2015-2022 Guillaume Piolat
-Copyright (C) 2026 magicjase11
+Copyright (C) 2026 magicjase11 (https://github.com/magicjase11)
 
 Portions copyright other contributors, see each source file for more information
 
@@ -20,7 +20,7 @@ VST plug-in client implementation.
 
 Copyright: Cockos Incorporated 2005-2015.
 Copyright: Guillaume Piolat 2015-2022.
-Copyright: magicjase11 2026.
+Copyright: magicjase11 (https://github.com/magicjase11) 2026.
 +/
 module dplug.vst2.client;
 

@@ -2,7 +2,7 @@
 FL Plugin client.
 
 Copyright: Guillaume Piolat 2023.
-Copyright: magicjase11 2026.
+Copyright: magicjase11 (https://github.com/magicjase11) 2026.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.flp.client;

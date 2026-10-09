@@ -3,7 +3,7 @@ Cockos WDL License
 
 Copyright (C) 2005 - 2015 Cockos Incorporated
 Copyright (C) 2016 Auburn Sounds
-Copyright (C) 2026 magicjase11
+Copyright (C) 2026 magicjase11 (https://github.com/magicjase11)
 
 Portions copyright other contributors, see each source file for more information
 

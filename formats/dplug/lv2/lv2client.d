@@ -3,7 +3,7 @@
 *
 * Copyright: Ethan Reker 2018.
 *            Guillaume Piolat 2019.
-*            magicjase11 2026.
+*            magicjase11 (https://github.com/magicjase11) 2026.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 /*
