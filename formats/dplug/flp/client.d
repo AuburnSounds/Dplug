@@ -161,13 +161,13 @@ nothrow @nogc:
                     return 0; // no error, apparently
 
 
-                // @guiThread, says the documentation
+                // @guiThread @mixerThread (Dispatcher is documented (GM) in the SDK)
                 case FPD_ProcessMode:                /* 1 */
-                    // "this ID can be ignored"
-                    // Gives a quality hint.
-                    // TODO: the FL SDK doesn't expose an offline-render state here,
-                    // so this format always reports realtime. FL Studio exports are
-                    // detected through its other plugin formats instead.
+                    // "It's a bitfield that determines the quality of the data that the
+                    //  plugin renders. If the PM_IsRendering flag is set, the host is
+                    //  rendering to a file (.wav, .mp3, ...), which means that the plugin
+                    //  doesn't have to render in real time."
+                    _client.setOfflineRendering(processModeIsOffline(Value));
 
                     // Tell how many internal presets there are.
                     // Quite arbitrarily, this is where we choose to change preset number.
@@ -1279,6 +1279,7 @@ private:
         info.tempo         = atomicLoad(_hostTempo);
         info.hostIsPlaying = atomicLoad(_hostHostPlaying);
         info.timeInSamples = _mixingTimeInSamples;
+        info.offline       = _client.isOfflineRendering();
     }
 
     @mixerThread
@@ -1399,4 +1400,29 @@ private:
     TFruityPlugHost _host;
     TPluginTag _tag;
     TFPTime _time;
+}
+
+/// Returns true if an `FPD_ProcessMode` bitfield means the host is rendering offline.
+///
+/// Note: only `PM_IsRendering` is the explicit offline bit. `PM_HQ_NonRealtime` is
+/// a quality heuristic ("normally set when rendering only") that we deliberately
+/// don't treat as offline.
+private bool processModeIsOffline(intptr_t value) pure nothrow @nogc
+{
+    return (value & PM_IsRendering) != 0;
+}
+
+unittest
+{
+    // PM_IsRendering is the explicit "host is rendering to a file" bit.
+    assert(processModeIsOffline(PM_IsRendering));
+    assert(processModeIsOffline(PM_HQ_NonRealtime | PM_IsRendering));
+
+    // Everything else is realtime: the HQ bits are only a quality hint.
+    assert(!processModeIsOffline(PM_Normal));
+    assert(!processModeIsOffline(PM_HQ_Realtime));
+    assert(!processModeIsOffline(PM_HQ_NonRealtime));
+
+    // Interpolation quality alone doesn't mean offline.
+    assert(!processModeIsOffline(PM_IPMask | PM_HQ_Realtime));
 }

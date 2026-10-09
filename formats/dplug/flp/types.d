@@ -2,6 +2,7 @@
 FL Plugin interface.
 
 Copyright: Guillaume Piolat 2023.
+Copyright: magicjase11 2026.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.flp.types;
@@ -136,6 +137,14 @@ enum int FPD_GetStateSizeEstimate = 49; //get plugin estimated state size
 enum int FPD_UseIncreasedMIDIResolution = 50; // return 1 if increased MIDI resolution is supported
 enum int FPD_ConvertStringToValue = 51;  //let plugin do string to value conversion, value is pointer to TConvertStringToValueData record , used for custom type in value
 enum int FPD_GetParamType = 52; //return control (Index) param type, see //FPD_GetParamType options below
+
+// processing mode flags
+// Sent as a bitfield in the FPD_ProcessMode message value.
+enum int PM_Normal             =0;     // realtime processing (default)
+enum int PM_HQ_Realtime        =1;     // high quality, but still realtime processing
+enum int PM_HQ_NonRealtime     =2;     // non realtime processing (CPU does not matter, quality does) (normally set when rendering only)
+enum int PM_IsRendering        =16;    // is rendering if this flag is set
+enum int PM_IPMask             =0xFFFF << 8;  // 16 bits value for interpolation number of points
 
 // host dispatcher IDs
 enum int FHD_ParamMenu         =0;     // the popup menu for each control (Index=param index, Value=popup item index (see FHP_EditEvents))
