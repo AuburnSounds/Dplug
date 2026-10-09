@@ -1005,8 +1005,15 @@ nothrow:
     /// For plugin format clients only.
     /// Tell the `Client` if the host is currently rendering offline
     /// (faster or slower than real time).
-    /// TODO: we deliberately don't call `reset()` when this changes,
-    ///       the plugin decides itself if it must re-prepare.
+    ///
+    /// Note: this deliberately doesn't call `reset()`. The format specs make
+    /// re-preparation the plugin's own decision, not the wrapper's: VST3
+    /// informs of a mode change through a new `setupProcessing` call, CLAP
+    /// hosts are advised to set the render mode while the plugin is
+    /// deactivated (so the activate cycle re-prepares), and Apple leaves it
+    /// "up to the audio unit to determine whether to require
+    /// uninitialization" for `kAudioUnitProperty_OfflineRender`. Clearing
+    /// processing state mid-render would also break bounce continuity.
     final void setOfflineRendering(bool offline) nothrow @nogc
     {
         atomicStore(_offlineRendering, offline);
