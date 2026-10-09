@@ -1074,7 +1074,7 @@ private:
             case kAudioUnitProperty_OfflineRender: // 37
             {
                 *pDataSize = UInt32.sizeof;
-                *pWriteable = false;
+                *pWriteable = true; // the property is Read/Write per AudioUnitProperties.h
                 if (pData)
                     *(cast(UInt32*) pData) = _client.isOfflineRendering() ? 1 : 0;
                 return noErr;
@@ -1837,8 +1837,9 @@ private:
             case kAudioUnitProperty_OfflineRender: // 37
             {
                 // The host tells us if the plugin is processed offline (bounce/export/freeze).
-                // TODO: we deliberately don't call reset() on change,
-                //       the plugin decides itself if it must re-prepare.
+                // Per Apple's Audio Unit Programming Guide, it is up to the audio unit to
+                // decide whether changing this property requires uninitialization: we
+                // don't reset, the plugin decides itself if it must re-prepare.
                 _client.setOfflineRendering(*(cast(UInt32*)pData) != 0);
                 return noErr;
             }
