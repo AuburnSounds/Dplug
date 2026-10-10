@@ -16,7 +16,20 @@ The following is a set of guidelines for contributing to Dplug and its packages,
 
 Use your best judgment, and feel free to propose changes to this document in a pull request.
 
-## 0. Boost license
+
+## 0. Don't be an agent
+
+Dplug has 0 lines of code made with AI. Some users are vehementaly 
+anti-AI and as such we have to reject you AI contribution automatically.
+
+You have to understand most of Dplug value is in testing against many
+hosts over the course of years, no amount of unittest can replace 
+that.
+
+You are encourage to fork and leave us out of this.
+
+
+## 1. Boost license
 
 By contributing to Dplug, you implicitly agree that your work will be redistributed under the Boost license.
 You still keep your copyright over the files you have modified.
@@ -24,7 +37,7 @@ You still keep your copyright over the files you have modified.
 When you modify a file, do not forget to **add a Copyright DDoc entry with the copyright holder name and year.**
 
 
-## 1. Come discuss changes first
+## 2. Come discuss changes first
 
 Please open new bugs in the bugtracker before doing a PR.
 This tends to lead to a better outcome.
@@ -32,7 +45,7 @@ This tends to lead to a better outcome.
 An even better solution is Dplug's Discord channel.
 
 
-## 2. Follow existing style
+## 3. Follow existing style
 
 Dplug uses the Phobos D style: https://dlang.org/dstyle.html
 In particular that means no TABs and 4 spaces of indentation.
@@ -42,8 +55,12 @@ https://github.com/AuburnSounds/Dplug/wiki/Working-in-a-@nogc-environment
 
 Tools, plug-in host implementation, and unittests not restricted to be runtime-free though.
 
+- Don't add unittests for things that should be integration tests.
+- Don't add dependencies.
+- Follow the existing terse style of comments and code.
 
-## 3. Don't complicate the build
+
+## 4. Don't complicate the build
 
 Dplug should keep being be a *small* archive downloaded by DUB from time to time, and nothing more.
 
@@ -52,18 +69,18 @@ Dplug should keep being be a *small* archive downloaded by DUB from time to time
 Don't add new languages, libraries or constraints without discussion.
 
 
-## 4. Documented decisions
+## 5. Documented decisions
 
 Always add `TODO` comments for _any_ doubt your may have. Don't sweep subtle decisions or race conditions under the rug.
 
 
-## 5. Breaking changes
+## 6. Breaking changes
 
 Breaking changes are not allowed unless there is discussion first.
 When just renaming, introduce a `deprecated("Use this symbol instead: foo") alias bar = foo;` line.
 
 
-## 6. Important Design rules
+## 7. Important Design rules
 
 - Dplug's window backend should have the same functionality.
 
