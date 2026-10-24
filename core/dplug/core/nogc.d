@@ -557,7 +557,7 @@ unittest
 
 
 //
-// Low-cost C string conversions
+// C string conversions
 //
 alias CString = CStringImpl!char;
 alias CString16 = CStringImpl!wchar;
@@ -582,20 +582,17 @@ nothrow:
         buffer[0..len] = s[0..len];
         buffer[len] = '\0';
         _storage = buffer;
-        _wasAllocated = true;
     }
 
     ~this()
     {
-        if (_wasAllocated)
-            free(cast(void*)_storage);
+        free(cast(void*)_storage);
     }
 
     @disable this(this);
 
 private:
     const(CharType)* _storage = null;
-    bool _wasAllocated = false;
 }
 
 //

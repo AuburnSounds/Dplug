@@ -780,6 +780,8 @@ public:
 
             // Just the pow operation for this line
             {
+                // PERF: sofren2 uses a cheap replacement for pow in the specular term: x/(n − n·x + x)
+                // instead of x ^ n, however this change the look obviously
                 int i = area.min.x;
                 for (; i + 3 < area.max.x; i += 4)
                 {
